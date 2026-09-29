@@ -13,12 +13,6 @@ class GeneratePlanIn(BaseModel):
     chat_text: str = Field(default="", max_length=2000, description="用户在对话中补充的需求")
 
 
-class RevisePlanIn(BaseModel):
-    """对已生成的方案做"文字微调"：模型基于当前 JSON 原地改，其余天不动"""
-    instruction: str = Field(min_length=1, max_length=500, description="修改意见，如'第3天午餐换成鱼'")
-    day_index: int | None = Field(default=None, ge=1, le=7, description="只改某一天；不填则可改整份")
-
-
 class ChatMessageIn(BaseModel):
     role: str = Field(pattern="^(user|assistant)$")
     content: str = Field(min_length=1, max_length=1000)

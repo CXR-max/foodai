@@ -52,6 +52,11 @@ class LLMProvider(ABC):
 
     name: str = "base"  # 实现类要标明自己的名字（落库到 recognitions.provider）
 
+    @property
+    def active_name(self) -> str:
+        """本次实际产出内容的来源；FallbackProvider 会覆盖为 'mock' 以如实标注"""
+        return self.name
+
     @abstractmethod
     def recognize_food(
         self, image_bytes: bytes, content_type: str, profile_ctx: dict | None = None
@@ -65,7 +70,12 @@ class LLMProvider(ABC):
     @abstractmethod
     def generate_day(self, profile_ctx: dict, day_index: int, days: int,
                      prior_days: list[dict] | None = None, note: str = ""):
-        """只生成方案中的某一天（用于逐天流式生成），返回 PlanDay"""
+        """只生成方案中的某一天，返回 PlanDay"""
+
+    @abstractmethod
+    def generate_day_stream(self, profile_ctx: dict, day_index: int, days: int,
+                            prior_days: list[dict] | None = None, note: str = ""):
+        """逐天流式生成：yield {"type":"delta","text":...} 进度片段，最后 yield {"type":"day","day":PlanDay}"""
 
     @abstractmethod
     def chat(self, messages: list[dict]) -> str:
@@ -74,11 +84,6 @@ class LLMProvider(ABC):
     @abstractmethod
     def chat_stream(self, messages: list[dict]):
         """流式对话：逐块 yield 文本片段（生成器）"""
-
-    @abstractmethod
-    def revise_plan(self, profile_ctx: dict, current_plan: dict, instruction: str,
-                    day_index: int | None = None):
-        """基于当前方案 JSON 做最小改动，返回修订后的 PlanResult"""
 
     # ---- 公共：结构化输出 + 校验重试 ----
 

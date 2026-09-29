@@ -28,6 +28,7 @@ backend/
 ├── requirements.txt           # 依赖清单
 ├── seed_demo.py               # 比赛演示造数脚本
 ├── e2e_test.py                # 端到端测试（29 项断言）
+├── bench_llm.py               # 大模型基准测速（本地/云端对比）
 ├── foodai.db                  # SQLite 数据库文件（首次迁移后生成）
 ├── uploads/                   # 上传的食物图片
 ├── alembic/                   # 数据库迁移
@@ -49,6 +50,7 @@ backend/
     ├── services/
     │   ├── nutrition.py       # ★ BMI/BMR 计算 + 营养库匹配换算（识别管线枢纽）
     │   ├── points.py          # ★ 积分规则（改积分数值就改这张表）
+    │   ├── images.py          # 识别前图片压缩（长边≤1024 转 JPEG，显著提速）
     │   └── llm/               # ★ 大模型抽象层
     │       ├── provider.py    #   工厂：根据 .env 决定用 mock 还是真模型（含降级）
     │       ├── mock_provider.py#  免 key 模拟（同图同结果，演示可复现）
@@ -66,8 +68,9 @@ backend/
 | 你想… | 去哪改 |
 |---|---|
 | **改积分数值/加积分规则** | `app/services/points.py` 顶部 `RULES` 表 |
-| **接真实大模型（免费）** | `.env`：`LLM_PROVIDER=openai_compat` + 填 `LLM_API_KEY`（智谱 open.bigmodel.cn 免费申请），重启即可 |
-| **换别的厂商模型** | `.env` 改 `LLM_BASE_URL` + 模型名（如硅基流动/通义），业务代码零改动 |
+| **接真实大模型（免费）** | `.env`：`LLM_MODE=cloud` + 填 `CLOUD_API_KEY`（智谱 open.bigmodel.cn 免费申请）；或 `LLM_MODE=local` 用本机 Ollama；重启即可 |
+| **换别的厂商模型** | `.env` 改 `CLOUD_BASE_URL` + `CLOUD_TEXT_MODEL`（如硅基流动/通义），业务代码零改动 |
+| **调响应速度 / 超时兜底** | `.env`：`LLM_TIMEOUT` / `LLM_MAX_RETRIES` / `LLM_*_MAX_TOKENS`；改完用 `bench_llm.py` 实测 |
 | **调教 AI 识别/方案效果** | `app/services/llm/prompts.py` |
 | **给营养库加菜** | `app/data/foods_data.json`，复制一条现有记录改名字和 per_100g 四个数字 |
 | **给商城加奖励** | `app/main.py` 里 `SEED_REWARDS` 列表，删库重建或手动插一条 rewards |
@@ -78,12 +81,14 @@ backend/
 
 ```
 业务代码 → 只认 LLMProvider 统一接口（provider.py 工厂）
-              ├── MockProvider     ← .env: LLM_PROVIDER=mock（默认，零 key 零成本）
-              └── OpenAICompatProvider ← LLM_PROVIDER=openai_compat（真模型）
-                    └── 失败自动降级回 Mock（LLM_FALLBACK_TO_MOCK=true）
+              ├── MockProvider        ← 未配置 key 时（零 key 零成本）
+              └── OpenAICompatProvider ← LLM_MODE=cloud（云端智谱）/ local（本地 Ollama）
+                    └── 失败自动降级回 Mock（LLM_FALLBACK_TO_MOCK=true，结果如实标注 provider=mock）
 ```
 
-识别管线：**视觉模型只负责"认菜+估克重"，营养值由本地营养库计算**（口径统一，免费小模型也够用）。
+调用治理：SDK 隐藏重试已关闭 + `LLM_TIMEOUT` + `LLM_MAX_RETRIES`，最坏等待 ≈ 超时 ×(重试+1)，超限立即降级 mock；方案逐天流式生成并推送进度，单天输出有上限防截断。
+
+识别管线：**视觉模型只负责"认菜+估克重"，营养值由本地营养库计算**（口径统一，免费小模型也够用）；图片上传后先压缩（长边≤1024、JPEG）再送视觉模型。
 
 ## 积分规则（当前值）
 

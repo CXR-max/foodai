@@ -24,8 +24,7 @@ frontend/src/
 │   ├── auth.ts             # 每个后端模块对应一个 api 文件（类型化的接口函数）
 │   ├── profile.ts / food.ts / plan.ts / checkin.ts / stats.ts / points.ts / rewards.ts
 ├── stores/
-│   ├── auth.ts             # 登录态（token 存 localStorage，刷新不掉线）
-│   └── profile.ts
+│   └── auth.ts             # 登录态（token 存 localStorage，刷新不掉线）
 ├── layouts/MainLayout.vue  # 侧边栏 8 菜单 + 顶栏（积分徽章/退出）
 ├── views/                  # ★ 10 个页面
 │   ├── LoginView / RegisterView

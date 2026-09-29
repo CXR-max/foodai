@@ -14,7 +14,7 @@ from app.models.check_in import CheckIn
 from app.models.diet_plan import DietPlan, PlanDay
 from app.models.health_profile import HealthProfile
 from app.models.user import User
-from app.schemas.plan import GeneratePlanIn, PlanChatIn, PlanDayUpdateIn, RevisePlanIn
+from app.schemas.plan import GeneratePlanIn, PlanChatIn, PlanDayUpdateIn
 from app.services import nutrition, points
 from app.services.llm import foods_data
 from app.services.llm.prompts import PLAN_CHAT_SYSTEM
@@ -23,6 +23,15 @@ from app.services.llm.provider import get_llm_provider
 router = APIRouter(prefix="/plans", tags=["养生方案"])
 
 MEAL_ORDER = {"breakfast": 0, "lunch": 1, "dinner": 2, "snack": 3}
+
+MAX_CHAT_HISTORY = 8   # 聊天只带最近 8 条（约 4 轮）：历史越长，模型首字越慢
+
+
+def build_chat_messages(history) -> list[dict]:
+    """system + 最近若干条历史（裁剪旧消息，保证首字延迟稳定）"""
+    recent = history[-MAX_CHAT_HISTORY:]
+    return ([{"role": "system", "content": PLAN_CHAT_SYSTEM}]
+            + [{"role": m.role, "content": m.content} for m in recent])
 
 
 def sync_plan_day_checkins(db: Session, user_id: int, day: PlanDay) -> None:
@@ -34,6 +43,8 @@ def sync_plan_day_checkins(db: Session, user_id: int, day: PlanDay) -> None:
     """
     existing = {c.task_key: c for c in db.query(CheckIn).filter(
         CheckIn.user_id == user_id, CheckIn.plan_day_id == day.id).all()}
+    if not existing:
+        return   # 该天从未"导入日历"：不自动创建任务，保持由用户主动导入
 
     desired: dict[str, str] = {}
     for meal in day.meals or []:
@@ -52,26 +63,6 @@ def sync_plan_day_checkins(db: Session, user_id: int, day: PlanDay) -> None:
     for key, c in existing.items():
         if key not in desired and c.status == "pending":
             db.delete(c)
-
-
-def apply_plan_days(db: Session, user_id: int, days_by_index: dict[int, PlanDay],
-                    result_days, only_index: int | None = None) -> None:
-    """把模型返回的 days 写回落库（热量按营养库重算），并同步日历任务"""
-    for day in result_days:
-        if only_index is not None and day.day_index != only_index:
-            continue
-        d = days_by_index.get(day.day_index)
-        if d is None:
-            continue
-        meals = normalize_meals([m.model_dump() for m in day.meals])
-        for m in meals:
-            m["calories"] = recalc_meal_calories(m)
-        d.meals = meals
-        if day.theme:
-            d.theme = day.theme
-        d.exercise = day.exercise.model_dump() if day.exercise else None
-        d.estimated_calories = round(sum(m["calories"] for m in meals))
-        sync_plan_day_checkins(db, user_id, d)
 
 
 def recalc_meal_calories(meal: dict) -> float:
@@ -175,7 +166,7 @@ def generate_plan(
         start_date=start,
         summary=plan_result.summary,
         daily_target_calories=int(plan_result.daily_target_calories or profile_ctx["daily_target_calories"]),
-        provider=provider.name,
+        provider=provider.active_name,   # 兜底到 mock 时如实标注
         basis_snapshot=profile_ctx,   # 留档：可追溯"当时是根据什么生成的"
     )
     db.add(plan)
@@ -224,7 +215,21 @@ def generate_plan_stream(
         collected: list[dict] = []
         try:
             for i in range(1, data.days + 1):
-                day = provider.generate_day(profile_ctx, i, data.days, collected, combined_note)
+                # 开始第 i 天：先推 0 进度，前端立刻显示"第 i 天生成中"
+                yield sse("progress", {"day_index": i, "chars": 0})
+                day = None
+                chars = last_sent = 0
+                for event in provider.generate_day_stream(
+                        profile_ctx, i, data.days, collected, combined_note):
+                    if event["type"] == "delta":
+                        chars += len(event["text"])
+                        if chars - last_sent >= 60:      # 每 60 字推一次，避免刷屏
+                            last_sent = chars
+                            yield sse("progress", {"day_index": i, "chars": chars})
+                    elif event["type"] == "day":
+                        day = event["day"]
+                if day is None:
+                    raise RuntimeError("模型未返回当天方案")
                 meals = normalize_meals([m.model_dump() for m in day.meals])
                 for m in meals:
                     m["calories"] = recalc_meal_calories(m)
@@ -249,7 +254,7 @@ def generate_plan_stream(
                 start_date=start,
                 summary=f"已按你的偏好与目标生成 {data.days} 天渐进式方案",
                 daily_target_calories=int(profile_ctx.get("daily_target_calories") or 2000),
-                provider=provider.name,
+                provider=provider.active_name,   # 兜底到 mock 时如实标注
                 basis_snapshot=profile_ctx,
             )
             s.add(plan)
@@ -337,8 +342,7 @@ def chat_with_llm(
 ):
     """生成方案前的纯文字沟通：前端携带历史消息，后端返回模型回复"""
     provider = get_llm_provider()
-    messages = [{"role": "system", "content": PLAN_CHAT_SYSTEM}]
-    messages += [{"role": m.role, "content": m.content} for m in data.messages]
+    messages = build_chat_messages(data.messages)
     reply = provider.chat(messages)
     return {"reply": reply}
 
@@ -350,8 +354,7 @@ def chat_stream(
 ):
     """流式对话（SSE）：逐块推送模型回复，前端边收边显示（体感更快）"""
     provider = get_llm_provider()
-    messages = [{"role": "system", "content": PLAN_CHAT_SYSTEM}]
-    messages += [{"role": m.role, "content": m.content} for m in data.messages]
+    messages = build_chat_messages(data.messages)
 
     def sse(event: str, payload: dict) -> str:
         return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
@@ -369,43 +372,6 @@ def chat_stream(
         stream(), media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
-
-
-@router.post("/{plan_id}/revise")
-def revise_plan(
-    plan_id: int,
-    data: RevisePlanIn,
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """方案"文字微调"：模型基于当前 JSON 原地修改，其余天保留；改完同步日历"""
-    plan = db.get(DietPlan, plan_id)
-    if not plan or plan.user_id != user.id:
-        raise HTTPException(status_code=404, detail="方案不存在")
-    days = (db.query(PlanDay).filter(PlanDay.plan_id == plan.id)
-            .order_by(PlanDay.day_index.asc()).all())
-    if not days:
-        raise HTTPException(status_code=404, detail="方案没有可修改的天")
-
-    current_plan = {
-        "summary": plan.summary,
-        "daily_target_calories": plan.daily_target_calories,
-        "days": [{"day_index": d.day_index, "theme": d.theme,
-                  "meals": d.meals or [], "exercise": d.exercise} for d in days],
-    }
-
-    provider = get_llm_provider()
-    result = provider.revise_plan(plan.basis_snapshot or {}, current_plan,
-                                  data.instruction, data.day_index)
-
-    days_by_index = {d.day_index: d for d in days}
-    # 指定只改某天时，只应用那一天，防止模型越界改动别的天
-    apply_plan_days(db, user.id, days_by_index, result.days, only_index=data.day_index)
-    if result.summary and not data.day_index:
-        plan.summary = result.summary
-
-    db.commit()
-    return plan_dict(plan, with_days=True, db=db)
 
 
 @router.put("/{plan_id}/archive")

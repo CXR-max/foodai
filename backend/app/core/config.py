@@ -41,10 +41,13 @@ class Settings(BaseSettings):
     LOCAL_TEXT_API_KEY: str = "ollama"        # Ollama 不校验，占位即可
     LOCAL_TEXT_MODEL: str = "qwen2.5:7b-instruct"
 
-    LLM_TIMEOUT: int = 150            # 单次调用超时（秒）
-    LLM_MAX_RETRIES: int = 1          # JSON 解析失败后的重试次数
-    LLM_MAX_TOKENS: int = 2048        # 单次生成最大输出 tokens（防截断）
-    LLM_CHAT_MAX_TOKENS: int = 300    # 聊天回复最大输出（短一点、快一点）
+    # 调用治理：最坏等待 ≈ 超时 × (重试次数 + 1)，超限立即走 mock 兜底，不允许长时间卡住
+    LLM_TIMEOUT: int = 60             # 单次调用超时（秒）
+    LLM_MAX_RETRIES: int = 0          # JSON 解析失败后的重试次数（0=失败即兜底，先保响应速度）
+    LLM_MAX_TOKENS: int = 2048        # 通用/整份方案最大输出 tokens
+    LLM_DAY_MAX_TOKENS: int = 700     # 逐天生成方案时单天上限（约 400 字 JSON，够用且防截断）
+    LLM_CHAT_MAX_TOKENS: int = 128    # 聊天回复最大输出（提示词要求 ≤80 字）
+    LLM_VISION_MAX_TOKENS: int = 300  # 食物识别输出上限（只回一小段 JSON）
     LLM_FALLBACK_TO_MOCK: bool = True # 真模型失败后自动降级 mock（演示保命开关）
 
     # ---- 派生：当前生效的文字 / 视觉配置（业务代码只认这几个）----

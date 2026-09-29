@@ -169,6 +169,12 @@ class MockProvider(LLMProvider):
         # mock 直接生成到第 day_index 天，取最后一天返回
         return self.generate_plan(profile_ctx, day_index, note).days[-1]
 
+    def generate_day_stream(self, profile_ctx: dict, day_index: int, days: int,
+                            prior_days: list[dict] | None = None, note: str = ""):
+        # mock 无真实流式：直接产出最终一天（无 delta 进度）
+        yield {"type": "day",
+               "day": self.generate_day(profile_ctx, day_index, days, prior_days, note)}
+
     # ---------------- 生成方案前的纯文字沟通（模拟） ----------------
 
     def chat(self, messages: list[dict]) -> str:
@@ -183,10 +189,3 @@ class MockProvider(LLMProvider):
     def chat_stream(self, messages: list[dict]):
         # mock 无真实流式，整段一次性产出
         yield self.chat(messages)
-
-    # ---------------- 方案文字微调（模拟） ----------------
-
-    def revise_plan(self, profile_ctx: dict, current_plan: dict, instruction: str,
-                    day_index: int | None = None):
-        # mock 没有真实改写能力：原样返回当前方案，保证"文字微调"流程可跑通
-        return PlanResult.model_validate(current_plan)

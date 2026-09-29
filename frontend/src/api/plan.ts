@@ -40,6 +40,7 @@ export const generatePlan = (data: {
 }) => post<Plan>('/plans/generate', data, { timeout: 120000 })
 
 export interface StreamHandlers {
+  onProgress?: (p: { day_index: number; chars: number }) => void
   onDay: (day: PlanDay) => void
   onDone: (r: { plan_id: number; title: string; summary: string; daily_target_calories: number; points_awarded: number }) => void
   onError: (message: string) => void
@@ -95,7 +96,8 @@ export async function generatePlanStream(
       if (!dataStr) continue
       let payload: any
       try { payload = JSON.parse(dataStr) } catch { continue }
-      if (ev === 'day') handlers.onDay(payload as PlanDay)
+      if (ev === 'progress') handlers.onProgress?.(payload)
+      else if (ev === 'day') handlers.onDay(payload as PlanDay)
       else if (ev === 'done') handlers.onDone(payload)
       else if (ev === 'error') handlers.onError(payload.message || '生成失败')
     }
@@ -150,10 +152,6 @@ export async function chatPlanStream(
     }
   }
 }
-
-/** 方案"文字微调"：模型基于当前 JSON 原地改，其余天保留 */
-export const revisePlan = (id: number, data: { instruction: string; day_index?: number }) =>
-  post<Plan>(`/plans/${id}/revise`, data, { timeout: 120000 })
 
 /** 编辑方案某一天（meals/exercise 可改，热量后端自动重算） */
 export const updatePlanDay = (

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 养生方案页：偏好面板 + 纯文字对话 → 合并生成 → 三种调整(重生成/文字微调/可视化) → 导入日历
+// 养生方案页：偏好面板 + 纯文字对话 → 合并生成 → 调整(重生成/可视化编辑) → 导入日历
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as planApi from '@/api/plan'
@@ -101,9 +101,11 @@ async function refreshImported() {
 
 // 生成：偏好面板 + 聊天文本 + 备注 一起提交；逐天流式显示
 const genDays = ref(7)
+const genStatus = ref('')                      // 生成进度提示（第几天、已生成多少字）
 
 async function generate() {
   generating.value = true
+  genStatus.value = 'AI 正在综合你的偏好、对话与健康档案…'
   const days: PlanDay[] = []
   const temp: Plan = {
     id: 0, title: '生成中…', status: 'active',
@@ -125,8 +127,14 @@ async function generate() {
         chat_text: chatText.value,
       },
       {
+        onProgress: (p) => {
+          const done = days.length
+          genStatus.value = `正在生成第 ${p.day_index} 天…（已完成 ${done}/${genDays.value} 天）`
+          current.value = { ...temp, days: [...days], summary: genStatus.value }
+        },
         onDay: (d) => {
           days.push(d)
+          genStatus.value = `已完成 ${days.length}/${genDays.value} 天，继续生成下一天…`
           current.value = { ...temp, days: [...days], summary: `正在生成…（${days.length}/${genDays.value} 天）` }
         },
         onDone: async (r) => {
@@ -201,35 +209,6 @@ function clearChatHistory() {
   }).catch(() => {})
 }
 
-// ---- 文字微调（可整份，也可只改某天）----
-const reviseDialog = ref(false)
-const reviseInstruction = ref('')
-const reviseDayIndex = ref<number | null>(null)
-const revising = ref(false)
-
-function openRevise(dayIndex: number | null = null) {
-  reviseInstruction.value = ''
-  reviseDayIndex.value = dayIndex
-  reviseDialog.value = true
-}
-
-async function doRevise() {
-  if (!current.value || !reviseInstruction.value.trim()) return
-  revising.value = true
-  try {
-    const plan = await planApi.revisePlan(current.value.id, {
-      instruction: reviseInstruction.value.trim(),
-      day_index: reviseDayIndex.value ?? undefined,
-    })
-    current.value = plan
-    ElMessage.success('已按你的要求调整方案，改动会同步到日历')
-    reviseDialog.value = false
-    await refreshImported()
-  } finally {
-    revising.value = false
-  }
-}
-
 // ---- 可视化编辑某天 ----
 const editDialog = ref(false)
 const editForm = ref<{ dayIndex: number; meals: PlanMeal[] } | null>(null)
@@ -271,7 +250,7 @@ onMounted(loadPlans)
     <div class="page-card">
       <div>
         <h3 class="page-title" style="margin-bottom:4px">✨ AI 养生方案定制</h3>
-        <span class="sub">勾选偏好 + 直接和 AI 聊 → 合并生成 · 生成后可重生成 / 文字微调 / 手动编辑</span>
+        <span class="sub">勾选偏好 + 直接和 AI 聊 → 合并生成 · 生成后可重生成 / 手动编辑</span>
       </div>
 
       <el-row :gutter="16" style="margin-top:14px">
@@ -327,7 +306,7 @@ onMounted(loadPlans)
           {{ generating ? 'AI 正在逐天生成…' : `生成 ${genDays} 天方案` }}
         </el-button>
       </div>
-      <el-alert v-if="generating" title="AI 正在综合你的偏好、对话与健康档案，逐天生成方案…" type="info" :closable="false" style="margin-top:10px" />
+      <el-alert v-if="generating" :title="genStatus || 'AI 正在逐天生成方案…'" type="info" :closable="false" style="margin-top:10px" />
     </div>
 
     <!-- 历史方案切换 -->
@@ -343,7 +322,6 @@ onMounted(loadPlans)
       <div class="plan-toolbar">
         <el-alert :title="current.summary" type="success" :closable="false" class="summary-alert" />
         <el-button :disabled="generating" @click="confirmRegenerate">🔄 重新生成</el-button>
-        <el-button type="primary" plain :disabled="generating" @click="openRevise(null)">💬 文字微调</el-button>
       </div>
 
       <el-tabs v-model="activeDay">
@@ -356,7 +334,6 @@ onMounted(loadPlans)
             </div>
             <div style="display:flex;gap:8px">
               <el-button size="small" :disabled="generating" @click="openEdit(day)">✏️ 编辑这一天</el-button>
-              <el-button size="small" type="primary" plain :disabled="generating" @click="openRevise(day.day_index)">💬 文字微调</el-button>
               <el-button size="small" type="success" :disabled="generating || importedDays.has(day.id)" @click="importDay(day)">
                 {{ importedDays.has(day.id) ? '✓ 已导入日历' : '📥 导入日历' }}
               </el-button>
@@ -393,18 +370,6 @@ onMounted(loadPlans)
       </el-tabs>
     </div>
     <el-empty v-else-if="!generating" description="还没有方案，勾选偏好或直接和 AI 聊几句，然后生成" />
-
-    <!-- 文字微调弹窗 -->
-    <el-dialog v-model="reviseDialog" :title="reviseDayIndex ? `文字微调第 ${reviseDayIndex} 天` : '文字微调整份方案'" width="560px">
-      <el-input
-        v-model="reviseInstruction" type="textarea" :rows="4" maxlength="500" show-word-limit
-        :placeholder="reviseDayIndex ? '如：这天午餐换成清蒸鱼，热量低一点' : '如：整体清淡一些，多加蔬菜，晚餐减少主食'"
-      />
-      <template #footer>
-        <el-button @click="reviseDialog = false">取消</el-button>
-        <el-button type="primary" :loading="revising" @click="doRevise">让 AI 修改</el-button>
-      </template>
-    </el-dialog>
 
     <!-- 可视化编辑弹窗 -->
     <el-dialog v-model="editDialog" title="编辑这一天（热量按营养库自动重算）" width="640px">

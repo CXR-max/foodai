@@ -16,6 +16,7 @@ from app.models.recognition import Recognition
 from app.models.user import User
 from app.schemas.food_record import SaveRecognitionIn
 from app.services import nutrition, points
+from app.services.images import compress_for_vision
 from app.services.llm.provider import get_llm_provider
 
 router = APIRouter(prefix="/recognitions", tags=["食物识别"])
@@ -52,6 +53,9 @@ async def create_recognition(
     if len(image_bytes) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="图片不能超过 10MB")
 
+    # 压缩瘦身：长边 ≤1024 + JPEG，显著减少视觉 token 与上传耗时（失败自动回退原图）
+    image_bytes, content_type = compress_for_vision(image_bytes, file.content_type or "image/jpeg")
+
     # 组装用户档案上下文（mock/真模型都会用偏好做过滤，体现"偏好优先"）
     profile = db.query(HealthProfile).filter(HealthProfile.user_id == user.id).first()
     profile_ctx = {}
@@ -63,7 +67,7 @@ async def create_recognition(
 
     # 调 LLM 抽象层（内部自带重试与 mock 降级）
     provider = get_llm_provider()
-    vision = provider.recognize_food(image_bytes, file.content_type, profile_ctx)
+    vision = provider.recognize_food(image_bytes, content_type, profile_ctx)
 
     # 营养库换算（视觉模型只认菜，营养值由本地库算 → 全站口径一致）
     nut = nutrition.match_and_calc(vision.dish_name, vision.portion_g or 0)
@@ -71,15 +75,15 @@ async def create_recognition(
         nut = {"calories": 0, "protein_g": 0, "fat_g": 0, "carb_g": 0,
                "matched": False, "matched_name": None, "note": "未识别到食物"}
 
-    # 图片存到 uploads/，用 uuid 防中文路径问题
-    ext = ALLOWED_TYPES.get(file.content_type, ".jpg")
+    # 图片存到 uploads/，用 uuid 防中文路径问题（存压缩后的版本，省空间）
+    ext = ALLOWED_TYPES.get(content_type, ".jpg")
     image_name = f"{uuid.uuid4().hex}{ext}"
     (settings.UPLOAD_DIR / image_name).write_bytes(image_bytes)
 
     rec = Recognition(
         user_id=user.id,
         image_path=image_name,
-        provider=provider.name,
+        provider=provider.active_name,   # 兜底到 mock 时如实标注
         result={
             "vision": vision.model_dump(),
             "nutrition": nut,
