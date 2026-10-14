@@ -44,6 +44,8 @@ export const post = <T = any>(url: string, data?: object, config?: object) =>
   http.post<T, T>(url, data, config)
 export const put = <T = any>(url: string, data?: object, config?: object) =>
   http.put<T, T>(url, data, config)
+export const patch = <T = any>(url: string, data?: object, config?: object) =>
+  http.patch<T, T>(url, data, config)
 export const del = <T = any>(url: string, config?: object) => http.delete<T, T>(url, config)
 
 export default http

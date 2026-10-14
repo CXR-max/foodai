@@ -1,5 +1,5 @@
 // 食物识别 + 饮食记录接口
-import http, { get, post } from './http'
+import http, { get, patch, post } from './http'
 
 export interface Recognition {
   id: number
@@ -12,9 +12,28 @@ export interface Recognition {
   food_record_id: number | null
   created_at: string
   result: {
-    vision: { dish_name: string; portion_g: number; portion_desc: string; ingredients: { name: string; portion_g: number }[]; description: string }
-    nutrition: { calories: number; protein_g: number; fat_g: number; carb_g: number; matched: boolean; note: string }
+    vision: {
+      dish_name: string
+      portion_g: number
+      portion_g_raw?: number
+      portion_desc: string
+      category?: string
+      size_class?: string
+      basis?: string
+      corrected?: boolean
+      ingredients: { name: string; portion_g: number }[]
+      description: string
+    }
+    nutrition: { calories: number; protein_g: number; fat_g: number; carb_g: number; matched: boolean; matched_name?: string | null; note: string }
   }
+}
+
+/** 营养库菜品（手动校准下拉 + 营养预览用） */
+export interface FoodOption {
+  name: string
+  category: string
+  common_portion_g: number
+  per_100g: { calories: number; protein_g: number; fat_g: number; carb_g: number }
 }
 
 export interface FoodRecord {
@@ -42,6 +61,13 @@ export const recognize = (file: File) => {
 
 export const getRecognitions = (page = 1) =>
   get<{ total: number; items: Recognition[] }>('/recognitions', { page })
+
+/** 营养库菜品清单（校准弹窗下拉与营养预览） */
+export const getFoodLibrary = () => get<FoodOption[]>('/foods')
+
+/** 手动校准识别结果：只改菜名+克数，营养值由后端按营养库重算 */
+export const correctRecognition = (id: number, data: { dish_name: string; portion_g: number }) =>
+  patch<Recognition>(`/recognitions/${id}`, data)
 
 export const saveRecognition = (id: number, mealType: string) =>
   post<{ food_record_id: number; points_awarded: number }>(`/recognitions/${id}/save`, { meal_type: mealType })
