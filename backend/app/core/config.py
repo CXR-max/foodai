@@ -33,8 +33,10 @@ class Settings(BaseSettings):
     # 云端（文字 + 视觉共用一套；智谱开放平台 https://open.bigmodel.cn 免费申请 key）
     CLOUD_BASE_URL: str = "https://open.bigmodel.cn/api/paas/v4"
     CLOUD_API_KEY: str = ""
-    CLOUD_TEXT_MODEL: str = "glm-4-flash"     # 免费、限流宽松
-    CLOUD_VISION_MODEL: str = "glm-4v-flash"  # 免费视觉
+    CLOUD_TEXT_MODEL: str = "glm-4-flash"        # 免费、限流宽松
+    CLOUD_VISION_MODEL: str = "glm-4.6v-flash"   # 免费视觉（4.6V 系列，支持思考模式）
+    # 备用视觉模型：免费模型高峰期限流(429)严重时可配 glm-4.6v-flashx（约 0.1 分/张）提高成功率；留空则不启用
+    CLOUD_VISION_FALLBACK_MODEL: str = ""
 
     # 本地（Ollama，仅文字；视觉仍走云端）
     LOCAL_TEXT_BASE_URL: str = "http://localhost:11434/v1"
@@ -47,7 +49,10 @@ class Settings(BaseSettings):
     LLM_MAX_TOKENS: int = 2048        # 通用/整份方案最大输出 tokens
     LLM_DAY_MAX_TOKENS: int = 700     # 逐天生成方案时单天上限（约 400 字 JSON，够用且防截断）
     LLM_CHAT_MAX_TOKENS: int = 128    # 聊天回复最大输出（提示词要求 ≤80 字）
-    LLM_VISION_MAX_TOKENS: int = 300  # 食物识别输出上限（只回一小段 JSON）
+    LLM_VISION_MAX_TOKENS: int = 1500 # 食物识别输出上限（思考 token 与 JSON 共用预算，留足余量）
+    LLM_VISION_THINKING: bool = True  # 视觉模型深度思考（提升份量推理；限流严重时可关）
+    LLM_VISION_MAX_RETRIES: int = 2   # 识别 JSON 校验失败重试次数（比文字宽松，防误降级 mock）
+    LLM_VISION_RATE_RETRIES: int = 3  # 免费模型 429 限流时的退避重试次数（失败很快，重试成本低）
     LLM_FALLBACK_TO_MOCK: bool = True # 真模型失败后自动降级 mock（演示保命开关）
 
     # ---- 派生：当前生效的文字 / 视觉配置（业务代码只认这几个）----

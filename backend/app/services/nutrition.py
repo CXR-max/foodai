@@ -63,18 +63,36 @@ def calc_daily_target(
 
 # ================= 识别 → 营养换算 =================
 
-def match_and_calc(dish_name: str, portion_g: float) -> dict:
+# 份量档位系数：模型只判"相对常见一份的大小"，绝对克重用本地标准份量校准（误差可控）
+SIZE_FACTORS = {"small": 0.7, "normal": 1.0, "large": 1.3}
+# 未收录菜品：接受模型克重，但限制在合理区间（防离谱幻觉）
+PORTION_CLAMP = (50, 1500)
+
+
+def resolve_portion(dish_name: str, model_portion_g: float, size_class: str = "normal") -> float:
+    """档位制克数校准：命中营养库 → 标准份 × 档位系数（限 ±50%）；未命中 → 模型克重 clamp"""
+    entry = foods_data.find_food(dish_name)
+    if entry and entry.get("common_portion_g"):
+        base = float(entry["common_portion_g"])
+        factor = SIZE_FACTORS.get((size_class or "").strip().lower(), 1.0)
+        g = min(max(base * factor, base * 0.5), base * 1.6)
+        return round(g)
+    lo, hi = PORTION_CLAMP
+    return round(min(max(model_portion_g or 0, lo), hi))
+
+
+def match_and_calc(dish_name: str, portion_g: float, category: str | None = None) -> dict:
     """
     菜名 + 克重 → 匹配营养库 → 营养值
-    命中库：营养值精确且全站口径一致；未命中：按全库均值估算并标记
+    命中库：营养值精确且全站口径一致；未命中：按类别均值估算（类别不识别则全库均值）并标记
     返回：{calories, protein_g, fat_g, carb_g, matched, matched_name, note}
     """
     entry = foods_data.find_food(dish_name)
     if entry:
         nut = foods_data.calc_nutrition(entry, portion_g)
         return {**nut, "matched": True, "matched_name": entry["name"], "note": "营养值来自本地营养库"}
-    # 未收录 → 全库均值 × 克重（标注估算）
-    avg = foods_data.category_average(None)
+    # 未收录 → 类别均值（category_average 内部对未知类别自动回退全库均值）× 克重
+    avg = foods_data.category_average(category or None)
     factor = max(portion_g, 0) / 100.0
     return {
         "calories": round(avg["calories"] * factor, 1),

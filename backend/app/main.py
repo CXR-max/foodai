@@ -13,7 +13,7 @@ from app.core.config import settings
 from app.db.session import SessionLocal
 from app.models.reward import Reward
 from app.routers import (
-    auth, checkins, food_records, plans, points, profile,
+    auth, checkins, food_records, foods, plans, points, profile,
     recognitions, rewards, stats,
 )
 from app.services.llm.provider import get_llm_provider
@@ -71,7 +71,7 @@ app.add_middleware(
 app.mount("/uploads", StaticFiles(directory=str(settings.UPLOAD_DIR)), name="uploads")
 
 # 业务路由，统一挂 /api 前缀
-for r in (auth, profile, recognitions, food_records, plans, checkins, stats, points, rewards):
+for r in (auth, profile, recognitions, food_records, foods, plans, checkins, stats, points, rewards):
     app.include_router(r.router, prefix="/api")
 
 

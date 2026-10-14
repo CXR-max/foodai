@@ -14,9 +14,10 @@ from app.models.food_record import FoodRecord
 from app.models.health_profile import HealthProfile
 from app.models.recognition import Recognition
 from app.models.user import User
-from app.schemas.food_record import SaveRecognitionIn
+from app.schemas.food_record import CorrectRecognitionIn, SaveRecognitionIn
 from app.services import nutrition, points
 from app.services.images import compress_for_vision
+from app.services.llm import foods_data
 from app.services.llm.provider import get_llm_provider
 
 router = APIRouter(prefix="/recognitions", tags=["食物识别"])
@@ -69,8 +70,13 @@ async def create_recognition(
     provider = get_llm_provider()
     vision = provider.recognize_food(image_bytes, content_type, profile_ctx)
 
+    # 档位制克数校准：命中营养库 → 标准份 × 档位系数；未命中 → 模型克重（限制合理区间）
+    raw_portion_g = vision.portion_g or 0
+    if vision.is_food:
+        vision.portion_g = nutrition.resolve_portion(vision.dish_name, raw_portion_g, vision.size_class)
+
     # 营养库换算（视觉模型只认菜，营养值由本地库算 → 全站口径一致）
-    nut = nutrition.match_and_calc(vision.dish_name, vision.portion_g or 0)
+    nut = nutrition.match_and_calc(vision.dish_name, vision.portion_g or 0, vision.category)
     if not vision.is_food:
         nut = {"calories": 0, "protein_g": 0, "fat_g": 0, "carb_g": 0,
                "matched": False, "matched_name": None, "note": "未识别到食物"}
@@ -85,7 +91,7 @@ async def create_recognition(
         image_path=image_name,
         provider=provider.active_name,   # 兜底到 mock 时如实标注
         result={
-            "vision": vision.model_dump(),
+            "vision": {**vision.model_dump(), "portion_g_raw": raw_portion_g},  # 原始克重保留备查
             "nutrition": nut,
         },
         dish_name=vision.dish_name,
@@ -112,6 +118,67 @@ def list_recognitions(
     items = (q.order_by(Recognition.created_at.desc())
              .offset((page - 1) * page_size).limit(page_size).all())
     return {"total": total, "items": [recognition_dict(r) for r in items]}
+
+
+@router.patch("/{recognition_id}")
+def correct_recognition(
+    recognition_id: int,
+    data: CorrectRecognitionIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """用户手动校准：只改菜名+克数，营养值由本地库重算
+
+    - 首次校准保留模型原始输出快照（result.vision.original，可当评测数据）
+    - 已保存为饮食记录时同步更新记录，保证统计口径一致
+    """
+    rec = db.get(Recognition, recognition_id)
+    if not rec or rec.user_id != user.id:
+        raise HTTPException(status_code=404, detail="识别记录不存在")
+
+    nut = nutrition.match_and_calc(data.dish_name, data.portion_g)
+
+    result = dict(rec.result or {})
+    vision = dict(result.get("vision") or {})
+    if not vision.get("corrected"):
+        vision["original"] = {
+            "dish_name": vision.get("dish_name", ""),
+            "portion_g": vision.get("portion_g", 0),
+            "size_class": vision.get("size_class", ""),
+            "confidence": vision.get("confidence", 0),
+        }
+    vision["dish_name"] = data.dish_name
+    vision["portion_g"] = data.portion_g
+    vision["portion_desc"] = f"手动校准：{data.dish_name} {data.portion_g:g}g"[:50]
+    vision["corrected"] = True
+    # 命中营养库 → 食材明细换成库内标准食材（食材不可手动编辑；未命中保留模型明细）
+    entry = foods_data.find_food(data.dish_name)
+    if entry:
+        vision["ingredients"] = [{"name": name, "portion_g": 0} for name in entry.get("ingredients", [])]
+    result["vision"] = vision
+    result["nutrition"] = nut
+
+    rec.result = result
+    rec.dish_name = data.dish_name
+    rec.calories = nut["calories"]
+    rec.is_food = True
+
+    # 已保存 → 同步更新饮食记录
+    if rec.food_record_id:
+        record = db.get(FoodRecord, rec.food_record_id)
+        if record:
+            record.dish_name = data.dish_name
+            record.portion_g = data.portion_g
+            record.portion_desc = vision["portion_desc"]
+            record.ingredients = vision["ingredients"]
+            record.calories = nut["calories"]
+            record.protein_g = nut["protein_g"]
+            record.fat_g = nut["fat_g"]
+            record.carb_g = nut["carb_g"]
+
+    db.commit()
+    db.refresh(rec)
+    return recognition_dict(rec)
 
 
 @router.post("/{recognition_id}/save")

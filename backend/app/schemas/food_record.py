@@ -7,6 +7,12 @@ class SaveRecognitionIn(BaseModel):
     meal_type: str = Field(pattern="^(breakfast|lunch|dinner|snack)$")
 
 
+class CorrectRecognitionIn(BaseModel):
+    """手动校准识别结果：只允许改菜名与克数，营养值由营养库重算"""
+    dish_name: str = Field(min_length=1, max_length=100)
+    portion_g: float = Field(ge=10, le=3000)
+
+
 class FoodRecordIn(BaseModel):
     """手动录入饮食记录：营养值优先由营养库按菜名+克重自动算，库里没有才需要用户填热量"""
     dish_name: str = Field(min_length=1, max_length=100)

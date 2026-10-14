@@ -31,12 +31,12 @@ Vue3 前端 (5173)
 FastAPI 后端 (8000) ── SQLite (backend/foodai.db) + uploads/ 图片
    │
    ▼  LLM 抽象层（provider.py 工厂，业务代码零感知）
-   ├── OpenAICompatProvider ── 云端：智谱 glm-4-flash / glm-4v-flash（免费档）
+   ├── OpenAICompatProvider ── 云端：智谱 glm-4-flash / glm-4.6v-flash（免费档）
    │                       └─ 本地：Ollama qwen2.5:7b-instruct（仅文字）
    └── MockProvider（零依赖模拟；真模型失败自动降级，结果如实标注 provider=mock）
 ```
 
-关键设计：**视觉模型只负责"认菜 + 估克重"，营养值由本地营养库（60 道菜 JSON）计算**——口径统一、免费小模型也够用。
+关键设计：**视觉模型只负责"认菜 + 判份量档位"，克重由本地标准份量校准、营养值由本地营养库（60 道菜 JSON）计算**——口径统一、免费小模型也够用。识别错了可在识别页手动校准（只改菜名+克数，营养仍由本地库重算）。
 
 ## 快速开始
 

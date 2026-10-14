@@ -92,11 +92,13 @@ class LLMProvider(ABC):
         call_fn,            # call_fn(messages) -> str：真正发起模型调用的函数
         build_messages,     # build_messages() -> list[dict]：构造初始消息
         model_cls: type[BaseModel],
+        max_retries: int | None = None,   # 覆盖默认重试次数（识别等场景可单独放宽）
     ):
         """带重试的 JSON 结构化调用"""
         messages = build_messages()
         last_err = ""
-        for _ in range(settings.LLM_MAX_RETRIES + 1):
+        retries = settings.LLM_MAX_RETRIES if max_retries is None else max_retries
+        for _ in range(retries + 1):
             content = call_fn(messages)
             data = extract_json(content)
             try:

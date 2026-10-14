@@ -7,13 +7,13 @@ import base64
 import logging
 import time
 
-from openai import OpenAI, OpenAIError
+from openai import OpenAI, OpenAIError, RateLimitError
 from pydantic import ValidationError
 
 from app.core.config import settings
 from app.services.llm.base import LLMProvider, LLMError, extract_json
 from app.services.llm.prompts import (
-    FOOD_RECOGNITION_PROMPT, build_day_messages, build_plan_messages,
+    build_day_messages, build_food_recognition_prompt, build_plan_messages,
 )
 from app.services.llm.schemas import PlanDay, PlanResult, VisionRecognitionResult
 
@@ -57,16 +57,45 @@ class OpenAICompatProvider(LLMProvider):
                     time.perf_counter() - t0, getattr(resp.usage, "completion_tokens", "?"))
         return resp.choices[0].message.content or ""
 
-    def _vision(self, messages: list[dict]) -> str:
-        """视觉调用（食物识别），限制输出长度（只回一小段 JSON）"""
+    def _vision_once(self, messages: list[dict], model: str, thinking: bool, max_tokens: int) -> str:
+        """单次视觉调用；thinking 参数走 extra_body 透传（智谱专有）"""
+        kwargs = {
+            "model": model,
+            "messages": messages,
+            "temperature": 0.3,
+            "max_tokens": max_tokens,
+        }
+        if thinking:
+            kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
         t0 = time.perf_counter()
-        resp = self.vision_client.chat.completions.create(
-            model=settings.vision_model, messages=messages, temperature=0.3,
-            max_tokens=settings.LLM_VISION_MAX_TOKENS,
-        )
-        logger.info("视觉模型=%s 耗时=%.1fs 输出tokens=%s", settings.vision_model,
+        resp = self.vision_client.chat.completions.create(**kwargs)
+        logger.info("视觉模型=%s 耗时=%.1fs 输出tokens=%s", model,
                     time.perf_counter() - t0, getattr(resp.usage, "completion_tokens", "?"))
         return resp.choices[0].message.content or ""
+
+    def _vision(self, messages: list[dict]) -> str:
+        """视觉调用（食物识别）：免费模型高峰期限流(429)常见且失败快，带退避重试
+
+        主模型持续限流时，若配置了备用模型则切备用（不带 thinking、限制 token 上限），
+        否则抛错由 FallbackProvider 降级 mock。
+        """
+        attempts = max(1, settings.LLM_VISION_RATE_RETRIES + 1)
+        last_err: Exception | None = None
+        for i in range(attempts):
+            try:
+                return self._vision_once(messages, settings.vision_model,
+                                         settings.LLM_VISION_THINKING,
+                                         settings.LLM_VISION_MAX_TOKENS)
+            except RateLimitError as e:
+                last_err = e
+                if i < attempts - 1:
+                    time.sleep(1.2 * (i + 1))
+                    logger.warning("视觉模型限流(429)，第 %d 次重试…", i + 1)
+        if settings.CLOUD_VISION_FALLBACK_MODEL:
+            logger.warning("主视觉模型持续限流，切换备用模型 %s", settings.CLOUD_VISION_FALLBACK_MODEL)
+            return self._vision_once(messages, settings.CLOUD_VISION_FALLBACK_MODEL,
+                                     False, min(settings.LLM_VISION_MAX_TOKENS, 800))
+        raise last_err  # type: ignore[misc]  # 到这里 last_err 必非空
 
     # ---------------- 接口实现 ----------------
 
@@ -79,13 +108,16 @@ class OpenAICompatProvider(LLMProvider):
             return [{
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": FOOD_RECOGNITION_PROMPT},
+                    {"type": "text", "text": build_food_recognition_prompt()},
                     {"type": "image_url", "image_url": {"url": data_url}},
                 ],
             }]
 
-        # _call_with_retry 负责：抠 JSON → 校验 → 失败带错误重试
-        return self._call_with_retry(self._vision, build, VisionRecognitionResult)
+        # _call_with_retry 负责：抠 JSON → 校验 → 失败带错误重试（识别重试次数单独配置，防误降级 mock）
+        return self._call_with_retry(
+            self._vision, build, VisionRecognitionResult,
+            max_retries=settings.LLM_VISION_MAX_RETRIES,
+        )
 
     def generate_plan(self, profile_ctx: dict, days: int, note: str = ""):
         def build():

@@ -18,8 +18,11 @@ class VisionRecognitionResult(BaseModel):
     """视觉模型的识别结果"""
     is_food: bool = True                       # 图片里是否包含食物
     dish_name: str = ""                        # 菜品名（多道菜取最主要的一道）
+    category: str = ""                         # 食材类别（主食/荤菜/素菜/汤粥/早餐/小吃/水果/饮品/其他）
+    size_class: str = "normal"                 # 份量档位：small/normal/large（相对常见一份）
+    basis: str = ""                            # 份量判断依据（参照物观察，如"普通白瓷碗八分满"）
     ingredients: list[RecognizedIngredient] = Field(default_factory=list)
-    portion_g: float = Field(default=0, ge=0)  # 总分量估算（克）
+    portion_g: float = Field(default=0, ge=0)  # 总分量（克）：真模型为原始估算，路由层会用本地标准份校准
     portion_desc: str = ""                     # 分量描述，如"一碗约300g"
     confidence: float = Field(default=0.8, ge=0, le=1)
     description: str = ""                      # 一句话描述
