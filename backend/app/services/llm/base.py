@@ -78,7 +78,7 @@ class LLMProvider(ABC):
         """逐天流式生成：yield {"type":"delta","text":...} 进度片段，最后 yield {"type":"day","day":PlanDay}"""
 
     @abstractmethod
-    def chat(self, messages: list[dict]) -> str:
+    def chat(self, messages: list[dict], max_tokens: int | None = None) -> str:
         """生成方案前的纯文字对话，返回模型回复文本（messages 已含 system）"""
 
     @abstractmethod

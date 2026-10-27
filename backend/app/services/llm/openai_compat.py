@@ -186,9 +186,9 @@ class OpenAICompatProvider(LLMProvider):
                 }]
         raise LLMError(f"模型输出 JSON 校验失败（已重试）：{last_err}")
 
-    def chat(self, messages: list[dict]) -> str:
+    def chat(self, messages: list[dict], max_tokens: int | None = None) -> str:
         # 纯文字沟通：不强制 JSON，限制长度让它更短更快
-        return self._chat(messages, max_tokens=settings.LLM_CHAT_MAX_TOKENS)
+        return self._chat(messages, max_tokens=max_tokens or settings.LLM_CHAT_MAX_TOKENS)
 
     def chat_stream(self, messages: list[dict]):
         # 流式对话：逐块产出文本，前端可边收边显示；日志记录首字与总时长

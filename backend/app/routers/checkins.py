@@ -41,6 +41,7 @@ def checkin_dict(c: CheckIn, plan_day: PlanDay | None = None) -> dict:
         "status": c.status, "points_awarded": c.points_awarded,
         "exercise_type": c.exercise_type, "duration_min": c.duration_min,
         "calories_burned": c.calories_burned, "note": c.note,
+        "intensity": c.intensity, "met_used": c.met_used, "burn_detail": c.burn_detail,
         "plan_day_id": c.plan_day_id, "detail": detail,
         "created_at": c.created_at.isoformat() if c.created_at else None,
     }
@@ -149,6 +150,25 @@ def complete_checkin(
         raise HTTPException(status_code=400, detail="该任务已完成")
 
     c.status = "done"
+    # 运动任务没记录消耗时，从方案详情取类型/时长，再按个性化模型补算
+    if c.check_type == "exercise" and not c.calories_burned and c.plan_day_id:
+        pd = db.get(PlanDay, c.plan_day_id)
+        if pd and pd.exercise:
+            c.exercise_type = c.exercise_type or pd.exercise.get("type")
+            c.duration_min = c.duration_min or pd.exercise.get("duration_min")
+            if not c.calories_burned:
+                from app.models.health_profile import HealthProfile
+                from app.services.met import personalized_burn
+                profile = db.query(HealthProfile).filter(HealthProfile.user_id == user.id).first()
+                p = {col: getattr(profile, col) for col in
+                     ("gender", "age", "weight_kg", "height_cm", "body_fat_pct", "activity_level")} if profile else {}
+                r = personalized_burn(c.exercise_type, c.duration_min or 0, p, "moderate")
+                c.calories_burned = r["calories_burned"]
+                c.intensity = "moderate"
+                c.met_used = r["met"]
+                c.burn_detail = {"base": r["base"], "factors": r["factors"], "steps": r["steps"],
+                                 "low": r["low"], "high": r["high"], "formula": r["formula"],
+                                 "source": "方案任务按个性化模型补算"}
     # 注意：session 配置了 autoflush=False，先 flush 让下面的 pending 统计能看到本次改动
     db.flush()
     action = "task_exercise" if c.check_type == "exercise" else "task_meal"
@@ -178,14 +198,39 @@ def manual_checkin(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """手动打卡：运动 / 补记饮食（每天每类首次 +2 分）"""
+    """手动打卡：运动 / 补记饮食（每天每类首次 +2 分）
+
+    运动打卡未传 calories_burned 时，按个性化模型自动计算：
+    MET（按强度档）× 体重 × 时长 ÷ 60 × 性别/年龄/体成分/体能系数，
+    档案数据来自健康档案（缺啥按中性值兜底），计算明细一并落库可追溯。
+    """
+    from app.models.health_profile import HealthProfile
+    from app.services.met import INTENSITY_ORDER, personalized_burn
+
     day = date.fromisoformat(data.check_date) if data.check_date else date.today()
+
+    burned = data.calories_burned
+    intensity = data.intensity or "moderate"
+    met_used = detail = None
+    if data.check_type == "exercise" and burned is None:
+        profile = db.query(HealthProfile).filter(HealthProfile.user_id == user.id).first()
+        p = {c: getattr(profile, c) for c in
+             ("gender", "age", "weight_kg", "height_cm", "body_fat_pct", "activity_level")} if profile else {}
+        r = personalized_burn(data.exercise_type, data.duration_min or 0, p, intensity)
+        burned = r["calories_burned"]
+        met_used = r["met"]
+        detail = {"base": r["base"], "factors": r["factors"], "steps": r["steps"],
+                  "low": r["low"], "high": r["high"], "formula": r["formula"]}
+    if intensity not in INTENSITY_ORDER:
+        intensity = "moderate"
+
     c = CheckIn(
         user_id=user.id, check_date=day, check_type=data.check_type,
         task_key="manual_food" if data.check_type == "diet" else "manual_exercise",
         status="done",
         exercise_type=data.exercise_type, duration_min=data.duration_min,
-        calories_burned=data.calories_burned, note=data.note,
+        calories_burned=burned, intensity=intensity if data.check_type == "exercise" else None,
+        met_used=met_used, burn_detail=detail, note=data.note,
     )
     db.add(c)
     ref = data.check_type   # 用 ref_type 区分饮食/运动的每日首次
@@ -197,6 +242,27 @@ def manual_checkin(
     db.commit()
     db.refresh(c)
     return {**checkin_dict(c), "points_awarded": pts}
+
+
+@router.get("/burn-preview")
+def burn_preview(exercise_type: str = Query(..., description="运动类型"),
+                 duration_min: int = Query(..., gt=0, le=600),
+                 intensity: str = Query(default="moderate", description="强度档 light/moderate/intense"),
+                 user: User = Depends(get_current_user),
+                 db: Session = Depends(get_db)):
+    """运动消耗预估（个性化版）：按档案的性别/年龄/体脂/体能修正，
+    返回区间与逐层明细，供前端弹窗展示"这个数怎么来的"、允许手动微调"""
+    from app.models.health_profile import HealthProfile
+    from app.services.met import INTENSITY_ORDER, personalized_burn
+
+    if intensity not in INTENSITY_ORDER:
+        intensity = "moderate"
+    profile = db.query(HealthProfile).filter(HealthProfile.user_id == user.id).first()
+    p = {c: getattr(profile, c) for c in
+         ("gender", "age", "weight_kg", "height_cm", "body_fat_pct", "activity_level")} if profile else {}
+    r = personalized_burn(exercise_type, duration_min, p, intensity)
+    r["formula"] = f"{r['formula']} = {r['calories_burned']} kcal"
+    return r
 
 
 @router.delete("/{checkin_id}")

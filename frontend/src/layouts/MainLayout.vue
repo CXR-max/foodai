@@ -1,9 +1,10 @@
 <script setup lang="ts">
-// 主布局：左侧菜单 + 顶栏（昵称/积分/退出）
-import { onMounted } from 'vue'
+// 主布局：左侧菜单 + 顶栏（昵称/积分/退出）；打卡菜单带"今日未打卡"红点
+import { onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Coin, Dish, DataLine, House, Medal, SwitchButton, User, Calendar, MagicStick } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
+import { hasPendingCheckin, refreshTodayCheckin } from '@/stores/todayCheckin'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -19,10 +20,28 @@ const menus = [
   { path: '/leaderboard', title: '排行榜', icon: Medal },
 ]
 
+// 红点：仅"健康打卡"菜单 + 今日还有未完成项时显示
+function showDot(path: string) {
+  return path === '/checkin' && hasPendingCheckin()
+}
+
+function refreshDot() {
+  if (auth.isLoggedIn) refreshTodayCheckin()
+}
+
 onMounted(() => {
   // 刷新后拉取用户信息（保持顶栏昵称/积分最新）
-  if (auth.isLoggedIn) auth.fetchMe().catch(() => {})
+  if (auth.isLoggedIn) {
+    auth.fetchMe().catch(() => {})
+    refreshDot()
+  }
+  // 切页面 / 切回窗口时都同步一次，打卡完成后红点立刻消失
+  window.addEventListener('focus', refreshDot)
 })
+
+watch(() => route.path, refreshDot)
+
+onBeforeUnmount(() => window.removeEventListener('focus', refreshDot))
 </script>
 
 <template>
@@ -31,7 +50,9 @@ onMounted(() => {
       <div class="logo">🥗 识膳智行</div>
       <el-menu :default-active="route.path" router background-color="#1d2530" text-color="#a3adb8" active-text-color="#67c23a">
         <el-menu-item v-for="m in menus" :key="m.path" :index="m.path">
-          <el-icon><component :is="m.icon" /></el-icon>
+          <el-badge is-dot :hidden="!showDot(m.path)" class="menu-badge">
+            <el-icon><component :is="m.icon" /></el-icon>
+          </el-badge>
           <span>{{ m.title }}</span>
         </el-menu-item>
       </el-menu>
@@ -61,6 +82,7 @@ onMounted(() => {
   padding: 20px 16px; letter-spacing: 1px;
 }
 .aside :deep(.el-menu) { border-right: none; }
+.menu-badge :deep(.el-badge__content.is-dot) { top: 50%; right: -6px; transform: translateY(-50%); }
 .header {
   background: #fff; display: flex; align-items: center; justify-content: space-between;
   box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
