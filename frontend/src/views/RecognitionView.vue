@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // 食物识别页：拖拽上传 → AI 识别 → 结果卡片 → 手动校准 → 保存为饮食记录
 import { computed, onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadRequestOptions } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
 import * as foodApi from '@/api/food'
@@ -12,10 +12,16 @@ const auth = useAuthStore()
 const current = ref<Recognition | null>(null)   // 当前识别结果
 const history = ref<Recognition[]>([])          // 识别历史
 const recognizing = ref(false)
+const rerunningId = ref<number | null>(null)   // 正在重新识别的记录 id（按钮转圈用）
 const saving = ref(false)
 const saveDialog = ref(false)
 const mealType = ref('lunch')
 const MEAL_LABELS: Record<string, string> = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', snack: '加餐' }
+
+// ---- 识别历史分页 ----
+const page = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 // ---- 手动校准（只允许改菜名+克数，营养由后端按本地营养库重算）----
 const correctDialog = ref(false)
@@ -56,13 +62,56 @@ async function doUpload(options: UploadRequestOptions) {
       ElMessage.success('识别完成！')
     }
     await loadHistory()
+  } catch {
+    ElMessage.error('识别失败：AI 处理超时或服务繁忙，请稍后再试')
   } finally {
     recognizing.value = false
   }
 }
 
 async function loadHistory() {
-  history.value = (await foodApi.getRecognitions(1)).items
+  const r = await foodApi.getRecognitions(page.value, pageSize.value)
+  history.value = r.items
+  total.value = r.total
+}
+
+function onPageChange(p: number) {
+  page.value = p
+  loadHistory()
+}
+
+// 删除识别记录（仅"未保存为饮食记录"的草稿可删）
+async function deleteRec(row: Recognition) {
+  await ElMessageBox.confirm(
+    '确定删除这条识别记录吗？删除后不可恢复。',
+    '删除识别记录',
+    { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' },
+  )
+  await foodApi.deleteRecognition(row.id)
+  ElMessage.success('已删除')
+  await loadHistory()
+}
+
+// 重新识别：复用原图再跑一次模型（已保存/未保存的记录都允许；
+// 已保存的会由后端同步更新对应饮食记录，保证统计一致）
+async function rerunRec(row: Recognition) {
+  rerunningId.value = row.id
+  try {
+    const r = await foodApi.rerunRecognition(row.id)
+    current.value = r        // ★ 右侧结果卡片直接展示重跑后的完整明细（克重/食材/营养）
+    if (!r.is_food) {
+      ElMessage.warning('重新识别完成：图片中未识别到食物')
+    } else if (r.provider === 'mock') {
+      ElMessage.warning('AI 视觉模型暂时不可用（可能限流），当前为本地模拟结果，建议稍后再试')
+    } else {
+      ElMessage.success(`已重新识别：${r.dish_name}`)
+    }
+    await loadHistory()
+  } catch {
+    ElMessage.error('重新识别失败：AI 处理超时或服务繁忙，请稍后再试')
+  } finally {
+    rerunningId.value = null
+  }
 }
 
 function openSave() {
@@ -238,17 +287,49 @@ onMounted(loadHistory)
         </el-table-column>
         <el-table-column prop="dish_name" label="菜品" min-width="120" />
         <el-table-column prop="calories" label="热量(kcal)" width="110" />
-        <el-table-column label="状态" width="140">
+        <el-table-column label="状态" width="130">
           <template #default="{ row }">
             <el-tag v-if="row.food_record_id" type="success" size="small">已保存记录</el-tag>
             <el-tag v-else-if="!row.is_food" type="info" size="small">非食物</el-tag>
             <el-tag v-else type="warning" size="small">未保存</el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="来源" width="100">
+          <template #default="{ row }">
+            <el-tag v-if="row.provider === 'mock'" type="danger" size="small" effect="plain">本地模拟</el-tag>
+            <el-tag v-else type="primary" size="small" effect="plain">AI 视觉</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="created_at" label="时间" min-width="150">
           <template #default="{ row }">{{ new Date(row.created_at).toLocaleString('zh-CN') }}</template>
         </el-table-column>
+        <el-table-column label="操作" width="170" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              link type="primary" size="small"
+              :loading="rerunningId === row.id"
+              :title="row.food_record_id ? '重新识别会同步更新已保存的饮食记录' : '复用原图再识别一次'"
+              @click="rerunRec(row)"
+            >重新识别</el-button>
+            <el-button
+              link type="danger" size="small"
+              :disabled="!!row.food_record_id"
+              :title="row.food_record_id ? '已生成饮食记录，禁止删除（保护溯源）' : ''"
+              @click="deleteRec(row)"
+            >删除</el-button>
+          </template>
+        </el-table-column>
       </el-table>
+      <div class="pager">
+        <el-pagination
+          background
+          layout="total, prev, pager, next"
+          :total="total"
+          :page-size="pageSize"
+          :current-page="page"
+          @current-change="onPageChange"
+        />
+      </div>
     </div>
 
     <!-- 保存餐次选择 -->
@@ -325,4 +406,5 @@ onMounted(loadHistory)
 .form-label { width: 40px; font-size: 14px; color: #606266; flex-shrink: 0; }
 .preview-box { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #f5f7fa; border-radius: 6px; font-size: 13px; }
 .opt-extra { float: right; margin-left: 16px; font-size: 12px; color: #909399; }
+.pager { margin-top: 12px; display: flex; justify-content: flex-end; }
 </style>

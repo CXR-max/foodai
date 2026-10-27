@@ -3,6 +3,7 @@
 """
 from datetime import date, datetime, timedelta
 import json
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -13,18 +14,23 @@ from app.db.session import SessionLocal, get_db
 from app.models.check_in import CheckIn
 from app.models.diet_plan import DietPlan, PlanDay
 from app.models.health_profile import HealthProfile
+from app.models.plan_chat import PlanChatMessage
 from app.models.user import User
-from app.schemas.plan import GeneratePlanIn, PlanChatIn, PlanDayUpdateIn
+from app.schemas.plan import ChatMessageIn, GeneratePlanIn, PlanChatIn, PlanDayUpdateIn
 from app.services import nutrition, points
+from app.services.achievements import unlock_all
 from app.services.llm import foods_data
 from app.services.llm.prompts import PLAN_CHAT_SYSTEM
 from app.services.llm.provider import get_llm_provider
+from app.services.plan_intent import extract_plan_intent, merge_plan_intent
+
+logger = logging.getLogger("plans")
 
 router = APIRouter(prefix="/plans", tags=["养生方案"])
 
 MEAL_ORDER = {"breakfast": 0, "lunch": 1, "dinner": 2, "snack": 3}
 
-MAX_CHAT_HISTORY = 8   # 聊天只带最近 8 条（约 4 轮）：历史越长，模型首字越慢
+MAX_CHAT_HISTORY = 20  # 聊天模型带最近 20 条；方案约束抽取另读持久化全量/最近 60 条
 
 
 def build_chat_messages(history) -> list[dict]:
@@ -32,6 +38,141 @@ def build_chat_messages(history) -> list[dict]:
     recent = history[-MAX_CHAT_HISTORY:]
     return ([{"role": "system", "content": PLAN_CHAT_SYSTEM}]
             + [{"role": m.role, "content": m.content} for m in recent])
+
+
+def _last_user_content(messages) -> str:
+    for message in reversed(messages or []):
+        if getattr(message, "role", "") == "user":
+            return (getattr(message, "content", "") or "").strip()
+    return ""
+
+
+def save_chat_exchange(user_id: int, messages, assistant_text: str = "") -> None:
+    """把一轮对话写入数据库。
+
+    新用户/首次部署时 messages 里可能带着整段历史，这里一并落库；
+    已有历史时只补当前新消息，避免每轮重复插入。
+    """
+    incoming = [
+        (getattr(m, "role", ""), (getattr(m, "content", "") or "").strip())
+        for m in (messages or [])
+        if getattr(m, "role", "") in ("user", "assistant")
+        and (getattr(m, "content", "") or "").strip()
+    ]
+    if not incoming and not (assistant_text or "").strip():
+        return
+
+    db = SessionLocal()
+    try:
+        existing_rows = (
+            db.query(PlanChatMessage)
+            .filter(PlanChatMessage.user_id == user_id)
+            .order_by(PlanChatMessage.id.desc())
+            .limit(100)
+            .all()
+        )
+        existing = [(r.role, r.content) for r in reversed(existing_rows)]
+
+        if not existing:
+            to_add = incoming
+        elif len(existing) <= len(incoming) and incoming[:len(existing)] == existing:
+            to_add = incoming[len(existing):]
+        elif len(existing) <= len(incoming) and incoming[-len(existing):] == existing:
+            to_add = incoming[:-len(existing)]
+        else:
+            to_add = incoming[-1:]  # 至少保存当前这条
+
+        # 流式/同步重试时，最后一条 user 已存在且很近，不重复写
+        if to_add and to_add[-1][0] == "user" and existing_rows:
+            last = existing_rows[0]
+            if (
+                last.role == "user"
+                and last.content == to_add[-1][1]
+                and last.created_at
+                and (datetime.now() - last.created_at).total_seconds() < 8
+            ):
+                to_add = to_add[:-1]
+
+        for role, content in to_add:
+            db.add(PlanChatMessage(user_id=user_id, role=role, content=content))
+
+        assistant_text = (assistant_text or "").strip()
+        if assistant_text:
+            db.add(PlanChatMessage(user_id=user_id, role="assistant", content=assistant_text))
+
+        db.commit()
+    except Exception:  # noqa: BLE001
+        db.rollback()
+        logger.exception("保存对话历史失败")
+    finally:
+        db.close()
+
+
+def load_chat_history(user_id: int, limit: int = 60) -> list[dict]:
+    """按时间正序返回最近 limit 条对话（给前端恢复历史 / 给约束抽取用）。"""
+    db = SessionLocal()
+    try:
+        rows = (
+            db.query(PlanChatMessage)
+            .filter(PlanChatMessage.user_id == user_id)
+            .order_by(PlanChatMessage.id.desc())
+            .limit(limit)
+            .all()
+        )
+        return [
+            {
+                "id": row.id,
+                "role": row.role,
+                "content": row.content,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+            }
+            for row in reversed(rows)
+        ]
+    finally:
+        db.close()
+
+
+def history_text_for_intent(user_id: int, fallback: str = "") -> str:
+    """把持久化历史拼成带时间戳的文本；首次部署没有 DB 记录时导入前端历史。"""
+    if not load_chat_history(user_id, 1) and fallback.strip():
+        import_chat_text(user_id, fallback)
+
+    rows = load_chat_history(user_id, 60)
+    lines: list[str] = []
+    for row in rows:
+        content = (row.get("content") or "").replace("\n", " ")[:600]
+        created = row.get("created_at") or ""
+        # ISO: 2026-10-20T14:00:00 -> 10-20 14:00
+        stamp = created[5:16].replace("T", " ") if len(created) >= 16 else ""
+        who = "用户" if row.get("role") == "user" else "AI"
+        lines.append(f"[{stamp}] {who}：{content}" if stamp else f"{who}：{content}")
+
+    # 从最新往回保留，防止把本地 7B 的 4K 上下文撑爆
+    kept: list[str] = []
+    total = 0
+    for line in reversed(lines):
+        if kept and total + len(line) > 2600:
+            break
+        kept.append(line)
+        total += len(line) + 1
+    return "\n".join(reversed(kept))
+
+
+def import_chat_text(user_id: int, text: str) -> None:
+    """把前端传上来的 '用户：... / AI：...' 文本导入数据库（只在 DB 为空时用）。"""
+    messages: list[ChatMessageIn] = []
+    for line in (text or "").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("用户：") or stripped.startswith("用户:"):
+            messages.append(ChatMessageIn(role="user", content=stripped[3:].strip()))
+        elif stripped.startswith("AI：") or stripped.startswith("AI:"):
+            messages.append(ChatMessageIn(role="assistant", content=stripped[3:].strip()))
+    if messages:
+        save_chat_exchange(user_id, messages, "")
+
+
+def get_history_text(user_id: int, fallback: str = "") -> str:
+    return history_text_for_intent(user_id, fallback)
 
 
 def sync_plan_day_checkins(db: Session, user_id: int, day: PlanDay) -> None:
@@ -122,6 +263,9 @@ def build_profile_ctx(profile: HealthProfile, data: GeneratePlanIn) -> dict:
         "taste_preferences": profile.taste_preferences or [],
         "dietary_restrictions": profile.dietary_restrictions or [],
         "exercise_preferences": profile.exercise_preferences or [],
+        # 面板是否显式选择（用于对话"最新表态"覆盖档案旧口味）
+        "panel_taste_explicit": data.taste_preferences is not None,
+        "panel_restrictions_explicit": data.dietary_restrictions is not None,
     }
     if data.taste_preferences is not None:
         ctx["taste_preferences"] = data.taste_preferences
@@ -156,6 +300,10 @@ def generate_plan(
     combined_note = combine_note(data)
 
     provider = get_llm_provider()
+    # 先把持久化对话翻译成"当前有效"的结构化约束，再交给求解器
+    history_text = get_history_text(user.id, data.chat_text)
+    intent = extract_plan_intent(provider, profile_ctx, data.note, history_text)
+    profile_ctx = merge_plan_intent(profile_ctx, intent)
     plan_result = provider.generate_plan(profile_ctx, data.days, combined_note)
 
     # 落库：主表 + 每日明细（餐次热量按营养库重算）
@@ -184,6 +332,7 @@ def generate_plan(
             estimated_calories=round(sum(m["calories"] for m in meals)),
         ))
     pts = points.award(db, user, "generate_plan", description=f"生成{data.days}天养生方案")
+    unlock_all(db, user)   # 生成方案数成就
     db.commit()
     db.refresh(plan)
     result = plan_dict(plan, with_days=True, db=db)
@@ -205,6 +354,10 @@ def generate_plan_stream(
     profile_ctx = build_profile_ctx(profile, data)
     combined_note = combine_note(data)
     provider = get_llm_provider()
+    # 对话 → 当前有效约束（最新表态覆盖旧表态）→ 与勾选偏好合并
+    history_text = get_history_text(user.id, data.chat_text)
+    intent = extract_plan_intent(provider, profile_ctx, data.note, history_text)
+    profile_ctx = merge_plan_intent(profile_ctx, intent)
     user_id = user.id
 
     def sse(event: str, payload: dict) -> str:
@@ -246,13 +399,23 @@ def generate_plan_stream(
             return
 
         # 全部生成完 → 落库（新开会话，避免流式期间请求 session 生命周期问题）
+        summary = f"已按你的偏好与目标生成 {data.days} 天渐进式方案"
+        intent_summary = str(profile_ctx.get("intent_summary") or "").strip()
+        if intent_summary:
+            summary += f"；已结合对话：{intent_summary}"
+        plan_note = getattr(provider, "plan_note", "")
+        if plan_note:
+            summary += f"；{plan_note}"
+        variety_note = getattr(provider, "variety_note", "")
+        if variety_note:
+            summary += f"；{variety_note}"
         s = SessionLocal()
         try:
             plan = DietPlan(
                 user_id=user_id,
                 title=f"{data.days}天方案 {datetime.now().strftime('%m-%d %H:%M')}",
                 start_date=start,
-                summary=f"已按你的偏好与目标生成 {data.days} 天渐进式方案",
+                summary=summary,
                 daily_target_calories=int(profile_ctx.get("daily_target_calories") or 2000),
                 provider=provider.active_name,   # 兜底到 mock 时如实标注
                 basis_snapshot=profile_ctx,
@@ -268,6 +431,8 @@ def generate_plan_stream(
                 ))
             u = s.get(User, user_id)
             pts = points.award(s, u, "generate_plan", description=f"生成{data.days}天养生方案") if u else 0
+            if u:
+                unlock_all(s, u)   # 生成方案数成就
             s.commit()
             yield sse("done", {
                 "plan_id": plan.id, "title": plan.title, "summary": plan.summary,
@@ -291,6 +456,31 @@ def list_plans(user: User = Depends(get_current_user), db: Session = Depends(get
     plans = (db.query(DietPlan).filter(DietPlan.user_id == user.id)
              .order_by(DietPlan.created_at.desc()).all())
     return [plan_dict(p) for p in plans]
+
+
+@router.get("/chat/history")
+def get_chat_history(
+    limit: int = 60,
+    user: User = Depends(get_current_user),
+):
+    """恢复持久化 AI 对话历史（按时间正序）。"""
+    return load_chat_history(user.id, min(max(limit, 1), 200))
+
+
+@router.delete("/chat/history")
+def delete_chat_history(user: User = Depends(get_current_user)):
+    """清空当前用户的 AI 对话历史。"""
+    db = SessionLocal()
+    try:
+        deleted = (
+            db.query(PlanChatMessage)
+            .filter(PlanChatMessage.user_id == user.id)
+            .delete(synchronize_session=False)
+        )
+        db.commit()
+        return {"deleted": deleted}
+    finally:
+        db.close()
 
 
 @router.get("/{plan_id}")
@@ -344,6 +534,7 @@ def chat_with_llm(
     provider = get_llm_provider()
     messages = build_chat_messages(data.messages)
     reply = provider.chat(messages)
+    save_chat_exchange(user.id, data.messages, reply)
     return {"reply": reply}
 
 
@@ -355,17 +546,22 @@ def chat_stream(
     """流式对话（SSE）：逐块推送模型回复，前端边收边显示（体感更快）"""
     provider = get_llm_provider()
     messages = build_chat_messages(data.messages)
+    user_id = user.id
 
     def sse(event: str, payload: dict) -> str:
         return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
     def stream():
+        parts: list[str] = []
         try:
             for piece in provider.chat_stream(messages):
                 if piece:
+                    parts.append(piece)
                     yield sse("delta", {"t": piece})
+            save_chat_exchange(user_id, data.messages, "".join(parts))
             yield sse("done", {})
         except Exception as e:  # noqa: BLE001
+            save_chat_exchange(user_id, data.messages, "".join(parts))
             yield sse("error", {"message": f"对话失败：{str(e)[:150]}"})
 
     return StreamingResponse(

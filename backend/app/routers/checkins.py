@@ -2,7 +2,7 @@
 
 流程：方案天 --from-plan 导入--> 日历上出现 pending 任务 --> 逐项 complete 变 done
      每完成一项 +3 分；当天任务全部完成额外 +10 分
-另支持手动运动/饮食打卡（每天各首次 +2 分）
+另支持手动运动/饮食打卡（均为每日首次 +2 分，防止刷分）
 """
 import re
 from datetime import date, datetime
@@ -17,6 +17,7 @@ from app.models.diet_plan import DietPlan, PlanDay
 from app.models.user import User
 from app.schemas.checkin import FromPlanIn, ManualCheckInIn
 from app.services import points
+from app.services.achievements import unlock_all
 
 router = APIRouter(prefix="/check-ins", tags=["健康打卡"])
 
@@ -95,7 +96,13 @@ def import_from_plan(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """把方案某天导入日历：为每餐+运动生成待完成任务（幂等，重复导入自动跳过）"""
+    """把方案某天导入日历：为每餐+运动生成待完成任务。
+
+    覆盖规则（解决"重新生成方案后导入，日历每天重复/内容一样"）：
+    - 同一 (日期 + 任务) 已打卡(done) → 保留不动，绝不删除
+    - 同一 (日期 + 任务) 未打卡(pending) → 覆盖为本次方案内容（指向新方案天）
+    - 该日期上、方案里已不存在的旧 pending 任务 → 删除；done 保留
+    """
     plan_day = db.get(PlanDay, data.plan_day_id)
     if not plan_day:
         raise HTTPException(status_code=404, detail="方案天不存在")
@@ -103,37 +110,44 @@ def import_from_plan(
     if not plan or plan.user_id != user.id:
         raise HTTPException(status_code=404, detail="方案不存在")
 
-    created, skipped = [], []
-    # 餐食任务
+    day = plan_day.date or date.today()
+    desired: dict[str, str] = {}
     for meal in plan_day.meals or []:
-        task_key = f"meal_{meal.get('meal_type', 'snack')}"
-        exists = (db.query(CheckIn)
-                  .filter(CheckIn.user_id == user.id, CheckIn.plan_day_id == plan_day.id,
-                          CheckIn.task_key == task_key).first())
-        if exists:
-            skipped.append(task_key)
-            continue
-        c = CheckIn(user_id=user.id, check_date=plan_day.date or date.today(),
-                    check_type="diet", task_key=task_key, status="pending",
-                    plan_day_id=plan_day.id)
-        db.add(c)
-        created.append(task_key)
-    # 运动任务
+        desired[f"meal_{meal.get('meal_type', 'snack')}"] = "diet"
     if plan_day.exercise:
-        exists = (db.query(CheckIn)
-                  .filter(CheckIn.user_id == user.id, CheckIn.plan_day_id == plan_day.id,
-                          CheckIn.task_key == "exercise").first())
-        if exists:
-            skipped.append("exercise")
+        desired["exercise"] = "exercise"
+
+    # 该日期上已有的任务（来自任意方案），按 task_key 归并
+    existing = (db.query(CheckIn)
+                .filter(CheckIn.user_id == user.id, CheckIn.check_date == day).all())
+    by_key = {c.task_key: c for c in existing if c.task_key}
+
+    created, updated, kept = [], [], []
+    for key, ctype in desired.items():
+        c = by_key.get(key)
+        if c is None:
+            db.add(CheckIn(user_id=user.id, check_date=day, check_type=ctype,
+                           task_key=key, status="pending", plan_day_id=plan_day.id))
+            created.append(key)
+        elif c.status == "done":
+            kept.append(key)          # 已打卡，保留
         else:
-            db.add(CheckIn(user_id=user.id, check_date=plan_day.date or date.today(),
-                           check_type="exercise", task_key="exercise", status="pending",
-                           plan_day_id=plan_day.id))
-            created.append("exercise")
+            c.plan_day_id = plan_day.id   # pending → 覆盖为本次方案
+            c.check_type = ctype
+            updated.append(key)
+
+    # 删除该日期上、方案里已不存在且仍是 pending 的方案任务（done 一律保留）
+    removed = 0
+    for key, c in by_key.items():
+        if key not in desired and c.status == "pending" and c.plan_day_id:
+            db.delete(c)
+            removed += 1
 
     db.commit()
-    return {"created": created, "skipped": skipped,
-            "message": f"已导入 {len(created)} 项任务到日历" if created else "该天任务已在日历中"}
+    msg = (f"已导入 {len(created) + len(updated)} 项任务到日历"
+           f"（新增 {len(created)}、更新 {len(updated)}、保留已打卡 {len(kept)}、清理 {removed}）")
+    return {"created": created, "updated": updated, "kept": kept,
+            "removed": removed, "message": msg}
 
 
 @router.post("/{checkin_id}/complete")
@@ -186,6 +200,7 @@ def complete_checkin(
         bonus = points.award(db, user, "task_all_done_bonus",
                              description=f"{c.check_date} 方案任务全部完成 🎉",
                              once_per_day=True) or 0
+    unlock_all(db, user)   # 打卡可能解锁"连续打卡"类成就
     db.commit()
     return {"id": c.id, "status": c.status,
             "points_awarded": pts + bonus, "bonus": bonus,
@@ -198,7 +213,7 @@ def manual_checkin(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """手动打卡：运动 / 补记饮食（每天每类首次 +2 分）
+    """手动打卡：运动 / 补记饮食（均为每日首次 +2 分，同一天再打只记录不给分）
 
     运动打卡未传 calories_burned 时，按个性化模型自动计算：
     MET（按强度档）× 体重 × 时长 ÷ 60 × 性别/年龄/体成分/体能系数，
@@ -236,9 +251,11 @@ def manual_checkin(
     ref = data.check_type   # 用 ref_type 区分饮食/运动的每日首次
     desc = ("手动记录饮食" if data.check_type == "diet"
             else f"手动运动打卡：{(data.exercise_type or '')}{(str(data.duration_min or '') + '分钟')}".strip())
+    # 运动/饮食统一每日首次 +2，同一天再打卡只记录不给分（防刷）
     pts = points.award(db, user, "manual_checkin", once_per_day=True,
                        description=desc, ref_type=ref) or 0
     c.points_awarded = pts
+    unlock_all(db, user)
     db.commit()
     db.refresh(c)
     return {**checkin_dict(c), "points_awarded": pts}

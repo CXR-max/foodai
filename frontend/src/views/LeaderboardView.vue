@@ -29,9 +29,12 @@ onActivated(load)   // 从其他页面切回来自动刷新 = 实时排名
             <b v-else>No.{{ row.rank }}</b>
           </template>
         </el-table-column>
-        <el-table-column label="用户" min-width="180">
+        <el-table-column label="用户" min-width="200">
           <template #default="{ row }">
             {{ row.nickname }}
+            <el-tag v-if="row.equipped_title" size="small" type="warning" effect="plain" style="margin-left:6px">
+              {{ row.equipped_icon }} {{ row.equipped_title }}
+            </el-tag>
             <el-tag v-if="row.is_me" size="small" type="success" style="margin-left:6px">我</el-tag>
           </template>
         </el-table-column>

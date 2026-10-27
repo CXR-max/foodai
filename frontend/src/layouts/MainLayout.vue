@@ -2,7 +2,7 @@
 // 主布局：左侧菜单 + 顶栏（昵称/积分/退出）；打卡菜单带"今日未打卡"红点
 import { onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Coin, Dish, DataLine, House, Medal, SwitchButton, User, Calendar, MagicStick } from '@element-plus/icons-vue'
+import { Coin, Dish, DataLine, House, Medal, SwitchButton, User, Calendar, MagicStick, Trophy } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { hasPendingCheckin, refreshTodayCheckin } from '@/stores/todayCheckin'
 
@@ -17,6 +17,7 @@ const menus = [
   { path: '/checkin', title: '健康打卡', icon: Calendar },
   { path: '/stats', title: '数据追踪', icon: DataLine },
   { path: '/mall', title: '积分商城', icon: Coin },
+  { path: '/achievements', title: '成就徽章', icon: Trophy },
   { path: '/leaderboard', title: '排行榜', icon: Medal },
 ]
 

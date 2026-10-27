@@ -1,4 +1,4 @@
-"""兑换记录表：兑换成功生成 8 位核销码（演示"线下领奖"场景）"""
+"""奖励兑换记录表"""
 from datetime import datetime
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
@@ -10,9 +10,10 @@ class Redemption(Base):
     __tablename__ = "redemptions"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     reward_id = Column(Integer, ForeignKey("rewards.id"), nullable=False)
     points_spent = Column(Integer, nullable=False)
-    code = Column(String(20), nullable=False)      # 8 位核销码
-    status = Column(String(10), default="unused")  # unused / used
-    created_at = Column(DateTime, default=datetime.now)
+    code = Column(String(20), nullable=False)  # 核销码
+    status = Column(String(10), nullable=False, default="unused")  # unused / used
+    used_at = Column(DateTime, nullable=True)   # 使用时间（权益类券核销时间）
+    created_at = Column(DateTime, nullable=True, default=datetime.now)

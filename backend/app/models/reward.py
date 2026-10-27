@@ -1,4 +1,4 @@
-"""积分商城奖励表：商品由 seed 脚本预置（见 seed.py），想加奖励直接改 seed 或后台插数据"""
+"""积分商城奖励表"""
 from datetime import datetime
 
 from sqlalchemy import Boolean, Column, DateTime, Integer, String
@@ -11,10 +11,12 @@ class Reward(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False)
-    category = Column(String(20), nullable=False)  # honor=虚拟荣誉 / privilege=产品权益 / goods=实物券
-    description = Column(String(300), default="")
-    points_cost = Column(Integer, nullable=False)  # 兑换所需积分
-    stock = Column(Integer, default=-1)            # 库存，-1=无限
-    icon = Column(String(10), default="🎁")        # emoji 图标
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.now)
+    category = Column(String(20), nullable=False)
+    # 券的用途类型：makeup 补签卡 / custom_plan 方案定制券 / avatar_frame 头像框 / physical 实物券(线下核销)
+    kind = Column(String(20), nullable=True, default="physical")
+    description = Column(String(300), nullable=True)
+    points_cost = Column(Integer, nullable=False)
+    stock = Column(Integer, nullable=True)  # -1 表示不限量
+    icon = Column(String(10), nullable=True)
+    is_active = Column(Boolean, nullable=True, default=True)
+    created_at = Column(DateTime, nullable=True, default=datetime.now)

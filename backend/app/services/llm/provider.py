@@ -16,6 +16,7 @@ from app.core.config import settings
 from app.services.llm.base import LLMError, LLMProvider
 from app.services.llm.mock_provider import MockProvider
 from app.services.llm.openai_compat import OpenAICompatProvider
+from app.services.planner import build_day, build_plan
 
 logger = logging.getLogger("llm")
 
@@ -101,10 +102,95 @@ class FallbackProvider(LLMProvider):
             yield from self.mock.chat_stream(messages)
 
 
-def get_llm_provider() -> LLMProvider:
+class SolverProvider(MockProvider):
+    """方案构造走 CP-SAT 约束求解器；识别/对话仍转发给原 Provider。
+
+    - generate_plan / generate_day / generate_day_stream → planner
+    - recognize_food / chat / chat_stream → 原 Provider（无 key 时即 MockProvider）
+    - 方案求解失败不降级 mock，直接抛 PlannerError（避免拿假方案冒充结果）
+    """
+
+    name = "solver"
+
+    def __init__(self, base: LLMProvider):
+        self.base = base
+        # 保留 /api/llm/status?probe=1 直连探测语义（跳过 FallbackProvider 的 mock 兜底）
+        self.real = getattr(base, "real", base)
+        self._used = base.active_name
+        self._plan_meta: dict = {}
+
+    @property
+    def active_name(self) -> str:
+        return self._used
+
+    @property
+    def plan_note(self) -> str:
+        """本次方案是否发生过蛋白放宽，供落库 summary 如实展示。"""
+        relaxed = self._plan_meta.get("relaxed", 1.0)
+        if relaxed < 1.0:
+            factor = self._plan_meta.get("protein_factor")
+            if factor:
+                return (
+                    f"蛋白下限已放宽到 {factor * relaxed:.2f} g/kg"
+                    f"（原 {factor:g} g/kg，当前忌口组合下无法满足原目标）"
+                )
+            return f"蛋白下限已放宽到 {relaxed:.0%}（当前忌口组合下无法满足原目标）"
+        return ""
+
+    @property
+    def variety_note(self) -> str:
+        """窄忌口池下是否放宽了跨天不重复硬约束。"""
+        if self._plan_meta.get("variety_relaxed"):
+            return "为避免当前忌口组合无解，已放宽跨天不重复要求"
+        return ""
+
+    def recognize_food(self, image_bytes: bytes, content_type: str, profile_ctx: dict | None = None):
+        result = self.base.recognize_food(image_bytes, content_type, profile_ctx)
+        self._used = self.base.active_name   # 兜底到 mock 时如实标注
+        return result
+
+    def generate_plan(self, profile_ctx: dict, days: int, note: str = ""):
+        self._used = "solver"
+        self._plan_meta = {}
+        return build_plan(profile_ctx, days, note, meta=self._plan_meta)
+
+    def generate_day(self, profile_ctx: dict, day_index: int, days: int,
+                     prior_days: list[dict] | None = None, note: str = ""):
+        self._used = "solver"
+        if day_index == 1:
+            self._plan_meta = {}
+        return build_day(profile_ctx, day_index, days, prior_days, note, self._plan_meta)
+
+    def generate_day_stream(self, profile_ctx: dict, day_index: int, days: int,
+                            prior_days: list[dict] | None = None, note: str = ""):
+        self._used = "solver"
+        if day_index == 1:
+            self._plan_meta = {}
+        yield {"type": "day",
+               "day": build_day(profile_ctx, day_index, days, prior_days, note, self._plan_meta)}
+
+    def chat(self, messages: list[dict]) -> str:
+        reply = self.base.chat(messages)
+        self._used = self.base.active_name
+        return reply
+
+    def chat_stream(self, messages: list[dict]):
+        self._used = self.base.active_name
+        yield from self.base.chat_stream(messages)
+
+
+def _build_base_provider() -> LLMProvider:
+    """原有 Provider 选择逻辑：有 key 用真模型（可选 mock 兜底），无 key 用 MockProvider"""
     if settings.text_api_key:
         real = OpenAICompatProvider()
         if settings.LLM_FALLBACK_TO_MOCK:
             return FallbackProvider(real)
         return real
     return MockProvider()
+
+
+def get_llm_provider() -> LLMProvider:
+    base = _build_base_provider()
+    if settings.PLAN_ENGINE.strip().lower() == "solver":
+        return SolverProvider(base)
+    return base

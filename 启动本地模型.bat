@@ -23,5 +23,5 @@ echo 本窗口请保持开启，关闭即停止本地模型服务。
 echo 首次加载约 15 秒，加载完成后再访问前端。
 echo.
 
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\start-ollama.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\start-local-llm.ps1"
 pause

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 养生方案页：偏好面板 + 纯文字对话 → 合并生成 → 调整(重生成/可视化编辑) → 导入日历
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as planApi from '@/api/plan'
 import type { Plan, PlanDay, PlanMeal } from '@/api/plan'
@@ -30,8 +30,25 @@ const chatInput = ref('')
 const chatting = ref(false)
 const chatDrawer = ref(false)                    // 历史对话抽屉
 const CHAT_HISTORY_KEY = 'plan_chat_history'
+const CHAT_CURRENT_KEY = 'plan_chat_current'
 interface ChatSession { time: string; msgs: planApi.ChatMsg[] }
 const chatSessions = ref<ChatSession[]>(loadChatHistory())
+
+function loadCurrentChat(): planApi.ChatMsg[] {
+  try {
+    const raw = localStorage.getItem(CHAT_CURRENT_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+// 当前对话也镜像到 localStorage：刷新时即使后端历史还没写入，也能先恢复
+watch(chatMsgs, (msgs) => {
+  try {
+    localStorage.setItem(CHAT_CURRENT_KEY, JSON.stringify(msgs))
+  } catch { /* 隐私模式忽略 */ }
+}, { deep: true })
 
 function loadChatHistory(): ChatSession[] {
   try {
@@ -46,8 +63,14 @@ function saveChatHistory() {
     localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatSessions.value))
   } catch { /* 隐私模式等写入失败则忽略 */ }
 }
-// 把用户说过的话拼成 chat_text，与面板信息一起提交生成
-const chatText = computed(() => chatMsgs.value.filter((m) => m.role === 'user').map((m) => m.content).join('\n'))
+// 生成方案时把最近几轮对话（含 AI 建议）交给后端做意图翻译；
+// 只传用户消息会丢掉“可以/就这个”这类上下文。
+const chatText = computed(() =>
+  chatMsgs.value
+    .slice(-8)
+    .map((m) => `${m.role === 'user' ? '用户' : 'AI'}：${m.content}`)
+    .join('\n'),
+)
 
 async function sendChat() {
   const text = chatInput.value.trim()
@@ -82,6 +105,21 @@ const days = computed<PlanDay[]>(() => current.value?.days ?? [])
 async function loadPlans() {
   plans.value = await planApi.getPlans()
   if (plans.value.length && !current.value) await openPlan(plans.value[0].id)
+}
+
+// 从后端恢复持久化对话（刷新/换设备都不丢）；后端没有时才保留当前内存里的
+async function loadServerChat() {
+  try {
+    const rows = await planApi.getChatHistory(60)
+    if (rows.length) {
+      chatMsgs.value = rows.map((m) => ({ role: m.role, content: m.content }))
+    } else if (!chatMsgs.value.length) {
+      chatMsgs.value = loadCurrentChat()
+    }
+  } catch {
+    // 历史接口失败时至少恢复本地镜像
+    if (!chatMsgs.value.length) chatMsgs.value = loadCurrentChat()
+  }
 }
 
 async function openPlan(id: number) {
@@ -172,18 +210,13 @@ async function regenerate() {
 
 function confirmRegenerate() {
   ElMessageBox.confirm(
-    '将按当前勾选与对话重新生成一份新方案；完成后会清空勾选、开启新的 AI 对话（旧对话存入历史）。继续？',
+    '将按当前勾选与对话重新生成一份新方案；完成后会清空勾选，对话会保留用于后续约束抽取。继续？',
     '重新生成', { confirmButtonText: '重新生成', cancelButtonText: '取消', type: 'warning' },
   ).then(regenerate).catch(() => {})
 }
 
-// 重置为"全新一轮"：存档当前对话 → 清空对话 / 勾选 / 备注
+// 重置本轮面板：只清空勾选/备注，保留对话（对话已持久化，作为长期约束来源）
 function resetForNewRound() {
-  if (chatMsgs.value.length) {
-    chatSessions.value.unshift({ time: new Date().toLocaleString(), msgs: [...chatMsgs.value] })
-    saveChatHistory()
-  }
-  chatMsgs.value = []
   chatInput.value = ''
   prefs.value = { taste_preferences: [], dietary_restrictions: [], exercise_preferences: [] }
   note.value = ''
@@ -201,10 +234,17 @@ async function copySession(s: ChatSession) {
 }
 
 function clearChatHistory() {
-  ElMessageBox.confirm('确定清空全部历史对话？', '清空历史对话', {
+  ElMessageBox.confirm('确定清空全部历史对话？清空后 AI 将不再记得之前的偏好。', '清空历史对话', {
     confirmButtonText: '清空', cancelButtonText: '取消', type: 'warning',
-  }).then(() => {
+  }).then(async () => {
+    try {
+      await planApi.clearChatHistory()
+    } catch {
+      // 接口失败也清掉本地，避免界面残留
+    }
+    chatMsgs.value = []
     chatSessions.value = []
+    try { localStorage.removeItem(CHAT_CURRENT_KEY) } catch { /* ignore */ }
     saveChatHistory()
   }).catch(() => {})
 }
@@ -241,7 +281,9 @@ async function importDay(day: PlanDay) {
   importedDays.value.add(day.id)
 }
 
-onMounted(loadPlans)
+onMounted(async () => {
+  await Promise.all([loadPlans(), loadServerChat()])
+})
 </script>
 
 <template>

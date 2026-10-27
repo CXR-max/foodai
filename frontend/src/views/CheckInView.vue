@@ -58,18 +58,23 @@ watch(() => [exForm.value.intensity, exForm.value.duration_min], async () => {
 function adjustBurn() { manualAdjusted.value = true }
 
 async function confirmCheckin() {
-  await checkinApi.manual({
+  const r = await checkinApi.manual({
     check_type: 'exercise',
-    check_date: selectedDate.value,
+    check_date: selectedDateStr.value,
     exercise_type: exForm.value.exercise_type,
     duration_min: exForm.value.duration_min,
     intensity: exForm.value.intensity,
     calories_burned: Math.round(editableBurn.value * 10) / 10,
   })
   burnDialog.value = false
-  ElMessage.success(manualAdjusted.value
-    ? `运动打卡成功！消耗已按手动微调值 ${editableBurn.value} kcal 写入`
-    : `运动打卡成功！按个性化模型计算消耗 ${editableBurn.value} kcal`)
+  const burnMsg = manualAdjusted.value
+    ? `消耗已按手动微调值 ${editableBurn.value} kcal 写入`
+    : `按个性化模型计算消耗 ${editableBurn.value} kcal`
+  if (r.points_awarded > 0) {
+    ElMessage.success(`运动打卡成功 +${r.points_awarded} 分！${burnMsg}`)
+  } else {
+    ElMessage.info(`已记录本次打卡（运动积分每日首次 +2，今天已领过）。${burnMsg}`)
+  }
   await reloadAll()
 }
 
@@ -79,8 +84,31 @@ const statByDate = computed(() => {
   return map
 })
 
+// el-calendar 的 v-model 会塞进来 Date 对象，单元格点击塞进来字符串 —— 统一归一化为 YYYY-MM-DD
+function toDateStr(v: string | Date): string {
+  return typeof v === 'string' ? v : formatDate(v)
+}
+
+const selectedDateStr = computed(() => toDateStr(selectedDate.value as string | Date))
+
+// ★ 修复：切换日期时右侧任务面板要跟着刷新（之前只在页面加载时请求一次，
+//   导致点任何日期右侧显示的都是进页面那天的数据）
+watch(selectedDate, (v) => {
+  const d = toDateStr(v as unknown as string | Date)
+  if (typeof v !== 'string') {
+    selectedDate.value = d      // Date → 字符串归一化（会再触发一次本 watch，走下面的分支）
+    return
+  }
+  const m = d.slice(0, 7)
+  if (m !== month.value) {
+    month.value = m             // 跨月了：月历打点也要跟着换
+    loadMonth().catch(() => {})
+  }
+  loadDay().catch(() => {})
+})
+
 async function loadDay() {
-  const r = await checkinApi.getDay(selectedDate.value)
+  const r = await checkinApi.getDay(toDateStr(selectedDate.value as string | Date))
   dayItems.value = r.items
   daySummary.value = r.summary
 }
@@ -151,13 +179,13 @@ onMounted(reloadAll)
       <el-col :span="11">
         <div class="page-card">
           <h3 class="page-title">
-            ✅ {{ selectedDate }} 的任务
+            ✅ {{ selectedDateStr }} 的任务
             <el-tag :type="daySummary.all_done ? 'success' : 'info'" style="margin-left:auto">
               {{ daySummary.done }}/{{ daySummary.total }} 已完成
             </el-tag>
           </h3>
           <el-alert v-if="daySummary.all_done" title="当日任务全部完成，太棒了！🎉" type="success" :closable="false" style="margin-bottom:10px" />
-          <el-empty v-if="!dayItems.length" description="这一天还没有任务 · 去「养生方案」页导入" :image-size="70" />
+          <el-empty v-if="!dayItems.length" description="这一天还没有任务 · 说明方案还没导入到这天，去「养生方案」页导入" :image-size="70" />
 
           <div v-for="item in dayItems" :key="item.id" class="task">
             <div class="task-main">
