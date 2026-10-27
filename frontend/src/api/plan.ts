@@ -1,5 +1,5 @@
 // 养生方案接口
-import { get, post, put } from './http'
+import { del, get, post, put } from './http'
 
 export interface PlanMealItem { name: string; portion_g: number }
 export interface PlanMeal { meal_type: string; name: string; items: PlanMealItem[]; calories: number }
@@ -24,6 +24,13 @@ export interface Plan {
 }
 
 export interface ChatMsg { role: 'user' | 'assistant'; content: string }
+export interface ChatHistoryMsg extends ChatMsg { id: number; created_at: string | null }
+
+export const getChatHistory = (limit = 60) =>
+  get<ChatHistoryMsg[]>('/plans/chat/history', { limit })
+
+export const clearChatHistory = () =>
+  del<{ deleted: number }>('/plans/chat/history')
 
 export const getPlans = () => get<Plan[]>('/plans')
 

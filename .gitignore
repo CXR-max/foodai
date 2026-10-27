@@ -15,9 +15,15 @@ frontend/dist/
 *.local
 
 # 本地模型（Ollama 模型文件，体积大，不入库）
+# 用 /models/ 只匹配仓库根目录，避免误伤 backend/app/models
 /models/
 tools/*.zip
 
 # 系统文件
 .DS_Store
 Thumbs.db
+
+# 本地工具/幻灯片工作目录，不入库
+.lark-slides/
+.claude/
+_compare.ps1
