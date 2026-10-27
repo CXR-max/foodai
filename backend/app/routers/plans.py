@@ -16,6 +16,7 @@ from app.models.health_profile import HealthProfile
 from app.models.user import User
 from app.schemas.plan import GeneratePlanIn, PlanChatIn, PlanDayUpdateIn
 from app.services import nutrition, points
+from app.services.achievements import unlock_all
 from app.services.llm import foods_data
 from app.services.llm.prompts import PLAN_CHAT_SYSTEM
 from app.services.llm.provider import get_llm_provider
@@ -184,6 +185,7 @@ def generate_plan(
             estimated_calories=round(sum(m["calories"] for m in meals)),
         ))
     pts = points.award(db, user, "generate_plan", description=f"生成{data.days}天养生方案")
+    unlock_all(db, user)   # 生成方案数成就
     db.commit()
     db.refresh(plan)
     result = plan_dict(plan, with_days=True, db=db)
@@ -268,6 +270,8 @@ def generate_plan_stream(
                 ))
             u = s.get(User, user_id)
             pts = points.award(s, u, "generate_plan", description=f"生成{data.days}天养生方案") if u else 0
+            if u:
+                unlock_all(s, u)   # 生成方案数成就
             s.commit()
             yield sse("done", {
                 "plan_id": plan.id, "title": plan.title, "summary": plan.summary,

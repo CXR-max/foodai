@@ -2,16 +2,19 @@
 积分规则引擎（★★★ 想改积分数值，改下面 RULES 这一张表就行 ★★★）
 
 设计：
-- award()：加积分 = 写流水 + 同步累加 users.points_total（排行榜数据源）
-- spend()：扣积分（兑换奖励），余额不足返回 False
+- award()：加积分 = 写流水 + 原子累加 users.points_total（排行榜数据源）
+- spend()：扣积分（兑换奖励），余额不足返回 False；扣分用原子条件更新防超扣
 - 防刷：once_per_day / once_ever 两类去重，都是查 points_logs 流水
+- 排行榜：积分变动后同步 Redis ZSet（未装 Redis 自动降级 SQLite）
 """
 from datetime import date, datetime
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.models.points_log import PointsLog
 from app.models.user import User
+from app.services.redis_leaderboard import leaderboard
 
 # 积分规则表：action -> (说明文案, 分值)
 RULES = {
@@ -23,6 +26,7 @@ RULES = {
     "task_exercise":        ("完成方案运动任务", 3),
     "task_all_done_bonus":  ("当日方案任务全部完成", 10),
     "manual_checkin":       ("手动打卡", 2),
+    "makeup_checkin":       ("补签打卡", 5),
     "redeem_reward":        ("兑换奖励", 0),   # 兑换是负数，由 spend() 传入
 }
 
@@ -48,6 +52,29 @@ def awarded_ever(db: Session, user_id: int, action: str) -> bool:
         .filter(PointsLog.user_id == user_id, PointsLog.action == action, PointsLog.points > 0)
         .exists()
     ).scalar()
+
+
+def _bump_points(db: Session, user: User, delta: int) -> int | None:
+    """原子增减 users.points_total（SQL 层原子 UPDATE，避免并发 read-modify-write 丢分）。
+
+    返回最新积分；扣分余额不足时返回 None。
+    """
+    if delta >= 0:
+        db.execute(text(
+            "UPDATE users SET points_total = COALESCE(points_total, 0) + :d WHERE id = :uid"),
+            {"d": delta, "uid": user.id})
+    else:
+        res = db.execute(text(
+            "UPDATE users SET points_total = points_total - :d "
+            "WHERE id = :uid AND COALESCE(points_total, 0) >= :d"),
+            {"d": -delta, "uid": user.id})
+        if res.rowcount == 0:
+            return None
+    # 让 ORM 里的 user 对象同步最新值（expire 后下次访问自动重新查询）
+    db.expire(user, ["points_total"])
+    new_total = user.points_total or 0
+    leaderboard.update(user.id, new_total)
+    return new_total
 
 
 def award(
@@ -80,16 +107,16 @@ def award(
         ref_type=ref_type,
         ref_id=ref_id,
     ))
-    user.points_total += pts
+    _bump_points(db, user, pts)
     return pts
 
 
 def spend(db: Session, user: User, points: int, description: str,
           ref_type: str | None = None, ref_id: int | None = None) -> bool:
     """扣积分（兑换奖励）。余额不足返回 False，同样不 commit 由调用方控制事务"""
-    if user.points_total < points:
+    new_total = _bump_points(db, user, -points)
+    if new_total is None:
         return False
-    user.points_total -= points
     db.add(PointsLog(
         user_id=user.id,
         action="redeem_reward",
