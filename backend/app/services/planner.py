@@ -61,6 +61,7 @@ SCALE = 10
 W_TOTAL_CAL = 10
 W_MEAL_CAL = 3              # 餐次占比 28/38/28/6
 W_TASTE = -4000             # 口味命中（每个匹配标签）
+W_INCLUDE_FOOD = -6000      # 对话里明确想吃的菜/食材
 W_REPEAT_1 = 2000           # 与前一天重复
 W_REPEAT_2 = 1200           # 与前两天重复
 W_REPEAT_OLD = 800          # 与更早天数重复
@@ -231,13 +232,24 @@ def _is_blocked(food: dict, restrictions: list[str]) -> bool:
     return False
 
 
-def _meal_pool(meal_type: str, restrictions: list[str]) -> list[dict]:
-    """按餐次 + 禁忌过滤候选菜（禁忌在这里直接剔除，不进入求解模型）"""
-    pool = [
-        food for food in foods_data.load_foods()
-        if meal_type in (food.get("suitable_meals") or [])
-        and not _is_blocked(food, restrictions)
-    ]
+def _meal_pool(
+    meal_type: str,
+    restrictions: list[str],
+    exclude_foods: list[str] | None = None,
+) -> list[dict]:
+    """按餐次 + 禁忌 + 对话里明确不吃的关键词过滤候选菜。"""
+    exclude = [str(item).strip() for item in (exclude_foods or []) if str(item).strip()]
+    pool: list[dict] = []
+    for food in foods_data.load_foods():
+        if meal_type not in (food.get("suitable_meals") or []):
+            continue
+        if exclude:
+            text = f"{food.get('name') or ''} {_food_text(food)}"
+            if any(keyword in text for keyword in exclude):
+                continue
+        if _is_blocked(food, restrictions):
+            continue
+        pool.append(food)
     if not pool:
         raise PlannerError(f"{meal_type} 在禁忌过滤后没有可选菜品")
     return pool
@@ -310,6 +322,9 @@ def _solve_day(
     protein_factor: float,
     relax: float,
     prior_days: list[Any],
+    include_foods: set[str],
+    enforce_include: bool,
+    relax_variety: bool,
     vegetarian: bool,
 ) -> dict[str, list[tuple[dict, int]]] | None:
     """构造并求解单日模型；无可行解/超时返回 None，由调用方放宽蛋白后重试。"""
@@ -368,39 +383,73 @@ def _solve_day(
         if len(vars_) > 1:
             model.Add(sum(vars_) <= 1)
 
+    # 对话里明确想吃的菜/食材：第一天至少安排一道（若当前忌口下存在可选菜）；
+    # 后续天仍保留强软偏好，避免每天都强行同一道菜。
+    if include_foods and enforce_include:
+        include_vars = []
+        for meal_type, _ratio in MEALS:
+            for food in pools[meal_type]:
+                text = f"{food.get('name') or ''} {_food_text(food)}"
+                if any(keyword in text for keyword in include_foods):
+                    include_vars.append(y[(meal_type, food["name"])])
+        if include_vars:
+            model.Add(sum(include_vars) >= 1)
+
     # 不允许和之前任何一天太像：每天至少换掉 2 道历史日的菜（只有 1 道菜时直接禁用）
-    for prior_day in prior_days:
+    for prior_day in ([] if relax_variety else prior_days):
         prior_names = [name for name in _day_dish_names(prior_day) if name in by_name]
         if prior_names:
             required_different = min(2, len(prior_names))
+            # 候选菜总数都不够换 2 道时，硬约束必然无解（极窄忌口池）
+            if len(by_name) <= required_different:
+                continue
             model.Add(
                 sum(y for name in prior_names for y in by_name[name])
                 <= len(prior_names) - required_different
             )
 
     # 最近两天的每一餐也必须至少换一道菜，避免连续几天同一餐完全一样
-    for prior_day in prior_days[-2:]:
+    for prior_day in ([] if relax_variety else prior_days[-2:]):
         for meal_type, _ratio in MEALS:
+            available = [
+                food["name"] for food in pools[meal_type]
+                if (meal_type, food["name"]) in y
+            ]
+            # 该餐只有 1 个候选（或上一餐已占满全部候选）时，无法再换菜；
+            # 跳过这条硬约束，否则加餐只有纯牛奶时第 2 天必无解。
+            if len(available) <= 1:
+                continue
             prior_names = [
                 name for name in _day_meal_names(prior_day, meal_type)
                 if (meal_type, name) in y
             ]
-            if prior_names:
-                model.Add(
-                    sum(y[(meal_type, name)] for name in prior_names) <= len(prior_names) - 1
-                )
+            if not prior_names:
+                continue
+            if set(prior_names) >= set(available):
+                continue
+            model.Add(
+                sum(y[(meal_type, name)] for name in prior_names) <= len(prior_names) - 1
+            )
 
-    # 午晚餐至少一道荤菜；素食用户跳过该约束（否则必然无解）
+    # 午晚餐至少一道荤菜；素食用户跳过。
+    # 窄忌口池里可能只剩 1 道荤菜、而同一道菜一天只能出现一次；此时退化为
+    # “午/晚至少一顿有荤菜”，避免第 1 天就无解。
     if not vegetarian:
+        meat_by_meal: dict[str, list] = {}
+        meat_names: set[str] = set()
         for meal_type in ("lunch", "dinner"):
-            meat = [
-                y[(meal_type, food["name"])]
-                for food in pools[meal_type]
-                if food.get("category") == "荤菜"
-            ]
-            if not meat:
-                raise PlannerError(f"{meal_type} 没有荤菜候选，无法满足“午晚餐至少一道荤菜”")
-            model.Add(sum(meat) >= 1)
+            meat_by_meal[meal_type] = []
+            for food in pools[meal_type]:
+                if food.get("category") == "荤菜":
+                    meat_by_meal[meal_type].append(y[(meal_type, food["name"])])
+                    meat_names.add(food["name"])
+
+        available_meals = [m for m in ("lunch", "dinner") if meat_by_meal[m]]
+        if len(available_meals) == 2 and len(meat_names) >= 2:
+            for meal_type in available_meals:
+                model.Add(sum(meat_by_meal[meal_type]) >= 1)
+        elif available_meals:
+            model.Add(sum(v for meal_type in available_meals for v in meat_by_meal[meal_type]) >= 1)
 
     # ---- 软目标 ----
     terms: list[Any] = []
@@ -436,6 +485,15 @@ def _solve_day(
                         taste_score += hits * y[(meal_type, food["name"])]
             terms.append(W_TASTE * taste_score)
 
+    if include_foods:
+        include_score: Any = 0
+        for meal_type, _ratio in MEALS:
+            for food in pools[meal_type]:
+                text = f"{food.get('name') or ''} {_food_text(food)}"
+                hits = sum(1 for keyword in include_foods if keyword and keyword in text)
+                if hits:
+                    include_score += hits * y[(meal_type, food["name"])]
+        terms.append(W_INCLUDE_FOOD * include_score)
     repeat_penalty: dict[str, int] = {}
     for age, prior_day in enumerate(reversed(prior_days), start=1):
         penalty = W_REPEAT_1 if age == 1 else (W_REPEAT_2 if age == 2 else W_REPEAT_OLD)
@@ -543,41 +601,68 @@ def build_day(
     weight_kg = _weight_kg(profile_ctx)
     _goal, protein_factor = _goal_factor(profile_ctx)
     restrictions = list(profile_ctx.get("dietary_restrictions") or [])
-    pools = {meal_type: _meal_pool(meal_type, restrictions) for meal_type, _ in MEALS}
+    exclude_foods = [
+        str(item).strip() for item in (profile_ctx.get("exclude_foods") or [])
+        if str(item).strip()
+    ]
+    include_foods = {
+        str(item).strip() for item in (profile_ctx.get("include_foods") or [])
+        if str(item).strip()
+    }
+    pools = {
+        meal_type: _meal_pool(meal_type, restrictions, exclude_foods)
+        for meal_type, _ in MEALS
+    }
     taste_preferences = set(profile_ctx.get("taste_preferences") or [])
     vegetarian = "素食" in restrictions or "蛋奶素" in restrictions or "奶蛋素" in restrictions
     prior_days = prior_days or []
 
     last_required = 0.0
-    for relax in PROTEIN_RELAX_LEVELS:
-        selected = _solve_day(
-            pools=pools,
-            taste_preferences=taste_preferences,
-            target=target,
-            weight_kg=weight_kg,
-            protein_factor=protein_factor,
-            relax=relax,
-            prior_days=prior_days,
-            vegetarian=vegetarian,
-        )
-        if selected is not None:
-            if relax < 1.0:
-                if meta is not None:
-                    meta["relaxed"] = min(meta.get("relaxed", 1.0), relax)
-                    meta["protein_factor"] = protein_factor
-                logger.warning(
-                    "第 %d 天蛋白下限放宽到 %.0f%%（%.2f g/kg）",
-                    day_index, relax * 100, protein_factor * relax,
-                )
-            return _to_plan_day(day_index, selected, profile_ctx)
-        last_required = weight_kg * protein_factor * relax
-        logger.warning(
-            "第 %d 天蛋白 %.1f g 在 %.1fs 内无解，继续放宽",
-            day_index, last_required, SOLVER_TIME_LIMIT,
-        )
+    for variety_relaxed in (False, True):
+        for relax in PROTEIN_RELAX_LEVELS:
+            selected = _solve_day(
+                pools=pools,
+                taste_preferences=taste_preferences,
+                target=target,
+                weight_kg=weight_kg,
+                protein_factor=protein_factor,
+                relax=relax,
+                prior_days=prior_days,
+                include_foods=include_foods,
+                enforce_include=(day_index == 1 and not variety_relaxed),
+                relax_variety=variety_relaxed,
+                vegetarian=vegetarian,
+            )
+            if selected is not None:
+                if variety_relaxed:
+                    if meta is not None:
+                        meta["variety_relaxed"] = True
+                    logger.warning(
+                        "第 %d 天跨天不重复硬约束过紧，已放宽以返回可行方案", day_index,
+                    )
+                if relax < 1.0:
+                    if meta is not None:
+                        meta["relaxed"] = min(meta.get("relaxed", 1.0), relax)
+                        meta["protein_factor"] = protein_factor
+                    logger.warning(
+                        "第 %d 天蛋白下限放宽到 %.0f%%（%.2f g/kg）",
+                        day_index, relax * 100, protein_factor * relax,
+                    )
+                return _to_plan_day(day_index, selected, profile_ctx)
+
+            last_required = weight_kg * protein_factor * relax
+            logger.warning(
+                "第 %d 天蛋白 %.1f g 在 %.1fs 内无解，继续放宽",
+                day_index, last_required, SOLVER_TIME_LIMIT,
+            )
+
+        if not variety_relaxed:
+            logger.warning(
+                "第 %d 天在蛋白放宽后仍无解，尝试放宽跨天不重复硬约束", day_index,
+            )
 
     raise PlannerError(
-        f"第 {day_index} 天在 {len(PROTEIN_RELAX_LEVELS)} 级蛋白放宽后仍无可行解"
+        f"第 {day_index} 天在蛋白/跨天重复放宽后仍无可行解"
         f"（目标 {target} kcal，体重 {weight_kg:g} kg，最低蛋白 {last_required:.1f} g）"
     )
 
@@ -606,6 +691,13 @@ def build_plan(
     relaxed = track.get("relaxed", 1.0)
     if relaxed < 1.0:
         summary += f"；注意：当前忌口组合下蛋白下限已放宽到 {protein_factor * relaxed:.2f} g/kg"
+
+    if track.get("variety_relaxed"):
+        summary += "；为避免忌口组合无解，已放宽跨天不重复要求"
+
+    intent_summary = str(profile_ctx.get("intent_summary") or "").strip()
+    if intent_summary:
+        summary += f"；已结合对话：{intent_summary}"
 
     return PlanResult(
         summary=summary,

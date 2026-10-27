@@ -137,6 +137,13 @@ class SolverProvider(MockProvider):
             return f"蛋白下限已放宽到 {relaxed:.0%}（当前忌口组合下无法满足原目标）"
         return ""
 
+    @property
+    def variety_note(self) -> str:
+        """窄忌口池下是否放宽了跨天不重复硬约束。"""
+        if self._plan_meta.get("variety_relaxed"):
+            return "为避免当前忌口组合无解，已放宽跨天不重复要求"
+        return ""
+
     def recognize_food(self, image_bytes: bytes, content_type: str, profile_ctx: dict | None = None):
         result = self.base.recognize_food(image_bytes, content_type, profile_ctx)
         self._used = self.base.active_name   # 兜底到 mock 时如实标注

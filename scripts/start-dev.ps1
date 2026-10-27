@@ -6,6 +6,38 @@ $Root = Split-Path -Parent $PSScriptRoot
 $Backend = Join-Path $Root 'backend'
 $Frontend = Join-Path $Root 'frontend'
 $Python = Join-Path $Backend '.venv\Scripts\python.exe'
+$Vite = Join-Path $Frontend 'node_modules\vite\bin\vite.js'
+
+# VSCode 任务/新终端的 PATH 可能没有 Node（常见于装完 Node 后没重启 VSCode）。
+# 不能只查 Get-Command，必须回退到标准安装目录。
+function Find-Node {
+    $cmd = Get-Command node.exe -ErrorAction SilentlyContinue
+    if ($cmd -and $cmd.Source -and (Test-Path $cmd.Source)) {
+        return $cmd.Source
+    }
+    $candidates = @(
+        (Join-Path $env:ProgramFiles 'nodejs\node.exe'),
+        (Join-Path $env:LOCALAPPDATA 'Programs\nodejs\node.exe'),
+        (Join-Path $env:APPDATA 'nvm\node.exe'),
+        (Join-Path $env:LOCALAPPDATA 'Volta\bin\node.exe')
+    )
+    $x86 = ${env:ProgramFiles(x86)}
+    if ($x86) {
+        $candidates += (Join-Path $x86 'nodejs\node.exe')
+    }
+    foreach ($candidate in $candidates) {
+        if ($candidate -and (Test-Path $candidate)) {
+            return $candidate
+        }
+    }
+    return $null
+}
+
+$Node = Find-Node
+if ($Node) {
+    # 让 Vite/esbuild 的子进程也能找到 node
+    $env:Path = "$(Split-Path -Parent $Node);$env:Path"
+}
 $Url = 'http://127.0.0.1:5173/'
 
 $env:PYTHONUTF8 = '1'
@@ -43,6 +75,27 @@ function Test-Http {
 
 Write-Host '===== 识膳智行 一键启动 =====' -ForegroundColor Cyan
 
+# ---- 本地 Ollama 11434 ----
+$OllamaCandidates = @()
+$ollamaCmd = Get-Command ollama -ErrorAction SilentlyContinue
+if ($ollamaCmd) { $OllamaCandidates += $ollamaCmd.Source }
+$OllamaCandidates += @(
+    (Join-Path $env:LOCALAPPDATA 'Programs\Ollama\ollama.exe'),
+    (Join-Path $env:ProgramFiles 'Ollama\ollama.exe')
+)
+$Ollama = $OllamaCandidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+
+if (Test-Port 11434) {
+    Write-Host '[Ollama] 11434 已在运行，直接复用' -ForegroundColor Yellow
+} elseif ($Ollama) {
+    Write-Host '[Ollama] 正在启动本地模型服务（新窗口）...' -ForegroundColor Green
+    Start-Process -FilePath $Ollama -ArgumentList 'serve' -WindowStyle Normal
+    Wait-Port 11434
+    Write-Host '[Ollama] 11434 已就绪' -ForegroundColor Green
+} else {
+    Write-Host '[Ollama] 未安装，聊天会走 mock 兜底' -ForegroundColor Yellow
+}
+
 # ---- 后端 8000 ----
 if (Test-Port 8000) {
     if (-not (Test-Http 'http://127.0.0.1:8000/api/health')) {
@@ -68,9 +121,15 @@ if (Test-Port 5173) {
     }
     Write-Host '[前端] 5173 已在运行，直接复用' -ForegroundColor Yellow
 } else {
+    if (-not $Node) {
+        throw '找不到 node.exe，请确认 Node.js 已安装并加入 PATH。'
+    }
+    if (-not (Test-Path $Vite)) {
+        throw "找不到 Vite：$Vite，请先在 frontend 目录执行 npm install。"
+    }
     Write-Host '[前端] 正在启动 Vite（新窗口）...' -ForegroundColor Green
-    Start-Process -FilePath 'cmd.exe' `
-        -ArgumentList @('/k', 'npm.cmd run dev -- --host 127.0.0.1 --port 5173') `
+    Start-Process -FilePath $Node `
+        -ArgumentList @($Vite, '--host', '127.0.0.1', '--port', '5173') `
         -WorkingDirectory $Frontend -WindowStyle Normal
     Wait-Port 5173
     Write-Host '[前端] 5173 已就绪' -ForegroundColor Green

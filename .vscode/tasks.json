@@ -83,6 +83,23 @@
       }
     },
     {
+      "label": "全栈: 一键停止",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\scripts\\stop-dev.ps1"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
       "label": "环境: 后端依赖",
       "type": "shell",
       "command": "${workspaceFolder}\\backend\\.venv\\Scripts\\python.exe",

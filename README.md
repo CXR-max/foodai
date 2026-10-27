@@ -8,7 +8,7 @@
 | 模块 | 说明 |
 |---|---|
 | 📷 食物识别 | 上传图片 → 视觉模型认菜估重 → 本地营养库算营养 → 保存为饮食记录 |
-| ✨ 养生方案 | 偏好勾选 + 文字对话 → 逐天流式生成（带进度）→ 可视化编辑 → 导入日历 |
+| ✨ 养生方案 | 偏好勾选 + 持久化对话 → 本地 Qwen 抽取当前有效约束（同维度以最新表态为准）→ 约束求解器逐天流式生成（带进度）→ 可视化编辑 → 导入日历 |
 | ✅ 健康打卡 | 日历任务（餐食 / 运动）+ 完成度积分 + 当日全清奖励 |
 | 📊 数据追踪 | 热量趋势 / 体重轨迹 / 营养结构（ECharts 图表） |
 | 🏆 排行榜 | 积分实时排名 + 头衔徽章展示 |
@@ -32,7 +32,7 @@ FastAPI 后端 (8000) ── SQLite (backend/foodai.db) + uploads/ 图片
    │
    ▼  LLM 抽象层（provider.py 工厂，业务代码零感知）
    ├── OpenAICompatProvider ── 云端：智谱 glm-4-flash / glm-4.6v-flash（免费档）
-   │                       └─ 本地：Ollama qwen2.5:7b-instruct（仅文字）
+   │                       └─ 本地：Ollama qwen2.5:7b（仅文字）
    └── MockProvider（零依赖模拟；真模型失败自动降级，结果如实标注 provider=mock）
 ```
 
@@ -45,7 +45,8 @@ FastAPI 后端 (8000) ── SQLite (backend/foodai.db) + uploads/ 图片
 仓库根目录的 `.vscode/` 已配好解释器、调试与任务，打开项目后即可：
 
 - **一键启动**：`Ctrl+Shift+P` → **Tasks: Run Task** → **全栈: 一键启动（自动打开浏览器）**
-  - 自动检测 8000/5173：已在运行就复用，没运行就启动；不会端口冲突，最后打开 `http://127.0.0.1:5173/`
+  - 自动检测 Ollama(11434)/后端(8000)/前端(5173)：已在运行就复用，没运行就启动；最后打开 `http://127.0.0.1:5173/`
+  - 当前 `.env` 已是 `LLM_MODE=local` + `LOCAL_TEXT_MODEL=qwen2.5:7b`
 - 只调试后端：在「运行和调试」面板选 **后端: FastAPI (uvicorn)** → `F5`（需先确保 8000 没有被占用）
 - 换机器后首次：跑一次 **环境: 初始化（首次）**（装依赖 + 建库 + 造演示数据）
 - 后端调试用非热重载模式（断点稳定）；日常热重载用任务 **后端: 启动 FastAPI（热重载）**
@@ -78,15 +79,17 @@ npm run dev
 
 打开 http://localhost:5173（已配置 `/api`、`/uploads` 代理到 8000，免跨域）
 
-### 3.（可选）本地大模型
+### 3. 本地大模型（当前已接入 qwen2.5:7b）
 
 ```powershell
-# 启动 Ollama（模型目录/上下文/常驻显存参数已配好）
+# 启动 Ollama（上下文/常驻参数已配好；模型默认在 %USERPROFILE%\.ollama\models）
 .\scripts\start-ollama.ps1
 
-# 首次拉取模型（约 4.7GB，存项目内 models/）
-ollama pull qwen2.5:7b-instruct
+# 首次拉取模型（约 4.7GB）
+ollama pull qwen2.5:7b
 ```
+
+> 已安装 Ollama 并拉取模型后，一键启动任务会自动拉起 Ollama；`.env` 保持 `LLM_MODE=local` 即可。
 
 ## 大模型配置（`backend/.env`）
 
@@ -143,7 +146,7 @@ foodai/
 │       ├── main.py          # 入口：挂路由 / 种子数据 / LLM 状态接口
 │       ├── core/            # 配置 / JWT / 依赖
 │       ├── db/              # 数据库连接
-│       ├── models/          # 11 张表
+│       ├── models/          # 12 张表
 │       ├── schemas/         # 请求参数校验
 │       ├── routers/         # API 路由（识别/方案/打卡/统计/积分/商城…）
 │       ├── services/        # 营养计算 / 积分规则 / 图片压缩 / llm 抽象层
@@ -157,9 +160,9 @@ foodai/
 │       ├── layouts/         # 侧边栏布局
 │       └── components/      # 通用组件（图表/统计卡）
 ├── scripts/
+│   ├── start-dev.ps1       # 一键启动 Ollama/后端/前端
 │   ├── start-ollama.ps1     # 启动本地模型服务
 │   └── ui_test.py           # Playwright UI 全流程走查（截图到 scripts/shots/）
-├── models/                  # Ollama 模型文件（不入库）
 └── tools/                   # cloudflared 等工具
 ```
 
@@ -194,6 +197,6 @@ foodai/
 
 ## 注意事项
 
-- `.env`、`foodai.db`、`uploads/`、`models/` 均已加入 `.gitignore`，不会入库
+- `.env`、`foodai.db`、`uploads/` 均已加入 `.gitignore`，不会入库；Ollama 模型默认在用户目录 `%USERPROFILE%\.ollama\models`，不在项目内
 - 演示环境建议数据库留空或用 `seed_demo.py` 造数；生产部署前务必修改 `JWT_SECRET`
 - 更细的改动指南：[backend/README.md](backend/README.md) · [frontend/README.md](frontend/README.md)

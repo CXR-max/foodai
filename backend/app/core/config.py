@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     # 本地（Ollama，仅文字；视觉仍走云端）
     LOCAL_TEXT_BASE_URL: str = "http://localhost:11434/v1"
     LOCAL_TEXT_API_KEY: str = "ollama"        # Ollama 不校验，占位即可
-    LOCAL_TEXT_MODEL: str = "qwen2.5:7b-instruct"
+    LOCAL_TEXT_MODEL: str = "qwen2.5:7b"
 
     # 调用治理：最坏等待 ≈ 超时 × (重试次数 + 1)，超限立即走 mock 兜底，不允许长时间卡住
     LLM_TIMEOUT: int = 60             # 单次调用超时（秒）
