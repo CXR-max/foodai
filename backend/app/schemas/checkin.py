@@ -13,5 +13,6 @@ class ManualCheckInIn(BaseModel):
     check_date: str | None = None                 # YYYY-MM-DD，不填默认今天
     exercise_type: str | None = None
     duration_min: int | None = Field(default=None, gt=0, le=600)
+    intensity: str | None = Field(default=None, pattern="^(light|moderate|intense)$")  # 强度档，默认适中
     calories_burned: float | None = Field(default=None, ge=0)
     note: str = Field(default="", max_length=300)

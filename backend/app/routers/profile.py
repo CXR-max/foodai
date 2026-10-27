@@ -21,6 +21,7 @@ def profile_dict(p: HealthProfile, user: User) -> dict:
     bmr = nutrition.calc_bmr(p.weight_kg, p.height_cm, p.age, p.gender)
     return {
         "height_cm": p.height_cm, "weight_kg": p.weight_kg,
+        "body_fat_pct": p.body_fat_pct,
         "age": p.age, "gender": p.gender,
         "activity_level": p.activity_level, "goal": p.goal,
         "target_weight_kg": p.target_weight_kg,
@@ -43,7 +44,7 @@ def get_profile(user: User = Depends(get_current_user), db: Session = Depends(ge
     p = db.query(HealthProfile).filter(HealthProfile.user_id == user.id).first()
     if not p:
         return {
-            "height_cm": None, "weight_kg": None, "age": None, "gender": None,
+            "height_cm": None, "weight_kg": None, "body_fat_pct": None, "age": None, "gender": None,
             "activity_level": "moderate", "goal": "maintain", "target_weight_kg": None,
             "daily_calorie_target": None,
             "taste_preferences": [], "dietary_restrictions": [], "exercise_preferences": [],

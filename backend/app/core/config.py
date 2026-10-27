@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     LLM_MAX_TOKENS: int = 2048        # 通用/整份方案最大输出 tokens
     LLM_DAY_MAX_TOKENS: int = 700     # 逐天生成方案时单天上限（约 400 字 JSON，够用且防截断）
     LLM_CHAT_MAX_TOKENS: int = 128    # 聊天回复最大输出（提示词要求 ≤80 字）
+    LLM_REPORT_MAX_TOKENS: int = 700  # AI 健康周报输出上限（结构化 JSON 点评）
     LLM_VISION_MAX_TOKENS: int = 1500 # 食物识别输出上限（思考 token 与 JSON 共用预算，留足余量）
     LLM_VISION_THINKING: bool = False # glm-4v-flash 不支持思考模式，关闭避免报错
     LLM_VISION_MAX_RETRIES: int = 2   # 识别 JSON 校验失败重试次数（比文字宽松，防误降级 mock）

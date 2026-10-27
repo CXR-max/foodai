@@ -13,6 +13,7 @@ const weights = ref<{ weight_kg: number; recorded_date: string }[]>([])
 const form = reactive({
   height_cm: null as number | null,
   weight_kg: null as number | null,
+  body_fat_pct: null as number | null,
   age: null as number | null,
   gender: 'male',
   activity_level: 'moderate',
@@ -47,7 +48,7 @@ const newWeight = ref<number | null>(null)
 async function load() {
   const p = await profileApi.getProfile()
   Object.assign(form, {
-    height_cm: p.height_cm, weight_kg: p.weight_kg, age: p.age,
+    height_cm: p.height_cm, weight_kg: p.weight_kg, body_fat_pct: p.body_fat_pct, age: p.age,
     gender: p.gender ?? 'male', activity_level: p.activity_level, goal: p.goal,
     target_weight_kg: p.target_weight_kg,
     taste_preferences: p.taste_preferences, dietary_restrictions: p.dietary_restrictions,
@@ -104,6 +105,16 @@ onMounted(load)
               <el-col :span="8"><el-form-item label="身高(cm)"><el-input-number v-model="form.height_cm" :min="50" :max="250" style="width:100%" /></el-form-item></el-col>
               <el-col :span="8"><el-form-item label="体重(kg)"><el-input-number v-model="form.weight_kg" :min="20" :max="300" style="width:100%" /></el-form-item></el-col>
               <el-col :span="8"><el-form-item label="年龄"><el-input-number v-model="form.age" :min="5" :max="110" style="width:100%" /></el-form-item></el-col>
+            </el-row>
+            <el-row :gutter="12">
+              <el-col :span="8">
+                <el-form-item label="体脂率(%)">
+                  <el-input-number v-model="form.body_fat_pct" :min="3" :max="70" :precision="1" style="width:100%" placeholder="选填" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="16">
+                <p class="bf-tip">选填 · 肌肉占比越高同运动消耗越多，不填按 BMI 估算</p>
+              </el-col>
             </el-row>
             <el-row :gutter="12">
               <el-col :span="8">
@@ -185,4 +196,5 @@ onMounted(load)
 <style scoped>
 .bmi { font-size: 42px; font-weight: 800; margin: 4px 0 8px; }
 .page-title { margin-top: 18px; }
+.bf-tip { margin: 0; font-size: 12px; color: #909399; line-height: 1.5; padding-top: 8px; }
 </style>
