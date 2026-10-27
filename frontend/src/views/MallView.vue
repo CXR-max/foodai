@@ -14,7 +14,6 @@ const drawer = ref(false)
 
 const CATEGORIES = [
   { key: 'all', label: '全部' },
-  { key: 'honor', label: '🥇 虚拟荣誉' },
   { key: 'privilege', label: '⚡ 产品权益' },
   { key: 'goods', label: '🎁 实物好券' },
 ]
@@ -22,6 +21,46 @@ const CATEGORIES = [
 const filtered = computed(() =>
   tab.value === 'all' ? rewards.value : rewards.value.filter((r) => r.category === tab.value),
 )
+
+// ---- 使用补签卡 ----
+const makeupDialog = ref(false)
+const makeupTarget = ref<any>(null)
+const makeupDate = ref('')
+
+function todayStr() {
+  const d = new Date()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${day}`
+}
+
+function openUse(rd: any) {
+  if (rd.kind === 'makeup') {
+    makeupTarget.value = rd
+    makeupDate.value = todayStr()
+    makeupDialog.value = true
+  } else {
+    // 其它券：直接标记使用
+    doUse(rd)
+  }
+}
+
+async function doUse(rd: any, checkDate?: string) {
+  const res = await rewardsApi.useRedemption(rd.id, checkDate)
+  auth.refreshPoints(res.points_total)
+  ElMessage.success(res.message)
+  makeupDialog.value = false
+  await load()
+}
+
+async function confirmMakeup() {
+  if (!makeupTarget.value) return
+  if (!makeupDate.value) {
+    ElMessage.warning('请选择要补签的日期')
+    return
+  }
+  await doUse(makeupTarget.value, makeupDate.value)
+}
 
 async function load() {
   rewards.value = await rewardsApi.getRewards()
@@ -91,8 +130,30 @@ onMounted(load)
         </div>
         <div class="code">核销码：<b>{{ r.code }}</b></div>
         <div class="time">-{{ r.points_spent }} 积分 · {{ new Date(r.created_at).toLocaleString('zh-CN') }}</div>
+        <div v-if="r.status === 'unused'" class="use-row">
+          <el-button size="small" type="success" plain @click="openUse(r)">
+            {{ r.kind === 'makeup' ? '使用补签' : '使用/核销' }}
+          </el-button>
+        </div>
       </div>
     </el-drawer>
+
+    <!-- 使用补签卡弹窗 -->
+    <el-dialog v-model="makeupDialog" title="使用补签卡" width="360px">
+      <p style="margin-top:0;color:#909399">选择要补签的日期（补签后该天记为已打卡，并奖励积分）</p>
+      <el-date-picker
+        v-model="makeupDate"
+        type="date"
+        value-format="YYYY-MM-DD"
+        placeholder="选择补签日期"
+        :disabled-date="(d: Date) => d.getTime() > Date.now()"
+        style="width:100%"
+      />
+      <template #footer>
+        <el-button @click="makeupDialog = false">取消</el-button>
+        <el-button type="success" @click="confirmMakeup">确认补签</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -112,4 +173,5 @@ onMounted(load)
 .redeem-item .row1 { display: flex; justify-content: space-between; font-weight: 600; }
 .redeem-item .code { margin-top: 6px; color: #67c23a; letter-spacing: 1px; }
 .redeem-item .time { color: #c0c4cc; font-size: 12px; margin-top: 4px; }
+.use-row { margin-top: 8px; display: flex; justify-content: flex-end; }
 </style>

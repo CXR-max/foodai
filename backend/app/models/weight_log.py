@@ -1,5 +1,5 @@
-"""体重轨迹表：档案里只存"当前体重"，历史变化记录在这里（数据追踪页的体重曲线）"""
-from datetime import date, datetime
+"""体重记录表"""
+from datetime import datetime
 
 from sqlalchemy import Column, Date, DateTime, Float, ForeignKey, Integer, String
 
@@ -10,8 +10,8 @@ class WeightLog(Base):
     __tablename__ = "weight_logs"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     weight_kg = Column(Float, nullable=False)
-    recorded_date = Column(Date, default=date.today, index=True)
-    note = Column(String(200))
-    created_at = Column(DateTime, default=datetime.now)
+    recorded_date = Column(Date, nullable=True, index=True)
+    note = Column(String(200), nullable=True)
+    created_at = Column(DateTime, nullable=True, default=datetime.now)

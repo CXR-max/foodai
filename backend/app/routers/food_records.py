@@ -63,9 +63,12 @@ def create_record(
     else:
         raise HTTPException(status_code=400, detail="该菜品未收录营养库，请手动填写热量")
 
+    now = datetime.now()
     record = FoodRecord(
         user_id=user.id, source="manual", dish_name=data.dish_name,
-        portion_g=data.portion_g, meal_type=data.meal_type, **nut,
+        portion_g=data.portion_g, meal_type=data.meal_type,
+        eaten_at=now, eaten_date=now.date(),   # 关键：补上"吃的时间"，统计/日历才查得到
+        **nut,
     )
     db.add(record)
     db.commit()

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./.venv/Scripts/python.exe -m alembic upgrade head)",
+      "Bash(./.venv/Scripts/python.exe -c ' *)"
+    ]
+  }
+}

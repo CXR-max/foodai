@@ -1,9 +1,12 @@
 """add plan_chat_messages
 
 Revision ID: d4e8b2c1a7f3
-Revises: baf27cd8977f
+Revises: a1c3e5f7b9d1
 Create Date: 2026-10-27 15:05:00.000000
 
+融合说明：本迁移原挂在 baf27cd8977f 下，与成员版迁移 a1c3e5f7b9d1 形成双头；
+已改为挂在 a1c3e5f7b9d1 之后（7f959c9c30b8 → baf27cd8977f → a1c3e5f7b9d1 → d4e8b2c1a7f3），
+保证 alembic upgrade head 单链可执行。
 """
 from typing import Sequence, Union
 
@@ -12,7 +15,7 @@ import sqlalchemy as sa
 
 
 revision: str = 'd4e8b2c1a7f3'
-down_revision: Union[str, Sequence[str], None] = 'baf27cd8977f'
+down_revision: Union[str, Sequence[str], None] = 'a1c3e5f7b9d1'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

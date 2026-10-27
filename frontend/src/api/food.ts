@@ -59,8 +59,15 @@ export const recognize = (file: File) => {
   })
 }
 
-export const getRecognitions = (page = 1) =>
-  get<{ total: number; items: Recognition[] }>('/recognitions', { page })
+export const getRecognitions = (page = 1, pageSize = 10) =>
+  get<{ total: number; page: number; page_size: number; items: Recognition[] }>('/recognitions', { page, page_size: pageSize })
+
+/** 删除识别记录（未生成饮食记录的草稿才能删） */
+export const deleteRecognition = (id: number) => http.delete(`/recognitions/${id}`)
+
+/** 重新识别：复用原图再跑一次模型（视觉模型较慢，单独 120s 超时，否则 30s 默认超时会误报"请求失败"） */
+export const rerunRecognition = (id: number) =>
+  http.post<Recognition, Recognition>(`/recognitions/${id}/rerun`, null, { timeout: 120000 })
 
 /** 营养库菜品清单（校准弹窗下拉与营养预览） */
 export const getFoodLibrary = () => get<FoodOption[]>('/foods')

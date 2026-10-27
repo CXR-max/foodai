@@ -2,7 +2,15 @@
 import { get } from './http'
 
 export interface PointsLog { id: number; action: string; points: number; description: string; created_at: string }
-export interface RankItem { rank: number; user_id: number; nickname: string; points_total: number; is_me: boolean }
+export interface RankItem {
+  rank: number
+  user_id: number
+  nickname: string
+  points_total: number
+  is_me: boolean
+  equipped_title?: string | null
+  equipped_icon?: string | null
+}
 
 export const getLogs = (page = 1) => get<{ total: number; items: PointsLog[] }>('/points/logs', { page })
 
