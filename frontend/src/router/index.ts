@@ -20,6 +20,7 @@ const router = createRouter({
         { path: 'checkin', name: 'checkin', component: () => import('@/views/CheckInView.vue'), meta: { title: '健康打卡' } },
         { path: 'stats', name: 'stats', component: () => import('@/views/StatsView.vue'), meta: { title: '数据追踪' } },
         { path: 'mall', name: 'mall', component: () => import('@/views/MallView.vue'), meta: { title: '积分商城' } },
+        { path: 'achievements', name: 'achievements', component: () => import('@/views/AchievementsView.vue'), meta: { title: '成就徽章' } },
         { path: 'leaderboard', name: 'leaderboard', component: () => import('@/views/LeaderboardView.vue'), meta: { title: '排行榜' } },
       ],
     },
