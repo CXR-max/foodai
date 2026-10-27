@@ -13,26 +13,23 @@ from app.core.config import settings
 from app.db.session import SessionLocal
 from app.models.reward import Reward
 from app.routers import (
-    auth, checkins, food_records, foods, plans, points, profile,
+    achievements, auth, checkins, food_records, foods, plans, points, profile,
     recognitions, rewards, stats,
 )
+from app.services.achievement_seed import seed_achievements
 from app.services.llm.provider import get_llm_provider
 
 # 预置的积分商城奖励（首次启动自动写入，想加奖励改这个列表）
+# 注意：虚拟荣誉（头衔/徽章）已改为「成就解锁制」，不再用积分购买，故此处不包含 honor 类
 SEED_REWARDS = [
-    # 虚拟荣誉类（排行榜昵称旁展示）
-    ("自律新人头衔", "honor", "完成第一阶段自律养成，排行榜展示专属头衔", 50, -1, "🥉"),
-    ("坚持之星头衔", "honor", "持续坚持的证明，排行榜展示专属头衔", 150, -1, "🥈"),
-    ("全勤王者徽章", "honor", "连续打卡王者风范，排行榜展示专属徽章", 200, -1, "👑"),
-    ("健康大师头衔", "honor", "健康管理最高荣誉，排行榜展示专属头衔", 500, -1, "🥇"),
     # 产品权益类
-    ("补签卡", "privilege", "漏打卡的日子可以补签一次", 30, -1, "📅"),
-    ("方案定制券", "privilege", "生成方案时附加精细化定制要求", 80, -1, "⚡"),
-    ("专属头像框", "privilege", "解锁专属头像装饰框", 120, -1, "🎨"),
+    ("补签卡", "privilege", "漏打卡的日子可以补签一次", 30, -1, "📅", "makeup"),
+    ("方案定制券", "privilege", "生成方案时附加精细化定制要求", 80, -1, "⚡", "custom_plan"),
+    ("专属头像框", "privilege", "解锁专属头像装饰框", 120, -1, "🎨", "avatar_frame"),
     # 实物/合作券类（虚拟库存 + 核销码，比赛演示用）
-    ("健康零食礼包券", "goods", "低卡零食大礼包兑换券（线下核销）", 300, 20, "🥗"),
-    ("运动周边盲盒券", "goods", "运动装备盲盒兑换券（线下核销）", 500, 10, "⚽"),
-    ("健身房周体验卡", "goods", "合作健身房一周体验券（线下核销）", 800, 5, "💪"),
+    ("健康零食礼包券", "goods", "低卡零食大礼包兑换券（线下核销）", 300, 20, "🥗", "physical"),
+    ("运动周边盲盒券", "goods", "运动装备盲盒兑换券（线下核销）", 500, 10, "⚽", "physical"),
+    ("健身房周体验卡", "goods", "合作健身房一周体验券（线下核销）", 800, 5, "💪", "physical"),
 ]
 
 
@@ -41,9 +38,9 @@ def seed_rewards():
     db = SessionLocal()
     try:
         if db.query(Reward).count() == 0:
-            for name, category, desc, cost, stock, icon in SEED_REWARDS:
+            for name, category, desc, cost, stock, icon, kind in SEED_REWARDS:
                 db.add(Reward(name=name, category=category, description=desc,
-                              points_cost=cost, stock=stock, icon=icon))
+                              points_cost=cost, stock=stock, icon=icon, kind=kind))
             db.commit()
             print(f"[种子] 已写入 {len(SEED_REWARDS)} 个商城奖励")
     finally:
@@ -54,6 +51,7 @@ def seed_rewards():
 async def lifespan(app: FastAPI):
     """应用启动/关闭钩子"""
     seed_rewards()
+    seed_achievements(SessionLocal())
     yield
 
 
@@ -71,7 +69,7 @@ app.add_middleware(
 app.mount("/uploads", StaticFiles(directory=str(settings.UPLOAD_DIR)), name="uploads")
 
 # 业务路由，统一挂 /api 前缀
-for r in (auth, profile, recognitions, food_records, foods, plans, checkins, stats, points, rewards):
+for r in (auth, profile, recognitions, food_records, foods, plans, checkins, stats, points, rewards, achievements):
     app.include_router(r.router, prefix="/api")
 
 

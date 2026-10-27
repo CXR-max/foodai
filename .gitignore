@@ -15,7 +15,7 @@ frontend/dist/
 *.local
 
 # 本地模型（Ollama 模型文件，体积大，不入库）
-models/
+/models/
 tools/*.zip
 
 # 系统文件
