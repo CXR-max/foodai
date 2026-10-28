@@ -1261,7 +1261,7 @@
     "region": "华中",
     "dish_style": "湘菜",
     "category_l1": "荤菜",
-    "portion_g": 230,
+    "portion_g": 300,
     "taste_tags": [
       "鲜辣"
     ],
@@ -1271,7 +1271,7 @@
     ],
     "ingredients": [
       {
-        "name": "五花肉",
+        "name": "猪肉(瘦)",
         "grams": 150
       },
       {
