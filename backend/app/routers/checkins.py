@@ -4,10 +4,12 @@
      每完成一项 +3 分；当天任务全部完成额外 +10 分
 另支持手动运动/饮食打卡（均为每日首次 +2 分，防止刷分）
 """
+import logging
 import re
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
@@ -17,7 +19,11 @@ from app.models.diet_plan import DietPlan, PlanDay
 from app.models.user import User
 from app.schemas.checkin import FromPlanIn, ManualCheckInIn
 from app.services import points
-from app.services.achievements import unlock_all
+from app.services.achievements import calc_streak, unlock_all
+from app.services.llm.prompts import build_checkin_praise_messages
+from app.services.llm.provider import get_llm_provider
+
+logger = logging.getLogger("checkins")
 
 router = APIRouter(prefix="/check-ins", tags=["健康打卡"])
 
@@ -46,6 +52,38 @@ def checkin_dict(c: CheckIn, plan_day: PlanDay | None = None) -> dict:
         "plan_day_id": c.plan_day_id, "detail": detail,
         "created_at": c.created_at.isoformat() if c.created_at else None,
     }
+
+
+def _gen_ai_praise(db: Session, user: User, ctx: dict) -> str | None:
+    """打卡后生成 AI 个性化点评（锦上添花，绝不阻塞打卡主流程）。
+
+    返回规则：
+    - 真模型成功 → 一段点评（亮点 + 建议）
+    - 无 key / 真模型失败降级 mock / 任何异常 → None（前端不展示，打卡与积分照常）
+    """
+    try:
+        # 补充用户目标与今日运动总消耗，让点评有数据可"点评"而不是空泛鼓励
+        from app.models.health_profile import HealthProfile
+        profile = db.query(HealthProfile).filter(HealthProfile.user_id == user.id).first()
+        goal = {"lose": "减脂", "maintain": "维持体重", "gain": "增肌"}.get(
+            getattr(profile, "goal", "") or "", "维持体重")
+        today_burn = db.query(func.sum(CheckIn.calories_burned)).filter(
+            CheckIn.user_id == user.id, CheckIn.check_type == "exercise",
+            CheckIn.status == "done", CheckIn.check_date == date.today()).scalar() or 0
+        ctx = {**ctx, "goal": goal, "today_burn": round(today_burn)}
+
+        provider = get_llm_provider()
+        text = provider.chat(build_checkin_praise_messages(ctx), max_tokens=160)
+        # mock 的通用对话话术不适合打卡点评；真模型失败降级 mock 时同样不展示
+        if getattr(provider, "active_name", "mock") == "mock":
+            return None
+        text = (text or "").strip()
+        if not text or len(text) > 100:
+            return None
+        return text
+    except Exception as e:  # noqa: BLE001 —— 点评是加分项，任何失败都静默跳过
+        logger.warning("打卡 AI 点评生成失败：%s", e)
+        return None
 
 
 @router.get("")
@@ -162,6 +200,10 @@ def complete_checkin(
         raise HTTPException(status_code=404, detail="任务不存在")
     if c.status == "done":
         raise HTTPException(status_code=400, detail="该任务已完成")
+    # 防刷分：只能打卡当天，漏打的日子去积分商城用补签卡补
+    if c.check_date != date.today():
+        raise HTTPException(status_code=400,
+                            detail="只能打卡今天；之前漏打的可在「积分商城」用补签卡补签")
 
     c.status = "done"
     # 运动任务没记录消耗时，从方案详情取类型/时长，再按个性化模型补算
@@ -202,8 +244,23 @@ def complete_checkin(
                              once_per_day=True) or 0
     unlock_all(db, user)   # 打卡可能解锁"连续打卡"类成就
     db.commit()
+
+    # AI 个性化点评（锦上添花，失败返回 None，不影响打卡结果）
+    day_total = db.query(CheckIn).filter(
+        CheckIn.user_id == user.id, CheckIn.check_date == c.check_date).count()
+    day_done = db.query(CheckIn).filter(
+        CheckIn.user_id == user.id, CheckIn.check_date == c.check_date,
+        CheckIn.status == "done").count()
+    ai_praise = _gen_ai_praise(db, user, {
+        "action_text": f"完成方案任务：{label}",
+        "streak": calc_streak(db, user.id),
+        "done": day_done, "total": day_total,
+        "all_done": day_done == day_total,
+        "points": pts + bonus,
+    })
     return {"id": c.id, "status": c.status,
             "points_awarded": pts + bonus, "bonus": bonus,
+            "ai_praise": ai_praise,
             "message": f"任务完成 +{pts} 分" + (f"，当日全部完成 +{bonus} 分 🎉" if bonus else "")}
 
 
@@ -223,6 +280,10 @@ def manual_checkin(
     from app.services.met import INTENSITY_ORDER, personalized_burn
 
     day = date.fromisoformat(data.check_date) if data.check_date else date.today()
+    # 防刷分：只能打卡当天，漏打的日子去积分商城用补签卡补
+    if day != date.today():
+        raise HTTPException(status_code=400,
+                            detail="只能打卡今天；之前漏打的可在「积分商城」用补签卡补签")
 
     burned = data.calories_burned
     intensity = data.intensity or "moderate"
@@ -258,7 +319,13 @@ def manual_checkin(
     unlock_all(db, user)
     db.commit()
     db.refresh(c)
-    return {**checkin_dict(c), "points_awarded": pts}
+
+    ai_praise = _gen_ai_praise(db, user, {
+        "action_text": desc,
+        "streak": calc_streak(db, user.id),
+        "points": pts,
+    })
+    return {**checkin_dict(c), "points_awarded": pts, "ai_praise": ai_praise}
 
 
 @router.get("/burn-preview")

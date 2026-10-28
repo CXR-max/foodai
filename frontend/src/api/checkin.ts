@@ -18,6 +18,8 @@ export interface CheckInItem {
   burn_detail: { base?: number; factors?: { key: string; label: string; value: number; note: string }[]; steps?: string[]; low?: number; high?: number; formula?: string; source?: string } | null
   plan_day_id: number | null
   detail: any
+  /** 打卡后 AI 个性化点评（无 key / 失败时为 null） */
+  ai_praise?: string | null
 }
 
 /** 个性化消耗预估结果（弹窗展示"这个数怎么来的"） */
@@ -56,7 +58,7 @@ export const importFromPlan = (planDayId: number) =>
 
 /** 完成任务打卡（按完成度给积分） */
 export const complete = (id: number) =>
-  post<{ points_awarded: number; bonus: number; message: string }>(`/check-ins/${id}/complete`)
+  post<{ points_awarded: number; bonus: number; message: string; ai_praise?: string | null }>(`/check-ins/${id}/complete`)
 
 /** 手动打卡 */
 export const manual = (data: { check_type: 'diet' | 'exercise'; exercise_type?: string; duration_min?: number; intensity?: 'light' | 'moderate' | 'intense'; calories_burned?: number; note?: string; check_date?: string }) =>

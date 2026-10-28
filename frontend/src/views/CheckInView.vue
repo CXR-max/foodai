@@ -75,6 +75,7 @@ async function confirmCheckin() {
   } else {
     ElMessage.info(`已记录本次打卡（运动积分每日首次 +2，今天已领过）。${burnMsg}`)
   }
+  showPraise(r.ai_praise)
   await reloadAll()
 }
 
@@ -90,6 +91,19 @@ function toDateStr(v: string | Date): string {
 }
 
 const selectedDateStr = computed(() => toDateStr(selectedDate.value as string | Date))
+
+// 防刷分：只能打卡今天；漏打的日子走商城补签卡
+const isToday = computed(() => selectedDateStr.value === todayStr())
+
+// ---- AI 教练点评（持久卡片）----
+// 按日期存 localStorage：刷新页面仍在，隔天自动过期；打卡成功后更新为最新一条
+const aiPraise = ref<string | null>(localStorage.getItem(`ai_praise_${todayStr()}`))
+
+function showPraise(text: string | null | undefined) {
+  if (!text) return
+  aiPraise.value = text
+  localStorage.setItem(`ai_praise_${todayStr()}`, text)
+}
 
 // ★ 修复：切换日期时右侧任务面板要跟着刷新（之前只在页面加载时请求一次，
 //   导致点任何日期右侧显示的都是进页面那天的数据）
@@ -141,6 +155,7 @@ function formatDate(d: Date): string {
 async function complete(item: CheckInItem) {
   const r = await checkinApi.complete(item.id)
   ElMessage.success(r.message)
+  showPraise(r.ai_praise)
   await reloadAll()
 }
 
@@ -185,6 +200,7 @@ onMounted(reloadAll)
             </el-tag>
           </h3>
           <el-alert v-if="daySummary.all_done" title="当日任务全部完成，太棒了！🎉" type="success" :closable="false" style="margin-bottom:10px" />
+          <el-alert v-if="!isToday" title="仅当天可打卡：历史漏打的可在「积分商城」兑换补签卡补签" type="warning" :closable="false" style="margin-bottom:10px" />
           <el-empty v-if="!dayItems.length" description="这一天还没有任务 · 说明方案还没导入到这天，去「养生方案」页导入" :image-size="70" />
 
           <div v-for="item in dayItems" :key="item.id" class="task">
@@ -212,10 +228,20 @@ onMounted(reloadAll)
             </div>
             <el-button
               v-if="item.status === 'pending'"
-              type="success" size="small" @click="complete(item)"
+              type="success" size="small" :disabled="!isToday"
+              @click="complete(item)"
             >打卡 +3</el-button>
             <el-tag v-else type="success" effect="plain">✓ 完成</el-tag>
           </div>
+        </div>
+
+        <!-- AI 教练点评（持久卡片，展示今天最新一条；localStorage 按日期保存，刷新不丢） -->
+        <div v-if="aiPraise" class="page-card ai-praise">
+          <div class="ai-praise-head">
+            <span class="ai-praise-title">🤖 AI 教练点评</span>
+            <span class="ai-praise-sub">根据你今天的打卡数据生成</span>
+          </div>
+          <p class="ai-praise-text">{{ aiPraise }}</p>
         </div>
 
         <!-- 手动运动打卡 -->
@@ -228,7 +254,7 @@ onMounted(reloadAll)
             </el-select>
             <el-input-number v-model="exForm.duration_min" :min="5" :max="300" placeholder="分钟" />
             <span>分钟</span>
-            <el-button type="success" @click="manualCheckin">打卡</el-button>
+            <el-button type="success" :disabled="!isToday" @click="manualCheckin">打卡</el-button>
           </div>
           <div class="intensity-row">
             <span class="intensity-label">强度</span>
@@ -327,4 +353,11 @@ onMounted(reloadAll)
 .result-row { display: flex; align-items: baseline; gap: 10px; margin-top: 12px; font-size: 14px; color: #606266; }
 .result-row b { color: #e6a23c; font-size: 22px; }
 .result-row .range { font-size: 12px; color: #909399; }
+
+/* AI 教练点评卡片 */
+.ai-praise { border: 1px solid #b3d8ff; background: linear-gradient(135deg, #f0f7ff, #edfaf1); }
+.ai-praise-head { display: flex; align-items: baseline; gap: 8px; }
+.ai-praise-title { font-weight: 700; font-size: 14px; color: #303133; }
+.ai-praise-sub { font-size: 12px; color: #909399; }
+.ai-praise-text { margin: 8px 0 0; font-size: 14px; line-height: 1.7; color: #303133; }
 </style>
