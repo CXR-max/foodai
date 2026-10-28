@@ -30,8 +30,15 @@ class FoodLibraryTest(unittest.TestCase):
         self.assertEqual(foods_data.find_food("番茄炒蛋")["name"], "西红柿炒鸡蛋")
         self.assertEqual(foods_data.find_food("一碗牛肉拉面")["name"], "牛肉拉面")
 
-    def test_no_silent_fuzzy_match(self):
-        self.assertIsNone(foods_data.find_food("红烧鱼"))
+    def test_fuzzy_match_is_flagged_not_silent(self):
+        # 相似匹配允许存在（如 红烧鱼 → 红烧带鱼），但必须标成 fuzzy 由前端让用户确认，
+        # 不能悄悄当成精确命中。
+        match = foods_data.match_entry("红烧鱼")
+        if match is not None:
+            self.assertNotEqual(match["method"], "exact")
+            self.assertLess(match["score"], 1.0)
+        # 库里完全没有的菜名不应该硬配
+        self.assertIsNone(foods_data.match_entry("泰式冬阴功汤"))
 
     def test_confusable_candidates(self):
         names = [item["entry"]["name"] for item in foods_data.find_candidates("红烧肉")]
