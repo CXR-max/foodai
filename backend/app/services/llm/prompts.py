@@ -11,10 +11,19 @@ from app.services.llm import foods_data
 
 
 def build_food_recognition_prompt() -> str:
-    """构造识别提示词：注入本地营养库菜名+标准份量，引导模型输出可精确匹配的菜名"""
-    catalog = "、".join(
-        f'{f["name"]}(标准{f["common_portion_g"]}g)' for f in foods_data.load_foods()
-    )
+    """构造识别提示词：注入本地营养库菜名+标准份量，引导模型输出可精确匹配的菜名。
+
+    注意：活跃池现在有 1,800+ 条（含台湾食材），全量塞进提示词会撑爆模型上下文
+    （实测 glm-4v-flash 报 inputs tokens + max_new_tokens 超限）。所以只放「菜品」，
+    并按优先级截断到 300 条——食材由模型自然说出，不靠清单。
+    """
+    foods = [
+        f for f in foods_data.load_foods()
+        if f.get("food_type") in {"dish", "light_meal"}
+    ]
+    foods.sort(key=lambda f: (0 if f.get("source") == "recipe" else 1, f.get("id") or 0))
+    foods = foods[:300]
+    catalog = "、".join(f'{f["name"]}(标准{f["common_portion_g"]}g)' for f in foods)
     return f"""你是一个专业的营养分析专家，正在帮用户估算餐食的分量与热量。请仔细观察图片，严格只输出一个 JSON 对象，不要任何解释或 markdown 代码块。
 
 观察步骤（在心里执行，不要输出过程）：
