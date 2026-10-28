@@ -41,3 +41,9 @@ Thumbs.db
 .lark-slides/
 .claude/
 _compare.ps1
+
+# 本地服务日志
+backend/server.log
+backend/server.err.log
+frontend/vite.log
+frontend/vite.err.log
