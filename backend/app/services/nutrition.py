@@ -85,12 +85,22 @@ def match_and_calc(dish_name: str, portion_g: float, category: str | None = None
     """
     菜名 + 克重 → 匹配营养库 → 营养值
     命中库：营养值精确且全站口径一致；未命中：按类别均值估算（类别不识别则全库均值）并标记
-    返回：{calories, protein_g, fat_g, carb_g, matched, matched_name, note}
+    返回：{calories, protein_g, fat_g, carb_g, matched, matched_name, match_method, match_score,
+           nutrition_source, note}
     """
-    entry = foods_data.find_food(dish_name)
-    if entry:
+    match = foods_data.match_entry(dish_name)
+    if match:
+        entry = match["entry"]
         nut = foods_data.calc_nutrition(entry, portion_g)
-        return {**nut, "matched": True, "matched_name": entry["name"], "note": "营养值来自本地营养库"}
+        return {
+            **nut,
+            "matched": True,
+            "matched_name": entry["name"],
+            "match_method": match["method"],
+            "match_score": match["score"],
+            "nutrition_source": "dish_library",
+            "note": foods_data.describe_match(match),
+        }
     # 未收录 → 类别均值（category_average 内部对未知类别自动回退全库均值）× 克重
     avg = foods_data.category_average(category or None)
     factor = max(portion_g, 0) / 100.0
@@ -101,5 +111,8 @@ def match_and_calc(dish_name: str, portion_g: float, category: str | None = None
         "carb_g": round(avg["carb_g"] * factor, 1),
         "matched": False,
         "matched_name": None,
+        "match_method": "none",
+        "match_score": 0.0,
+        "nutrition_source": "category_average",
         "note": "菜品暂未收录营养库，按通用估算值记录",
     }

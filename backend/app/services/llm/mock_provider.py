@@ -11,7 +11,7 @@ from app.services.llm.base import LLMProvider
 from app.services.llm.prompts import EXERCISE_METABOLIC
 from app.services.llm.schemas import (
     PlanDay, PlanExercise, PlanMeal, PlanMealItem, PlanResult,
-    RecognizedIngredient, VisionRecognitionResult,
+    RecognizedDish, RecognizedIngredient, VisionRecognitionResult,
 )
 
 # 禁忌标签映射：勾了某个禁忌 → 营养库里带这些标签的菜不能选
@@ -54,18 +54,42 @@ class MockProvider(LLMProvider):
         # 4) 确定性选菜 + 分量 ±10% 抖动
         dish = pool[h % len(pool)]
         portion = round(dish["common_portion_g"] * (0.9 + (h >> 8) % 21 / 100))
-        ingredients = [
-            RecognizedIngredient(name=ing, portion_g=round(portion / max(len(dish["ingredients"]), 1)))
-            for ing in dish.get("ingredients", [])
-        ]
+
+        def make_dish(entry, grams, conf):
+            names = entry.get("ingredients") or []
+            ings = [
+                RecognizedIngredient(name=ing, portion_g=round(grams / max(len(names), 1)))
+                for ing in names
+            ]
+            return RecognizedDish(
+                dish_name=entry["name"], category=entry.get("category", ""),
+                size_class="normal", portion_g=grams,
+                portion_desc=f"一份约{grams}g", confidence=conf, ingredients=ings,
+            )
+
+        main = make_dish(dish, portion, round(0.75 + h % 20 / 100, 2))
+        dishes = [main]
+        # 1/3 的概率再认出一份主食/汤，覆盖"多道菜"场景（同一张图结果恒定）
+        if h % 3 == 0:
+            extras = [
+                f for f in foods_data.load_foods()
+                if f["name"] in {"米饭", "馒头", "紫菜蛋花汤", "西红柿炒鸡蛋"}
+            ]
+            if extras:
+                extra = extras[(h >> 4) % len(extras)]
+                if extra["name"] != dish["name"]:
+                    dishes.append(make_dish(extra, int(extra["common_portion_g"]),
+                                            round(0.7 + (h >> 6) % 20 / 100, 2)))
+
         return VisionRecognitionResult(
             is_food=True,
-            dish_name=dish["name"],
-            ingredients=ingredients,
-            portion_g=portion,
-            portion_desc=f"一份约{portion}g",
-            confidence=round(0.75 + h % 20 / 100, 2),
-            description=f"识别到常见中餐：{dish['name']}（mock 模拟结果，营养值由本地营养库计算）",
+            dish_name=main.dish_name,
+            ingredients=main.ingredients,
+            portion_g=main.portion_g,
+            portion_desc=main.portion_desc,
+            confidence=main.confidence,
+            description=f"识别到{'、'.join(d.dish_name for d in dishes)}（mock 模拟结果，营养值由本地营养库计算）",
+            dishes=dishes,
         )
 
     # ---------------- 方案生成（规则模拟） ----------------

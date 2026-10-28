@@ -8,9 +8,13 @@ class SaveRecognitionIn(BaseModel):
 
 
 class CorrectRecognitionIn(BaseModel):
-    """手动校准识别结果：只允许改菜名与克数，营养值由营养库重算"""
+    """手动校准识别结果：只允许改菜名与克数，营养值由营养库重算
+
+    dish_index 为空时表示整条识别记录按单菜处理；多菜识别时传下标只改其中一道。
+    """
     dish_name: str = Field(min_length=1, max_length=100)
     portion_g: float = Field(ge=10, le=3000)
+    dish_index: int | None = Field(default=None, ge=0, le=9)
 
 
 class FoodRecordIn(BaseModel):

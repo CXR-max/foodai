@@ -1,6 +1,59 @@
 // 食物识别 + 饮食记录接口
 import http, { get, patch, post } from './http'
 
+/** 低置信度 / 易混淆时的候选菜 */
+export interface MatchCandidate {
+  name: string
+  category?: string | null
+  common_portion_g: number
+  calories_per_100g?: number | null
+  match_method: string   // exact / synonym / alias / contains / fuzzy / confusable
+  score: number
+  distinguish_tip?: string | null
+  relation_type?: string | null
+  group_key?: string | null
+}
+
+/** 匹配判定：是否需要用户确认、候选、原因 */
+export interface MatchInfo {
+  query: string
+  matched: boolean
+  matched_name?: string | null
+  method: string
+  method_label: string
+  score: number
+  needs_confirm: boolean
+  reason_codes: string[]
+  reasons: string[]
+  candidates: MatchCandidate[]
+  nutrition_source?: string
+  corrected?: boolean
+  dietary_tags?: string[]
+  taste_tags?: string[]
+  ingredients?: string[]
+}
+
+export interface DishItem {
+  dish_name: string
+  category?: string
+  size_class?: string
+  portion_g: number
+  portion_desc?: string
+  confidence: number
+  ingredients: { name: string; portion_g: number }[]
+  nutrition: {
+    calories: number
+    protein_g: number
+    fat_g: number
+    carb_g: number
+    matched: boolean
+    matched_name?: string | null
+    note: string
+  }
+  match?: MatchInfo
+  corrected?: boolean
+}
+
 export interface Recognition {
   id: number
   image_url: string | null
@@ -24,16 +77,56 @@ export interface Recognition {
       ingredients: { name: string; portion_g: number }[]
       description: string
     }
-    nutrition: { calories: number; protein_g: number; fat_g: number; carb_g: number; matched: boolean; matched_name?: string | null; note: string }
+    nutrition: {
+      calories: number
+      protein_g: number
+      fat_g: number
+      carb_g: number
+      matched: boolean
+      matched_name?: string | null
+      match_method?: string
+      match_score?: number
+      nutrition_source?: string
+      note: string
+    }
+    match?: MatchInfo
+    dishes?: DishItem[]
+    food_record_ids?: number[]
   }
 }
 
 /** 营养库菜品（手动校准下拉 + 营养预览用） */
 export interface FoodOption {
   name: string
+  name_en?: string | null
   category: string
+  category_l2?: string | null
   common_portion_g: number
-  per_100g: { calories: number; protein_g: number; fat_g: number; carb_g: number }
+  serving_g?: number | null
+  per_100g: {
+    calories: number
+    protein_g: number
+    fat_g: number
+    carb_g: number
+    fiber_g?: number | null
+    sodium_mg?: number | null
+    sugar_g?: number | null
+  }
+  food_type?: string | null
+  dish_style?: string | null
+  region?: string | null
+  cuisine?: string | null
+  state?: string | null
+  edible_ratio?: number | null
+  aliases?: string[]
+  relations?: { group_key: string; relation_type: string; name: string; distinguish_tip?: string | null }[]
+  verified?: boolean
+  active?: boolean
+  source?: string | null
+  source_type?: string | null
+  license?: string | null
+  source_url?: string | null
+  version?: string | null
 }
 
 export interface FoodRecord {
@@ -69,11 +162,23 @@ export const deleteRecognition = (id: number) => http.delete(`/recognitions/${id
 export const rerunRecognition = (id: number) =>
   http.post<Recognition, Recognition>(`/recognitions/${id}/rerun`, null, { timeout: 120000 })
 
-/** 营养库菜品清单（校准弹窗下拉与营养预览） */
-export const getFoodLibrary = () => get<FoodOption[]>('/foods')
+export interface FoodLibraryStats {
+  total: number
+  total_all: number
+  inactive: number
+  cuisines: Record<string, number>
+  food_types: Record<string, number>
+  sources: Record<string, number>
+}
+
+/** 营养库菜品清单（校准弹窗下拉与营养预览）；includeInactive 包含 staging */
+export const getFoodLibrary = (includeInactive = false) =>
+  get<FoodOption[]>('/foods', includeInactive ? { include_inactive: true } : undefined)
+
+export const getFoodLibraryStats = () => get<FoodLibraryStats>('/foods/stats')
 
 /** 手动校准识别结果：只改菜名+克数，营养值由后端按营养库重算 */
-export const correctRecognition = (id: number, data: { dish_name: string; portion_g: number }) =>
+export const correctRecognition = (id: number, data: { dish_name: string; portion_g: number; dish_index?: number }) =>
   patch<Recognition>(`/recognitions/${id}`, data)
 
 export const saveRecognition = (id: number, mealType: string) =>

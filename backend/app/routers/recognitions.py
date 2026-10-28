@@ -17,11 +17,12 @@ from app.models.health_profile import HealthProfile
 from app.models.recognition import Recognition
 from app.models.user import User
 from app.schemas.food_record import CorrectRecognitionIn, SaveRecognitionIn
-from app.services import nutrition, points
+from app.services import nutrition, points, recognition
 from app.services.achievements import unlock_all
 from app.services.images import compress_for_vision
 from app.services.llm import foods_data
 from app.services.llm.provider import get_llm_provider
+from app.services.llm.schemas import RecognizedDish
 
 router = APIRouter(prefix="/recognitions", tags=["食物识别"])
 
@@ -44,22 +45,81 @@ def recognition_dict(r: Recognition) -> dict:
     }
 
 
+def _dish_views(vision):
+    """把识别结果统一成「每道菜一项」；单菜模型没给 dishes 时用顶层字段兜底"""
+    if vision.dishes:
+        return list(vision.dishes)
+    return [RecognizedDish(
+        dish_name=vision.dish_name,
+        category=vision.category,
+        size_class=vision.size_class,
+        portion_g=vision.portion_g,
+        portion_desc=vision.portion_desc,
+        confidence=vision.confidence,
+        ingredients=vision.ingredients,
+    )]
+
+
+class _DishView:
+    """给 recognition.evaluate 用的轻量视图（它只读 dish_name/confidence/is_food）"""
+
+    def __init__(self, dish: RecognizedDish):
+        self.dish_name = dish.dish_name
+        self.confidence = dish.confidence
+        self.is_food = True
+
+
+def _totals(dishes: list[dict]) -> dict:
+    """多道菜的营养合计（一份照片一行展示，统计仍按 food_records 逐菜算）"""
+    keys = ("calories", "protein_g", "fat_g", "carb_g")
+    total = {k: round(sum(float((d.get("nutrition") or {}).get(k) or 0) for d in dishes), 1) for k in keys}
+    matched = bool(dishes) and all((d.get("nutrition") or {}).get("matched") for d in dishes)
+    primary = dishes[0]["nutrition"] if dishes else {}
+    total.update({
+        "matched": matched,
+        "matched_name": primary.get("matched_name"),
+        "match_method": primary.get("match_method", "none"),
+        "match_score": primary.get("match_score", 0.0),
+        "nutrition_source": "dish_library" if matched else "mixed",
+        "note": f"共 {len(dishes)} 道菜，按本地营养库合计" if dishes else "未识别到食物",
+    })
+    return total
+
+
 def _analyze_image(image_bytes: bytes, content_type: str, profile_ctx: dict):
-    """调视觉模型 → 档位克数校准 → 营养库换算。返回 (vision, nut, raw_portion_g, provider)"""
+    """调视觉模型 → 逐道菜克重校准 + 营养库换算 + 匹配判定。
+
+    返回 (vision, dishes, totals, raw_portion_g, provider)
+    dishes: [{dish_name, category, size_class, portion_g, confidence, ingredients, nutrition, match}]
+    """
     provider = get_llm_provider()
     vision = provider.recognize_food(image_bytes, content_type, profile_ctx)
 
-    # 档位制克数校准：命中营养库 → 标准份 × 档位系数；未命中 → 模型克重（限制合理区间）
-    raw_portion_g = vision.portion_g or 0
+    dishes: list[dict] = []
     if vision.is_food:
-        vision.portion_g = nutrition.resolve_portion(vision.dish_name, raw_portion_g, vision.size_class)
+        for item in _dish_views(vision):
+            raw = item.portion_g or 0
+            item.portion_g = nutrition.resolve_portion(item.dish_name, raw, item.size_class)
+            nut = nutrition.match_and_calc(item.dish_name, item.portion_g, item.category)
+            match_info = recognition.evaluate(_DishView(item), nut)
+            dishes.append({
+                **item.model_dump(),
+                "portion_g_raw": raw,
+                "nutrition": nut,
+                "match": match_info,
+            })
+        # 顶层字段与主菜保持一致，兼容旧的单菜逻辑/前端
+        if dishes:
+            vision.dish_name = dishes[0]["dish_name"]
+            vision.portion_g = dishes[0]["portion_g"]
+            vision.ingredients = _dish_views(vision)[0].ingredients
 
-    # 营养库换算（视觉模型只认菜，营养值由本地库算 → 全站口径一致）
-    nut = nutrition.match_and_calc(vision.dish_name, vision.portion_g or 0, vision.category)
+    totals = _totals(dishes)
     if not vision.is_food:
-        nut = {"calories": 0, "protein_g": 0, "fat_g": 0, "carb_g": 0,
-               "matched": False, "matched_name": None, "note": "未识别到食物"}
-    return vision, nut, raw_portion_g, provider
+        totals = {"calories": 0, "protein_g": 0, "fat_g": 0, "carb_g": 0,
+                  "matched": False, "matched_name": None, "match_method": "none", "match_score": 0.0,
+                  "nutrition_source": "none", "note": "未识别到食物"}
+    return vision, dishes, totals, (dishes[0]["portion_g_raw"] if dishes else (vision.portion_g or 0)), provider
 
 
 def _build_profile_ctx(db: Session, user_id: int) -> dict:
@@ -89,7 +149,7 @@ async def create_recognition(
     image_bytes, content_type = compress_for_vision(image_bytes, file.content_type or "image/jpeg")
 
     profile_ctx = _build_profile_ctx(db, user.id)
-    vision, nut, raw_portion_g, provider = _analyze_image(image_bytes, content_type, profile_ctx)
+    vision, dishes, nut, raw_portion_g, provider = _analyze_image(image_bytes, content_type, profile_ctx)
 
     # 图片存到 uploads/，用 uuid 防中文路径问题（存压缩后的版本，省空间）
     ext = ALLOWED_TYPES.get(content_type, ".jpg")
@@ -101,8 +161,10 @@ async def create_recognition(
         image_path=image_name,
         provider=provider.active_name,   # 兜底到 mock 时如实标注
         result={
-            "vision": {**vision.model_dump(), "portion_g_raw": raw_portion_g},  # 原始克重保留备查
+            "vision": {**vision.model_dump(exclude={"dishes"}), "dishes": dishes, "portion_g_raw": raw_portion_g},
             "nutrition": nut,
+            "match": dishes[0]["match"] if dishes else recognition.evaluate(vision, nut),
+            "dishes": dishes,                # 每道菜：克重/营养/匹配/是否需要确认
         },
         dish_name=vision.dish_name,
         calories=nut["calories"],
@@ -149,9 +211,58 @@ def correct_recognition(
     if not rec or rec.user_id != user.id:
         raise HTTPException(status_code=404, detail="识别记录不存在")
 
+    result = dict(rec.result or {})
+    dishes = list(result.get("dishes") or [])
+
+    # ---- 多菜场景：只校准其中一道 ----
+    if data.dish_index is not None and 0 <= data.dish_index < len(dishes):
+        nut = nutrition.match_and_calc(data.dish_name, data.portion_g)
+        item = dict(dishes[data.dish_index])
+        view = _DishView(RecognizedDish(
+            dish_name=data.dish_name, category=item.get("category", ""),
+            portion_g=data.portion_g, confidence=1.0,
+        ))
+        match_info = recognition.evaluate(view, nut)
+        match_info.update({"needs_confirm": False, "reason_codes": [], "reasons": [], "corrected": True})
+        entry = foods_data.find_food(data.dish_name)
+        names = entry.get("ingredients") if entry else [i.get("name") for i in (item.get("ingredients") or [])]
+        item.update({
+            "dish_name": data.dish_name,
+            "portion_g": data.portion_g,
+            "portion_desc": f"手动校准：{data.dish_name} {data.portion_g:g}g"[:50],
+            "ingredients": [{"name": name, "portion_g": 0} for name in (names or [])],
+            "nutrition": nut,
+            "match": match_info,
+            "corrected": True,
+        })
+        dishes[data.dish_index] = item
+        totals = _totals(dishes)
+        result["dishes"] = dishes
+        result["nutrition"] = totals
+        result["match"] = dishes[0]["match"] if dishes else match_info
+        rec.result = result
+        rec.dish_name = dishes[0]["dish_name"]
+        rec.calories = totals["calories"]
+        rec.is_food = True
+
+        ids = list(result.get("food_record_ids") or [])
+        if data.dish_index < len(ids):
+            record = db.get(FoodRecord, ids[data.dish_index])
+            if record:
+                record.dish_name = data.dish_name
+                record.portion_g = data.portion_g
+                record.portion_desc = item["portion_desc"]
+                record.ingredients = item["ingredients"]
+                record.calories = nut["calories"]
+                record.protein_g = nut["protein_g"]
+                record.fat_g = nut["fat_g"]
+                record.carb_g = nut["carb_g"]
+        db.commit()
+        db.refresh(rec)
+        return recognition_dict(rec)
+
     nut = nutrition.match_and_calc(data.dish_name, data.portion_g)
 
-    result = dict(rec.result or {})
     vision = dict(result.get("vision") or {})
     if not vision.get("corrected"):
         vision["original"] = {
@@ -170,6 +281,40 @@ def correct_recognition(
         vision["ingredients"] = [{"name": name, "portion_g": 0} for name in entry.get("ingredients", [])]
     result["vision"] = vision
     result["nutrition"] = nut
+
+    # 校准后按新菜名重算匹配信息：确认过的不再要求确认
+    class _Corrected:
+        is_food = True
+        dish_name = data.dish_name
+        confidence = 1.0
+
+    match_info = recognition.evaluate(_Corrected(), nut)
+    match_info["needs_confirm"] = False
+    match_info["reason_codes"] = []
+    match_info["reasons"] = []
+    match_info["corrected"] = True
+    result["match"] = match_info
+
+    # 单菜校准：把多菜结果收敛成一条，避免统计重复
+    result["dishes"] = [{
+        "dish_name": data.dish_name,
+        "category": vision.get("category", ""),
+        "size_class": "normal",
+        "portion_g": data.portion_g,
+        "portion_desc": vision["portion_desc"],
+        "confidence": 1.0,
+        "ingredients": vision.get("ingredients") or [],
+        "nutrition": nut,
+        "match": match_info,
+        "corrected": True,
+    }]
+    old_ids = list(result.get("food_record_ids") or [])
+    if len(old_ids) > 1:
+        for extra_id in old_ids[1:]:
+            extra = db.get(FoodRecord, extra_id)
+            if extra:
+                db.delete(extra)
+        result["food_record_ids"] = old_ids[:1]
 
     rec.result = result
     rec.dish_name = data.dish_name
@@ -210,35 +355,68 @@ def save_as_food_record(
     if not rec.is_food:
         raise HTTPException(status_code=400, detail="未识别到食物，无法保存")
 
-    nut = (rec.result or {}).get("nutrition", {})
+    result = dict(rec.result or {})
+    vision = dict(result.get("vision") or {})
+    dishes = result.get("dishes") or []
     now = datetime.now()
-    record = FoodRecord(
-        user_id=user.id,
-        recognition_id=rec.id,
-        source="photo",
-        dish_name=rec.dish_name or "未知食物",
-        ingredients=(rec.result or {}).get("vision", {}).get("ingredients"),
-        portion_g=(rec.result or {}).get("vision", {}).get("portion_g") or 0,
-        portion_desc=(rec.result or {}).get("vision", {}).get("portion_desc") or "",
-        calories=nut.get("calories", 0),
-        protein_g=nut.get("protein_g", 0),
-        fat_g=nut.get("fat_g", 0),
-        carb_g=nut.get("carb_g", 0),
-        meal_type=data.meal_type,
-        image_path=rec.image_path,
-        eaten_at=now,           # 关键修复：落库时补上"吃的时间"，否则统计/日历查不到
-        eaten_date=now.date(),
-    )
-    db.add(record)
-    db.commit()
-    db.refresh(record)
+    ids: list[int] = []
 
-    rec.food_record_id = record.id
+    if dishes:
+        # 多菜：一道菜一条饮食记录（统计口径按菜品算），积分仍按「每张照片」只给一次
+        for dish in dishes:
+            nut = dish.get("nutrition") or {}
+            record = FoodRecord(
+                user_id=user.id,
+                recognition_id=rec.id,
+                source="photo",
+                dish_name=dish.get("dish_name") or "未知食物",
+                ingredients=dish.get("ingredients") or [],
+                portion_g=dish.get("portion_g") or 0,
+                portion_desc=dish.get("portion_desc") or "",
+                calories=nut.get("calories", 0),
+                protein_g=nut.get("protein_g", 0),
+                fat_g=nut.get("fat_g", 0),
+                carb_g=nut.get("carb_g", 0),
+                meal_type=data.meal_type,
+                image_path=rec.image_path,
+                eaten_at=now,
+                eaten_date=now.date(),
+            )
+            db.add(record)
+            db.flush()
+            ids.append(record.id)
+    else:
+        # 兼容旧识别记录：整张图一条记录
+        nut = result.get("nutrition", {})
+        record = FoodRecord(
+            user_id=user.id,
+            recognition_id=rec.id,
+            source="photo",
+            dish_name=rec.dish_name or "未知食物",
+            ingredients=vision.get("ingredients"),
+            portion_g=vision.get("portion_g") or 0,
+            portion_desc=vision.get("portion_desc") or "",
+            calories=nut.get("calories", 0),
+            protein_g=nut.get("protein_g", 0),
+            fat_g=nut.get("fat_g", 0),
+            carb_g=nut.get("carb_g", 0),
+            meal_type=data.meal_type,
+            image_path=rec.image_path,
+            eaten_at=now,
+            eaten_date=now.date(),
+        )
+        db.add(record)
+        db.flush()
+        ids.append(record.id)
+
+    result["food_record_ids"] = ids
+    rec.result = result
+    rec.food_record_id = ids[0]
     pts = points.award(db, user, "save_recognition",
-                       description=f"保存识别记录：{rec.dish_name}", ref_type="food_record", ref_id=record.id)
+                       description=f"保存识别记录：{rec.dish_name}", ref_type="food_record", ref_id=ids[0])
     unlock_all(db, user)   # 累计保存饮食记录成就
     db.commit()
-    return {"food_record_id": record.id, "points_awarded": pts or 0}
+    return {"food_record_id": ids[0], "food_record_ids": ids, "points_awarded": pts or 0}
 
 
 @router.post("/{recognition_id}/rerun")
@@ -266,12 +444,14 @@ def rerun_recognition(
         content_type = "image/webp"
 
     profile_ctx = _build_profile_ctx(db, user.id)
-    vision, nut, raw_portion_g, provider = _analyze_image(image_bytes, content_type, profile_ctx)
+    vision, dishes, nut, raw_portion_g, provider = _analyze_image(image_bytes, content_type, profile_ctx)
 
     rec.provider = provider.active_name
     rec.result = {
-        "vision": {**vision.model_dump(), "portion_g_raw": raw_portion_g},
+        "vision": {**vision.model_dump(exclude={"dishes"}), "dishes": dishes, "portion_g_raw": raw_portion_g},
         "nutrition": nut,
+        "match": dishes[0]["match"] if dishes else recognition.evaluate(vision, nut),
+        "dishes": dishes,
     }
     rec.dish_name = vision.dish_name
     rec.calories = nut["calories"]

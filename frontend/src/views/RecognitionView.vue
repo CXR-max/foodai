@@ -5,7 +5,9 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadRequestOptions } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
 import * as foodApi from '@/api/food'
-import type { FoodOption, Recognition } from '@/api/food'
+import type { FoodOption, MatchCandidate, Recognition } from '@/api/food'
+import { getOverview } from '@/api/stats'
+import { getProfile } from '@/api/profile'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -28,6 +30,12 @@ const correctDialog = ref(false)
 const correctSaving = ref(false)
 const foodLibrary = ref<FoodOption[]>([])
 const correctForm = ref({ dish_name: '', portion_g: 200 })
+const correctIndex = ref<number | null>(null)   // 多菜时校准的是第几道
+const dishCount = computed(() => current.value?.result?.dishes?.length || 0)
+const saveLabel = computed(() => {
+  if (current.value?.food_record_id) return '✓ 已保存为饮食记录'
+  return dishCount.value > 1 ? `保存为饮食记录（${dishCount.value} 道菜）` : '保存为饮食记录'
+})
 
 // 当前选中库内菜（提供标准份量与每100g营养，用于快捷份量和实时预览）
 const selectedOption = computed(() =>
@@ -48,12 +56,148 @@ const previewNut = computed(() => {
   }
 })
 
+// ---- 低置信度 / 易混淆：候选确认（后端给出 match.needs_confirm 时才出现）----
+const confirmName = ref('')
+const confirmPortion = ref(200)
+const confirming = ref(false)
+const matchInfo = computed(() => current.value?.result?.match || null)
+const METHOD_LABELS: Record<string, string> = {
+  exact: '精确命中', synonym: '同义归一', alias: '别名命中',
+  contains: '包含匹配', fuzzy: '相似匹配', confusable: '易混淆',
+}
+
+function methodLabel(method: string) {
+  return METHOD_LABELS[method] || method
+}
+
+// 用后端候选初始化确认表单：默认选第一个（通常是模型原判）
+function initConfirm() {
+  const info = current.value?.result?.match
+  if (!info?.needs_confirm) return
+  const first = info.candidates?.[0]
+  confirmName.value = first?.name || current.value?.dish_name || ''
+  confirmPortion.value = Math.round(first?.common_portion_g || current.value?.result?.vision?.portion_g || 200)
+}
+
+function pickCandidate(c: MatchCandidate) {
+  confirmName.value = c.name
+  confirmPortion.value = Math.round(c.common_portion_g || confirmPortion.value)
+}
+
+async function confirmMatch() {
+  if (!current.value || !confirmName.value) return
+  confirming.value = true
+  try {
+    current.value = await foodApi.correctRecognition(current.value.id, {
+      dish_name: confirmName.value,
+      portion_g: confirmPortion.value,
+      dish_index: dishCount.value > 1 ? 0 : undefined,
+    })
+    ElMessage.success('已按你选择的菜品重算营养')
+    await loadHistory()
+  } finally {
+    confirming.value = false
+  }
+}
+
+// ---- 今日热量预算 + 禁忌/过敏提示（只做提示，不阻断保存）----
+const budget = ref<{ today: number; target: number | null } | null>(null)
+const restrictions = ref<string[]>([])
+const budgetPct = computed(() => {
+  if (!budget.value?.target) return 0
+  return Math.min(100, Math.round((budget.value.today / budget.value.target) * 100))
+})
+
+async function loadMeta() {
+  try {
+    const o = await getOverview()
+    budget.value = { today: o.today_calories, target: o.daily_target }
+  } catch { /* 未登录/接口异常时静默 */ }
+  try {
+    const p = await getProfile()
+    restrictions.value = p.dietary_restrictions || []
+  } catch { /* 同上 */ }
+}
+
+const ALLERGY_RULES: { key: string; words: string[] }[] = [
+  { key: '海鲜过敏', words: ['虾', '蟹', '鱼', '贝', '蛤', '鱿', '海参'] },
+  { key: '花生过敏', words: ['花生'] },
+  { key: '坚果过敏', words: ['花生', '核桃', '杏仁', '腰果', '榛子'] },
+  { key: '乳糖不耐', words: ['牛奶', '奶油', '黄油', '芝士', '酸奶'] },
+  { key: '麸质过敏', words: ['面粉', '面包', '面条', '馒头', '饺子', '面筋'] },
+  { key: '大豆过敏', words: ['豆腐', '豆干', '腐竹', '黄豆', '豆芽', '豆浆', '豆瓣酱'] },
+  { key: '不吃猪肉', words: ['猪肉', '五花', '排骨', '里脊', '火腿', '腊肉', '叉烧'] },
+  { key: '不吃牛肉', words: ['牛肉', '牛腩'] },
+  { key: '清真', words: ['猪肉', '五花', '排骨', '火腿', '腊肉', '料酒'] },
+]
+const MEAT_WORDS = ['肉', '鸡', '鸭', '鱼', '虾', '蟹', '排骨', '火腿', '腊肉', '牛', '羊']
+
+// 命中档案里的禁忌/过敏项时给红条提示（数据来自营养库标准食材 + 标签）
+const dietWarnings = computed(() => {
+  const info = matchInfo.value
+  if (!info || !current.value?.is_food) return []
+  const text = [current.value.dish_name, ...(info.ingredients || [])].join(' ')
+  const tags = [...(info.dietary_tags || []), ...(info.taste_tags || [])]
+  const hits: string[] = []
+  const portion = current.value.result.vision.portion_g || 1
+  const fatPer100 = ((current.value.result.nutrition.fat_g || 0) * 100) / portion
+
+  for (const rule of restrictions.value) {
+    if (rule === '素食' || rule === '蛋奶素') {
+      const hit = MEAT_WORDS.find((w) => text.includes(w))
+      if (hit) hits.push(`${rule}：这道菜含「${hit}」`)
+      continue
+    }
+    if (rule === '忌辣') {
+      if (tags.some((t) => t.includes('辣')) || ['辣椒', '花椒', '豆瓣酱'].some((w) => text.includes(w))) {
+        hits.push('忌辣：含辣椒/花椒/豆瓣酱')
+      }
+      continue
+    }
+    if (rule === '少油') {
+      if (fatPer100 > 15) hits.push(`少油：脂肪约 ${Math.round(fatPer100)}g/100g`)
+      continue
+    }
+    if (rule === '低糖') {
+      if (['白糖', '冰糖'].some((w) => text.includes(w))) hits.push('低糖：含糖调味')
+      continue
+    }
+    if (rule === '低盐') continue // 营养结果里暂无钠，留给后续
+    const map = ALLERGY_RULES.find((x) => x.key === rule)
+    if (!map) continue
+    const hit = map!.words.find((w) => text.includes(w) || tags.some((t) => t.includes(w)))
+    if (hit) hits.push(`${rule}：含「${hit}」`)
+  }
+  return [...new Set(hits)]
+})
+
+// 结果卡上的份量快捷：小/标准/大份 = 标准份 × 0.7 / 1 / 1.3
+async function quickPortion(factor: number) {
+  if (!current.value) return
+  const base = matchInfo.value?.candidates?.[0]?.common_portion_g
+    || current.value.result?.vision?.portion_g
+    || 200
+  confirming.value = true
+  try {
+    current.value = await foodApi.correctRecognition(current.value.id, {
+      dish_name: current.value.dish_name,
+      portion_g: Math.max(10, Math.round(base * factor)),
+      dish_index: dishCount.value > 1 ? 0 : undefined,
+    })
+    ElMessage.success(`已按${factor < 1 ? '小份' : factor > 1 ? '大份' : '标准份'}重算营养`)
+    await loadHistory()
+  } finally {
+    confirming.value = false
+  }
+}
+
 // 自定义上传：拿到文件后调识别接口（120s 超时已封装在 api 层）
 async function doUpload(options: UploadRequestOptions) {
   recognizing.value = true
   current.value = null
   try {
     current.value = await foodApi.recognize(options.file)
+    initConfirm()
     if (!current.value.is_food) {
       ElMessage.warning('图片中未识别到食物，换一张试试？')
     } else if (current.value.provider === 'mock') {
@@ -99,6 +243,7 @@ async function rerunRec(row: Recognition) {
   try {
     const r = await foodApi.rerunRecognition(row.id)
     current.value = r        // ★ 右侧结果卡片直接展示重跑后的完整明细（克重/食材/营养）
+    initConfirm()
     if (!r.is_food) {
       ElMessage.warning('重新识别完成：图片中未识别到食物')
     } else if (r.provider === 'mock') {
@@ -128,6 +273,7 @@ async function confirmSave() {
     ElMessage.success(`已保存为饮食记录 +${r.points_awarded} 分`)
     saveDialog.value = false
     await loadHistory()
+    loadMeta()   // 预算卡刷新
     if (current.value) current.value.food_record_id = r.food_record_id
   } finally {
     saving.value = false
@@ -135,11 +281,13 @@ async function confirmSave() {
 }
 
 // ---- 校准交互 ----
-async function openCorrect() {
+async function openCorrect(index?: number) {
   if (!current.value) return
-  const g = Math.round(current.value.result?.vision?.portion_g || 0)
+  correctIndex.value = index ?? null
+  const dish = index != null ? current.value.result?.dishes?.[index] : null
+  const g = Math.round(dish?.portion_g || current.value.result?.vision?.portion_g || 0)
   correctForm.value = {
-    dish_name: current.value.is_food ? current.value.dish_name : '',
+    dish_name: dish?.dish_name || (current.value.is_food ? current.value.dish_name : ''),
     portion_g: g > 0 ? g : 200,
   }
   correctDialog.value = true
@@ -174,6 +322,7 @@ async function confirmCorrect() {
     current.value = await foodApi.correctRecognition(current.value.id, {
       dish_name: name,
       portion_g: correctForm.value.portion_g,
+      dish_index: correctIndex.value ?? undefined,
     })
     ElMessage.success('已校准，营养值已按本地营养库重算')
     correctDialog.value = false
@@ -183,7 +332,10 @@ async function confirmCorrect() {
   }
 }
 
-onMounted(loadHistory)
+onMounted(() => {
+  loadHistory()
+  loadMeta()
+})
 </script>
 
 <template>
@@ -225,16 +377,60 @@ onMounted(loadHistory)
           <el-empty v-if="!current && !recognizing" description="上传图片后这里显示识别结果" :image-size="80" />
           <template v-else-if="current">
             <template v-if="current.is_food">
+              <div v-if="budget?.target" class="budget">
+                <span class="budget-text">
+                  今日 {{ Math.round(budget.today) }} / {{ budget.target }} kcal
+                  <b v-if="budget.today <= budget.target" class="muted">还可摄入 {{ Math.round(budget.target - budget.today) }}</b>
+                  <b v-else class="over">已超出 {{ Math.round(budget.today - budget.target) }}</b>
+                </span>
+                <el-progress
+                  :percentage="budgetPct" :stroke-width="8" :show-text="false"
+                  :status="budgetPct >= 100 ? 'exception' : 'success'" style="flex:1"
+                />
+              </div>
+              <el-alert
+                v-for="w in dietWarnings" :key="w"
+                :title="w" type="error" :closable="false" show-icon
+                style="margin-bottom:8px"
+              />
               <div class="result-head">
                 <span class="dish">{{ current.dish_name }}</span>
                 <el-tag v-if="current.result.vision.corrected" type="warning" size="small">已手动校准</el-tag>
                 <el-tag type="info" size="small">识别来源：{{ current.provider === 'mock' ? '本地模拟' : 'AI 视觉模型' }}</el-tag>
+                <el-tag
+                  v-if="matchInfo"
+                  size="small" effect="plain"
+                  :type="matchInfo.needs_confirm ? 'warning' : 'success'"
+                >
+                  匹配：{{ matchInfo.method_label }} · {{ Math.round(matchInfo.score * 100) }}%
+                </el-tag>
               </div>
               <div v-if="!current.result.vision.corrected" class="conf">
                 置信度
                 <el-progress :percentage="Math.round(current.confidence * 100)" :stroke-width="12" status="success" style="flex:1" />
               </div>
               <p v-if="current.result.vision.basis && !current.result.vision.corrected" class="basis">📏 {{ current.result.vision.basis }}</p>
+
+              <div v-if="dishCount > 1" class="dishes-box">
+                <div class="dishes-title">这张图里识别到 {{ dishCount }} 道菜，合计 {{ current.result.nutrition.calories }} kcal</div>
+                <el-table :data="current.result.dishes" size="small">
+                  <el-table-column prop="dish_name" label="菜品" min-width="110" />
+                  <el-table-column prop="portion_g" label="克重(g)" width="90" />
+                  <el-table-column prop="nutrition.calories" label="热量(kcal)" width="100" />
+                  <el-table-column label="匹配" width="110">
+                    <template #default="{ row }">
+                      <el-tag v-if="row.match" size="small" :type="row.match.needs_confirm ? 'warning' : 'success'">
+                        {{ row.match.method_label }}
+                      </el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="操作" width="80">
+                    <template #default="{ $index }">
+                      <el-button link type="warning" size="small" @click="openCorrect($index)">校准</el-button>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
               <el-alert
                 v-if="current.provider === 'mock' && !current.result.vision.corrected"
                 title="AI 视觉模型不可用，当前为本地模拟结果，请手动校准或稍后重试"
@@ -260,9 +456,47 @@ onMounted(loadHistory)
                 <el-table-column prop="portion_g" label="估算克重(g)" width="140" />
               </el-table>
 
+              <div v-if="matchInfo?.needs_confirm && !current.result.vision.corrected" class="confirm-box">
+                <el-alert
+                  type="warning" :closable="false" show-icon
+                  :title="`需要你确认：${matchInfo.reasons.join('；')}`"
+                  description="从候选里选一个，或改克重后点确认，营养值会按营养库重算。"
+                />
+                <div class="cand-list">
+                  <div
+                    v-for="c in matchInfo.candidates" :key="c.name"
+                    class="cand" :class="{ active: confirmName === c.name }"
+                    @click="pickCandidate(c)"
+                  >
+                    <div class="cand-name">
+                      {{ c.name }}
+                      <el-tag size="small" type="info">{{ methodLabel(c.match_method) }} {{ Math.round(c.score * 100) }}%</el-tag>
+                    </div>
+                    <div class="cand-meta">
+                      {{ c.category }} · 标准 {{ c.common_portion_g }}g
+                      <span v-if="c.calories_per_100g"> · {{ Math.round(c.calories_per_100g) }} kcal/100g</span>
+                      <span v-if="c.distinguish_tip"> · {{ c.distinguish_tip }}</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="confirm-actions">
+                  <span class="muted">克重</span>
+                  <el-input-number v-model="confirmPortion" :min="10" :max="3000" :step="50" style="width:140px" />
+                  <span class="muted">g</span>
+                  <el-button type="warning" :loading="confirming" @click="confirmMatch">确认并重算营养</el-button>
+                </div>
+              </div>
+
+              <div class="portion-quick">
+                <span class="muted">份量：</span>
+                <el-button size="small" :loading="confirming" @click="quickPortion(0.7)">小份</el-button>
+                <el-button size="small" :loading="confirming" @click="quickPortion(1)">标准份</el-button>
+                <el-button size="small" :loading="confirming" @click="quickPortion(1.3)">大份</el-button>
+              </div>
+
               <div class="actions">
                 <el-button type="success" :disabled="!!current.food_record_id" @click="openSave">
-                  {{ current.food_record_id ? '✓ 已保存为饮食记录' : '保存为饮食记录' }}
+                  {{ saveLabel }}
                 </el-button>
                 <el-button type="warning" plain @click="openCorrect">识别有误？手动校准</el-button>
               </div>
@@ -398,6 +632,20 @@ onMounted(loadHistory)
 .basis { margin: 6px 0 0; font-size: 12px; color: #909399; }
 .hl { color: #f56c6c; font-weight: 700; }
 .actions { display: flex; gap: 10px; margin-top: 14px; }
+.confirm-box { margin: 4px 0 12px; }
+.cand-list { margin: 10px 0; display: flex; flex-direction: column; gap: 8px; }
+.cand { border: 1px solid #ebeef5; border-radius: 8px; padding: 8px 12px; cursor: pointer; transition: all .15s; }
+.cand:hover { border-color: #e6a23c; background: #fdf6ec; }
+.cand.active { border-color: #e6a23c; background: #fdf6ec; box-shadow: 0 0 0 1px #e6a23c inset; }
+.cand-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.cand-meta { font-size: 12px; color: #909399; margin-top: 4px; }
+.confirm-actions { display: flex; align-items: center; gap: 8px; }
+.budget { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 8px 10px; background: #f5f7fa; border-radius: 8px; }
+.budget-text { font-size: 13px; color: #606266; white-space: nowrap; }
+.budget-text .over { color: #f56c6c; }
+.portion-quick { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.dishes-box { margin: 10px 0 4px; }
+.dishes-title { font-size: 13px; color: #606266; margin-bottom: 6px; }
 .ing-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .ing-label { font-size: 13px; color: #606266; }
 .muted { font-size: 12px; color: #909399; }
