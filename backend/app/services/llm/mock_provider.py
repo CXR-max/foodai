@@ -201,7 +201,7 @@ class MockProvider(LLMProvider):
 
     # ---------------- 生成方案前的纯文字沟通（模拟） ----------------
 
-    def chat(self, messages: list[dict]) -> str:
+    def chat(self, messages: list[dict], max_tokens: int | None = None) -> str:
         last = next((m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), "")
         snippet = last[:20] + ("…" if len(last) > 20 else "")
         return (

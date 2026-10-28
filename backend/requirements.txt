@@ -11,3 +11,5 @@ openai>=1.40
 python-multipart>=0.0.9
 pillow>=10
 opencc-python-reimplemented>=0.1.7
+# 约束求解器（方案引擎 solver 用；本地运行，不联网、不付费）
+ortools>=9.10

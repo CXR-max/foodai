@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     # 切模式只改这一行：cloud=文字+视觉都走云端 | local=文字走本地Ollama，视觉仍走云端
     LLM_MODE: str = "cloud"
 
+    # ---- 方案引擎：llm=沿用原大模型/Mock 生成；solver=CP-SAT 约束求解器直接构造 ----
+    # 回滚：.env 改回 PLAN_ENGINE=llm 即可（无需改代码）
+    PLAN_ENGINE: str = "llm"
+
     # 云端（文字 + 视觉共用一套；智谱开放平台 https://open.bigmodel.cn 免费申请 key）
     CLOUD_BASE_URL: str = "https://open.bigmodel.cn/api/paas/v4"
     CLOUD_API_KEY: str = ""
@@ -50,7 +54,7 @@ class Settings(BaseSettings):
     # 本地（Ollama，仅文字；视觉仍走云端）
     LOCAL_TEXT_BASE_URL: str = "http://localhost:11434/v1"
     LOCAL_TEXT_API_KEY: str = "ollama"        # Ollama 不校验，占位即可
-    LOCAL_TEXT_MODEL: str = "qwen2.5:7b-instruct"
+    LOCAL_TEXT_MODEL: str = "qwen2.5:7b"
 
     # 通义千问（云端文字，阿里云 DashScope OpenAI 兼容端点，有免费额度）
     QWEN_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
@@ -66,6 +70,7 @@ class Settings(BaseSettings):
     LLM_MAX_TOKENS: int = 2048        # 通用/整份方案最大输出 tokens
     LLM_DAY_MAX_TOKENS: int = 700     # 逐天生成方案时单天上限（约 400 字 JSON，够用且防截断）
     LLM_CHAT_MAX_TOKENS: int = 128    # 聊天回复最大输出（提示词要求 ≤80 字）
+    LLM_REPORT_MAX_TOKENS: int = 700  # AI 健康周报输出上限（结构化 JSON 点评）
     LLM_VISION_MAX_TOKENS: int = 1500 # 食物识别输出上限（思考 token 与 JSON 共用预算，留足余量）
     LLM_VISION_THINKING: bool = False # glm-4v-flash 不支持思考模式，关闭避免报错
     LLM_VISION_MAX_RETRIES: int = 2   # 识别 JSON 校验失败重试次数（比文字宽松，防误降级 mock）
