@@ -3,6 +3,7 @@ FastAPI 应用入口
 启动：cd backend && python -m uvicorn app.main:app --reload --port 8000
 接口文档：http://localhost:8000/docs
 """
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -18,6 +19,8 @@ from app.routers import (
 )
 from app.services.achievement_seed import seed_achievements
 from app.services.food_seed import seed_foods_if_empty
+
+logger = logging.getLogger("app")
 from app.services.llm.provider import get_llm_provider
 
 # 预置的积分商城奖励（首次启动自动写入，想加奖励改这个列表）
@@ -58,6 +61,22 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
+
+
+@app.middleware("http")
+async def log_rejected_writes(request, call_next):
+    """诊断用：识别校准类写请求被 4xx 拒绝时，把请求体打到日志。
+
+    只记录 /api/recognitions 的 PATCH，避免把登录密码等敏感字段写进日志。
+    """
+    if request.method == "PATCH" and request.url.path.startswith("/api/recognitions"):
+        body = await request.body()
+        response = await call_next(request)
+        if response.status_code >= 400:
+            logger.warning("REJECT %s %s -> %s body=%s", request.method, request.url.path,
+                           response.status_code, body[:600])
+        return response
+    return await call_next(request)
 
 # CORS 兜底（开发时前端走 vite proxy，一般用不到；演示直连 8000 时需要）
 app.add_middleware(

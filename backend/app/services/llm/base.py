@@ -21,30 +21,65 @@ class LLMError(Exception):
     """LLM 调用/输出解析失败的统一异常"""
 
 
+def _json_candidates(text: str):
+    """按括号配对，逐个产出可能的 JSON 对象片段（跳过字符串内的括号）"""
+    length = len(text)
+    for start in range(length):
+        if text[start] != "{":
+            continue
+        depth, in_string, escaped = 0, False, False
+        for index in range(start, length):
+            char = text[index]
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+                continue
+            if char == '"':
+                in_string = True
+            elif char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    yield text[start:index + 1]
+                    break
+
+
 def extract_json(text: str) -> dict:
-    """从模型输出文本里抠出 JSON 对象（容忍 ```json 围栏和前后多余文字）"""
+    """从模型输出里抠 JSON：容忍代码围栏、<answer> 标签、多个对象和前后废话。
+
+    思考模型常见输出：
+        ...推理过程...</think><answer>{"dish_name": "..."}</answer>
+    或一次吐出两个 JSON。这里按「优先 <answer> 内、其次任意完整对象」解析。
+    """
     if not text:
         raise LLMError("模型返回了空内容")
-    text = text.strip()
-    # 去掉 markdown 代码块围栏
-    if "```" in text:
-        parts = text.split("```")
-        # 取第一个看起来像 JSON 的片段
-        for part in parts:
-            part = part.strip()
-            if part.startswith("json"):
-                part = part[4:].strip()
-            if part.startswith("{"):
-                text = part
-                break
-    # 截取首个 { 到末个 } 之间的内容
-    start, end = text.find("{"), text.rfind("}")
-    if start == -1 or end == -1 or end <= start:
-        raise LLMError(f"输出中找不到 JSON 对象：{text[:100]}")
-    try:
-        return json.loads(text[start:end + 1])
-    except json.JSONDecodeError as e:
-        raise LLMError(f"JSON 解析失败：{e}") from e
+    text = text.strip().replace("<|begin_of_box|>", "").replace("<|end_of_box|>", "")
+
+    # 优先取 <answer> 标签里的内容
+    if "<answer>" in text and "</answer>" in text:
+        inner = text.split("<answer>", 1)[1].split("</answer>", 1)[0]
+        candidates = list(_json_candidates(inner)) or list(_json_candidates(text))
+    else:
+        candidates = list(_json_candidates(text))
+
+    last_error: Exception | None = None
+    for candidate in candidates:
+        try:
+            data = json.loads(candidate)
+        except json.JSONDecodeError as exc:
+            last_error = exc
+            continue
+        if isinstance(data, dict):
+            return data
+
+    if last_error:
+        raise LLMError(f"JSON 解析失败：{last_error}") from last_error
+    raise LLMError(f"输出中找不到 JSON 对象：{text[:100]}")
 
 
 class LLMProvider(ABC):

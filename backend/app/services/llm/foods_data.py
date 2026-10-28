@@ -333,13 +333,16 @@ def match_entry(dish_name: str) -> dict | None:
     if alias is not None:
         return result(alias, "alias", 0.98)
 
+    # 包含匹配：至少 3 个字，避免「番茄」命中「番茄意面配…」这种灾难性低估
     contained = [
         food for food in foods
-        if food["name_norm"] and food["name_norm"] in norm and len(food["name_norm"]) >= 2
+        if food["name_norm"] and food["name_norm"] in norm and len(food["name_norm"]) >= 3
     ]
     if contained:
-        best = max(contained, key=lambda item: len(item["name_norm"]))
-        return result(best, "contains", 0.9)
+        best = max(contained, key=lambda item: (len(item["name_norm"]), item.get("food_type") == "dish"))
+        coverage = len(best["name_norm"]) / len(norm) if norm else 0
+        # 覆盖度低说明只是「菜名里出现了某个词」，分数压低，交给前端确认
+        return result(best, "contains", 0.9 if coverage >= 0.6 else 0.82)
 
     best_food, best_ratio = None, 0.0
     for food in foods:
