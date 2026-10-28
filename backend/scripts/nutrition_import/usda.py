@@ -107,6 +107,9 @@ def build_rows(directory: Path) -> list[dict]:
     for code, food in nutrients.items():
         if not food["name"] or food["energy_kcal"] is None:
             continue
+        # 纯油脂类个别条目 >900 kcal/100g（如 Lard 902），超出校验上限，跳过
+        if food["energy_kcal"] > 900:
+            continue
         portion = portions.get(code) or 100
         rows.append({
             "name_zh": food["name"],
