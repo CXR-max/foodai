@@ -16,6 +16,7 @@ REASON_LABELS = {
     "unmatched": "营养库未收录这道菜，热量是估算值",
     "fuzzy_match": "菜名只是相似匹配，可能认错",
     "confusable": "这道菜和同组菜品容易混淆",
+    "contains_match": "菜名只是包含关系匹配，可能不是同一道菜",
 }
 
 # 档案禁忌 → 关键词。和前端同一套规则，后端算完放进结果，避免两边口径漂移。
@@ -118,6 +119,9 @@ def evaluate(vision, nutrition_result: dict | None = None) -> dict:
         codes.append("unmatched")
     elif match["method"] == "fuzzy" and match["score"] < FUZZY_CONFIRM_THRESHOLD:
         codes.append("fuzzy_match")
+    elif match["method"] == "contains":
+        # 包含匹配本质是「菜名里出现了某个词」，一律让用户确认，避免静默算错
+        codes.append("contains_match")
 
     if (getattr(vision, "confidence", 0) or 0) < CONFIDENCE_THRESHOLD:
         codes.append("low_confidence")

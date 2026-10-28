@@ -508,7 +508,10 @@ def rerun_recognition(
             record.dish_name = vision.dish_name
             record.portion_g = vision.portion_g or 0
             record.portion_desc = vision.portion_desc or ""
-            record.ingredients = vision.ingredients
+            record.ingredients = [
+                item.model_dump() if hasattr(item, "model_dump") else dict(item)
+                for item in (vision.ingredients or [])
+            ]
             record.calories = nut["calories"]
             record.protein_g = nut["protein_g"]
             record.fat_g = nut["fat_g"]
