@@ -277,3 +277,45 @@ cd backend
 ```
 
 应用启动时，如果 `foods` 表为空会自动导入内置种子。内置种子覆盖八大菜系、家常菜、轻食、单个食物和基础饮品，但营养值为种子估算，`verified=false`；正式数据导入后应逐步替换/校验。
+
+## 一键建库（推荐给新环境）
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe seed_all.py
+```
+
+依次执行：`alembic upgrade head` → 内置种子（108 道菜 + 80 条常用食材 + 别名 + 易混淆关系）→ 200 道菜谱 → 激活「家常菜 / 川 / 粤 / 鲁 / 苏」121 道。
+脚本幂等，可重复执行；只建表不灌数据用 `alembic upgrade head`，菜谱只进 staging 用 `--no-activate`。
+
+## 美国 USDA FNDDS 2021-2023（已接入适配器）
+
+- 来源：<https://www.ars.usda.gov/northeast-area/beltsville-md-bhnrc/beltsville-human-nutrition-research-center/food-surveys-research-group/docs/fndds-download-databases/>
+- 文件：`FNDDS Nutrient Values.xlsx`、`Portions and Weights.xlsx`（放到 `data_sources/usda_fndds_2021_2023/`）
+- 许可：公有领域（public domain），保留 USDA 署名即可商用
+- 导入（默认 staging，`active=false`）：
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -m scripts.nutrition_import.usda `
+  ..\data_sources\usda_fndds_2021_2023 --commit --report import_reports\usda_import.json
+```
+
+字段映射：Energy (kcal)、Protein、Carbohydrate、Sugars、Fiber、Total Fat、Sodium；份量取 Portions 表每种食物的第一份重量。
+纯油脂个别条目 >900 kcal/100g（如 Lard 902）会跳过，避免触发校验上限。
+
+## 日本 MEXT 日本食品標準成分表（八訂）増補2023年（已接入适配器）
+
+- 来源：<https://www.mext.go.jp/a_menu/syokuhinseibun/mext_00001.html>
+- 文件：`mext_2023_chapter2.xlsx`（第 2 章数据 Excel，放到 `data_sources/mext/`）
+- 许可：MEXT 公开数据，**再分发前核对利用规约**；本表只进 staging
+- 导入：
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -m scripts.nutrition_import.mext `
+  ..\data_sources\mext\mext_2023_chapter2.xlsx --commit --report import_reports\mext_import.json
+```
+
+解析「表全体」工作表：食品番号、食品名、エネルギー(kcal)、たんぱく質、脂質、炭水化物、食物繊維総量、ナトリウム；廃棄率换算成可食部比例。
+日本数据没有「糖」字段，导入时会有 `missing nutrients: sugar_g` 告警，属正常。

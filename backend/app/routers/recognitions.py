@@ -116,11 +116,20 @@ def _analyze_image(image_bytes: bytes, content_type: str, profile_ctx: dict):
             vision.portion_g = dishes[0]["portion_g"]
             vision.ingredients = _dish_views(vision)[0].ingredients
 
+    # 禁忌/过敏检查：用档案里的限制逐道菜算，前后端共用同一份结果
+    restrictions = (profile_ctx or {}).get("dietary_restrictions", []) or []
+    for dish in dishes:
+        match = dish.get("match") or {}
+        dish["dietary_tags"] = match.get("dietary_tags") or []
+        dish["taste_tags"] = match.get("taste_tags") or []
+        dish["warnings"] = recognition.dietary_warnings(dish, restrictions)
+
     totals = _totals(dishes)
+    totals["dietary_warnings"] = sorted({w for d in dishes for w in d.get("warnings", [])})
     if not vision.is_food:
         totals = {"calories": 0, "protein_g": 0, "fat_g": 0, "carb_g": 0,
                   "matched": False, "matched_name": None, "match_method": "none", "match_score": 0.0,
-                  "nutrition_source": "none", "note": "未识别到食物"}
+                  "nutrition_source": "none", "note": "未识别到食物", "dietary_warnings": []}
     return vision, dishes, totals, (dishes[0]["portion_g_raw"] if dishes else (vision.portion_g or 0)), provider
 
 

@@ -1,8 +1,6 @@
 """pytest 配置。
 
-test_leaderboard_concurrency.py 是并发压测脚本（按文档用
-`python -m tests.test_leaderboard_concurrency` 运行），它的函数签名带
-user_id/threads 这类业务参数，不是 fixture，交给 pytest 收集会直接报错。
-这里不收集它，保持单测套件干净。
+并发压测 test_leaderboard_concurrency.py 已经补了 user_id fixture，可以被 pytest
+正常收集；Redis 不可用时它会自动跳过 ZSet 断言（走 SQLite 降级链路）。
+本文件保留给后续 pytest 钩子使用。
 """
-collect_ignore = ["test_leaderboard_concurrency.py"]

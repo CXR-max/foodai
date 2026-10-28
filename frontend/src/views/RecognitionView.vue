@@ -134,6 +134,9 @@ const MEAT_WORDS = ['肉', '鸡', '鸭', '鱼', '虾', '蟹', '排骨', '火腿'
 
 // 命中档案里的禁忌/过敏项时给红条提示（数据来自营养库标准食材 + 标签）
 const dietWarnings = computed(() => {
+  // 后端已按档案算过一份（口径统一），有结果就直接用
+  const fromServer = current.value?.result?.dietary_warnings
+  if (fromServer && fromServer.length) return fromServer
   const info = matchInfo.value
   if (!info || !current.value?.is_food) return []
   const text = [current.value.dish_name, ...(info.ingredients || [])].join(' ')
@@ -417,16 +420,31 @@ onMounted(() => {
                   <el-table-column prop="dish_name" label="菜品" min-width="110" />
                   <el-table-column prop="portion_g" label="克重(g)" width="90" />
                   <el-table-column prop="nutrition.calories" label="热量(kcal)" width="100" />
-                  <el-table-column label="匹配" width="110">
+                  <el-table-column label="匹配" width="150">
                     <template #default="{ row }">
-                      <el-tag v-if="row.match" size="small" :type="row.match.needs_confirm ? 'warning' : 'success'">
-                        {{ row.match.method_label }}
-                      </el-tag>
+                      <template v-if="row.match">
+                        <el-tag size="small" :type="row.match.needs_confirm ? 'warning' : 'success'">
+                          {{ row.match.method_label }}
+                        </el-tag>
+                        <el-tag
+                          v-if="row.match.needs_confirm" size="small" type="danger" effect="plain"
+                          style="margin-left:4px"
+                        >需确认</el-tag>
+                      </template>
                     </template>
                   </el-table-column>
-                  <el-table-column label="操作" width="80">
-                    <template #default="{ $index }">
-                      <el-button link type="warning" size="small" @click="openCorrect($index)">校准</el-button>
+                  <el-table-column label="提示" width="80">
+                    <template #default="{ row }">
+                      <el-tooltip v-if="row.warnings && row.warnings.length" :content="row.warnings.join('；')">
+                        <el-tag size="small" type="danger" effect="plain">禁忌</el-tag>
+                      </el-tooltip>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="操作" width="90">
+                    <template #default="{ row, $index }">
+                      <el-button link type="warning" size="small" @click="openCorrect($index)">
+                        {{ row.match?.needs_confirm ? '确认' : '校准' }}
+                      </el-button>
                     </template>
                   </el-table-column>
                 </el-table>

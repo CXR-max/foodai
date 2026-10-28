@@ -11,10 +11,18 @@
 import threading
 from datetime import datetime
 
+import pytest
+
 from app.db.session import SessionLocal
 from app.models.user import User
 from app.services import points
 from app.services.redis_leaderboard import leaderboard
+
+
+@pytest.fixture(scope="module")
+def user_id() -> int:
+    """并发测试专用账号（每次运行前把积分清零，保证可重复）"""
+    return _ensure_test_user().id
 
 
 def _ensure_test_user() -> User:
@@ -37,8 +45,9 @@ def _ensure_test_user() -> User:
         db.close()
 
 
-def test_atomic_points(user_id: int, threads: int = 20, delta_per: int = 3):
+def test_atomic_points(user_id: int):
     """多线程并发加分，验证最终积分不丢"""
+    threads, delta_per = 20, 3
     errors: list[str] = []
 
     def worker():
@@ -70,26 +79,25 @@ def test_atomic_points(user_id: int, threads: int = 20, delta_per: int = 3):
     ok = final == expected and not errors
     print(f"[积分原子性] {threads} 线程 × +{delta_per} = 期望 {expected}，实际 {final}",
           "✅" if ok else f"❌ 错误: {errors}")
-    return ok
+    assert ok, f"并发加分丢分或报错：expected={expected} final={final} errors={errors}"
 
 
 def test_leaderboard_order():
-    """ZSet 排行榜排序 + 名次"""
+    """ZSet 排行榜排序 + 名次（Redis 不可用时降级 SQLite，不断言 ZSet）"""
     print(f"[Redis] available={leaderboard.available}")
     mapping = {1001: 50, 1002: 80, 1003: 80, 1004: 30}
-    if leaderboard.available:
-        leaderboard.rebuild(mapping)
-        top = leaderboard.top(10)
-        # 期望：1002/1003(80) 在前，其次 1001(50)，再 1004(30)
-        scores = [s for _, s in top]
-        print(f"[Redis ZSet] top() -> {top}")
-        descending = all(scores[i] >= scores[i + 1] for i in range(len(scores) - 1))
-        rank_1002 = leaderboard.rank(1002)
-        rank_1004 = leaderboard.rank(1004)
-        print(f"[Redis ZSet] rank(1002)={rank_1002}（应 1 或 2），rank(1004)={rank_1004}（应 4）")
-        return descending and rank_1002 in (1, 2) and rank_1004 == 4
-    print("[Redis ZSet] Redis 未连接，跳过 ZSet 断言（降级 SQLite 仍可用）")
-    return True
+    if not leaderboard.available:
+        print("[Redis ZSet] Redis 未连接，跳过 ZSet 断言（降级 SQLite 仍可用）")
+        return
+    leaderboard.rebuild(mapping)
+    top = leaderboard.top(10)
+    scores = [s for _, s in top]
+    print(f"[Redis ZSet] top() -> {top}")
+    descending = all(scores[i] >= scores[i + 1] for i in range(len(scores) - 1))
+    rank_1002 = leaderboard.rank(1002)
+    rank_1004 = leaderboard.rank(1004)
+    print(f"[Redis ZSet] rank(1002)={rank_1002}（应 1 或 2），rank(1004)={rank_1004}（应 4）")
+    assert descending and rank_1002 in (1, 2) and rank_1004 == 4
 
 
 def main():
