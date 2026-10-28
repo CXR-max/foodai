@@ -2,22 +2,18 @@
 
 AI 健康管理平台后端。**默认 mock 模式，无需任何 API key 即可跑通全部功能**。
 
-## 启动（3 条命令）
+## 启动
+
+完整的安装/启动/模型切换见根目录 [README.md](../README.md) 和 [部署说明](../docs/deployment.md)。最短路径：
 
 ```bash
-# 1. 首次：创建虚拟环境并装依赖（已有 .venv 跳过）
-E:/app/miniconda3/python.exe -m venv .venv
-./.venv/Scripts/python.exe -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
-
-# 2. 首次：一键建库（迁移 + 种子 + 200 道菜谱 + 激活 121 道）
-./.venv/Scripts/python.exe seed_all.py
-
-# 3. 启动（之后每天开发只需这一条）
+cd backend
+./.venv/Scripts/python.exe seed_all.py                    # 首次：迁移 + 种子 + 200 道菜谱
 ./.venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8000
 ```
 
-> `seed_all.py` 可重复执行（幂等）；只建表不灌数据可以用 `python -m alembic upgrade head`。
-> 它会导入 200 道菜谱并把「家常菜 / 川 / 粤 / 鲁 / 苏」121 道设为 active，其余 79 道留在 staging。
+> `seed_all.py` 幂等，可重复执行；只建表不灌数据用 `python -m alembic upgrade head`。
+> 它会导入 200 道菜谱，并把「家常菜 / 川 / 粤 / 鲁 / 苏」121 道设为 active。
 
 - 接口文档：http://localhost:8000/docs
 - 演示造数（排行榜预置几个用户）：`./.venv/Scripts/python.exe seed_demo.py`
