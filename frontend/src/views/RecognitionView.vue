@@ -30,6 +30,12 @@ const correctDialog = ref(false)
 const correctSaving = ref(false)
 const foodLibrary = ref<FoodOption[]>([])
 const correctForm = ref({ dish_name: '', portion_g: 200 })
+const correctIndex = ref<number | null>(null)   // 多菜时校准的是第几道
+const dishCount = computed(() => current.value?.result?.dishes?.length || 0)
+const saveLabel = computed(() => {
+  if (current.value?.food_record_id) return '✓ 已保存为饮食记录'
+  return dishCount.value > 1 ? `保存为饮食记录（${dishCount.value} 道菜）` : '保存为饮食记录'
+})
 
 // 当前选中库内菜（提供标准份量与每100g营养，用于快捷份量和实时预览）
 const selectedOption = computed(() =>
@@ -85,6 +91,7 @@ async function confirmMatch() {
     current.value = await foodApi.correctRecognition(current.value.id, {
       dish_name: confirmName.value,
       portion_g: confirmPortion.value,
+      dish_index: dishCount.value > 1 ? 0 : undefined,
     })
     ElMessage.success('已按你选择的菜品重算营养')
     await loadHistory()
@@ -175,6 +182,7 @@ async function quickPortion(factor: number) {
     current.value = await foodApi.correctRecognition(current.value.id, {
       dish_name: current.value.dish_name,
       portion_g: Math.max(10, Math.round(base * factor)),
+      dish_index: dishCount.value > 1 ? 0 : undefined,
     })
     ElMessage.success(`已按${factor < 1 ? '小份' : factor > 1 ? '大份' : '标准份'}重算营养`)
     await loadHistory()
@@ -273,11 +281,13 @@ async function confirmSave() {
 }
 
 // ---- 校准交互 ----
-async function openCorrect() {
+async function openCorrect(index?: number) {
   if (!current.value) return
-  const g = Math.round(current.value.result?.vision?.portion_g || 0)
+  correctIndex.value = index ?? null
+  const dish = index != null ? current.value.result?.dishes?.[index] : null
+  const g = Math.round(dish?.portion_g || current.value.result?.vision?.portion_g || 0)
   correctForm.value = {
-    dish_name: current.value.is_food ? current.value.dish_name : '',
+    dish_name: dish?.dish_name || (current.value.is_food ? current.value.dish_name : ''),
     portion_g: g > 0 ? g : 200,
   }
   correctDialog.value = true
@@ -312,6 +322,7 @@ async function confirmCorrect() {
     current.value = await foodApi.correctRecognition(current.value.id, {
       dish_name: name,
       portion_g: correctForm.value.portion_g,
+      dish_index: correctIndex.value ?? undefined,
     })
     ElMessage.success('已校准，营养值已按本地营养库重算')
     correctDialog.value = false
@@ -399,6 +410,27 @@ onMounted(() => {
                 <el-progress :percentage="Math.round(current.confidence * 100)" :stroke-width="12" status="success" style="flex:1" />
               </div>
               <p v-if="current.result.vision.basis && !current.result.vision.corrected" class="basis">📏 {{ current.result.vision.basis }}</p>
+
+              <div v-if="dishCount > 1" class="dishes-box">
+                <div class="dishes-title">这张图里识别到 {{ dishCount }} 道菜，合计 {{ current.result.nutrition.calories }} kcal</div>
+                <el-table :data="current.result.dishes" size="small">
+                  <el-table-column prop="dish_name" label="菜品" min-width="110" />
+                  <el-table-column prop="portion_g" label="克重(g)" width="90" />
+                  <el-table-column prop="nutrition.calories" label="热量(kcal)" width="100" />
+                  <el-table-column label="匹配" width="110">
+                    <template #default="{ row }">
+                      <el-tag v-if="row.match" size="small" :type="row.match.needs_confirm ? 'warning' : 'success'">
+                        {{ row.match.method_label }}
+                      </el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="操作" width="80">
+                    <template #default="{ $index }">
+                      <el-button link type="warning" size="small" @click="openCorrect($index)">校准</el-button>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
               <el-alert
                 v-if="current.provider === 'mock' && !current.result.vision.corrected"
                 title="AI 视觉模型不可用，当前为本地模拟结果，请手动校准或稍后重试"
@@ -464,7 +496,7 @@ onMounted(() => {
 
               <div class="actions">
                 <el-button type="success" :disabled="!!current.food_record_id" @click="openSave">
-                  {{ current.food_record_id ? '✓ 已保存为饮食记录' : '保存为饮食记录' }}
+                  {{ saveLabel }}
                 </el-button>
                 <el-button type="warning" plain @click="openCorrect">识别有误？手动校准</el-button>
               </div>
@@ -612,6 +644,8 @@ onMounted(() => {
 .budget-text { font-size: 13px; color: #606266; white-space: nowrap; }
 .budget-text .over { color: #f56c6c; }
 .portion-quick { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.dishes-box { margin: 10px 0 4px; }
+.dishes-title { font-size: 13px; color: #606266; margin-bottom: 6px; }
 .ing-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .ing-label { font-size: 13px; color: #606266; }
 .muted { font-size: 12px; color: #909399; }

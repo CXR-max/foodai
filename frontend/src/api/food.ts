@@ -33,6 +33,27 @@ export interface MatchInfo {
   ingredients?: string[]
 }
 
+export interface DishItem {
+  dish_name: string
+  category?: string
+  size_class?: string
+  portion_g: number
+  portion_desc?: string
+  confidence: number
+  ingredients: { name: string; portion_g: number }[]
+  nutrition: {
+    calories: number
+    protein_g: number
+    fat_g: number
+    carb_g: number
+    matched: boolean
+    matched_name?: string | null
+    note: string
+  }
+  match?: MatchInfo
+  corrected?: boolean
+}
+
 export interface Recognition {
   id: number
   image_url: string | null
@@ -69,6 +90,8 @@ export interface Recognition {
       note: string
     }
     match?: MatchInfo
+    dishes?: DishItem[]
+    food_record_ids?: number[]
   }
 }
 
@@ -155,7 +178,7 @@ export const getFoodLibrary = (includeInactive = false) =>
 export const getFoodLibraryStats = () => get<FoodLibraryStats>('/foods/stats')
 
 /** 手动校准识别结果：只改菜名+克数，营养值由后端按营养库重算 */
-export const correctRecognition = (id: number, data: { dish_name: string; portion_g: number }) =>
+export const correctRecognition = (id: number, data: { dish_name: string; portion_g: number; dish_index?: number }) =>
   patch<Recognition>(`/recognitions/${id}`, data)
 
 export const saveRecognition = (id: number, mealType: string) =>

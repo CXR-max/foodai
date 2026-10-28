@@ -36,6 +36,11 @@ def build_food_recognition_prompt() -> str:
   "portion_g": 0,
   "portion_desc": "分量描述，如：一碗约300g",
   "confidence": 0.85,
+  "dishes": [
+    {{"dish_name": "第1道菜的标准名", "category": "荤菜", "size_class": "normal", "portion_g": 200,
+      "portion_desc": "一小盘约200g", "confidence": 0.85,
+      "ingredients": [{{"name": "食材名", "portion_g": 估算克重}}]}}
+  ],
   "description": "一句话描述这道菜"
 }}
 
@@ -44,7 +49,9 @@ def build_food_recognition_prompt() -> str:
 - portion_g 是这份食物总克数的估算，必须与 size_class 判断一致
 - ingredients 列出 2~6 种主要食材及估算克重，总和应接近 portion_g
 - confidence 为 0~1 的识别置信度
-- 若图片中不是食物，is_food 设为 false，其余字段给默认值（dish_name 填"非食物"）"""
+- dishes 列出画面里所有能辨认的菜（最多 4 道），每道菜单独给名称/类别/份量/置信度；只有一道菜时数组里就放 1 项，且与顶层 dish_name/portion_g 一致
+- 顶层 dish_name 仍填最主要的一道（通常是分量最大的），保留兼容
+- 若图片中不是食物，is_food 设为 false，dishes 给空数组，其余字段给默认值（dish_name 填"非食物"）"""
 
 
 # ---------- 方案生成 ----------
