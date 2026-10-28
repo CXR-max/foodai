@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 // 食物识别页：拖拽上传 → AI 识别 → 结果卡片 → 手动校准 → 保存为饮食记录
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -284,7 +284,9 @@ async function confirmSave() {
 }
 
 // ---- 校准交互 ----
-async function openCorrect(index?: number) {
+async function openCorrect(index?: number | Event) {
+  // 模板里 @click="openCorrect" 会把 MouseEvent 传进来，这里只认数字下标
+  if (typeof index !== "number") index = undefined
   if (!current.value) return
   correctIndex.value = index ?? null
   const dish = index != null ? current.value.result?.dishes?.[index] : null
@@ -516,12 +518,12 @@ onMounted(() => {
                 <el-button type="success" :disabled="!!current.food_record_id" @click="openSave">
                   {{ saveLabel }}
                 </el-button>
-                <el-button type="warning" plain @click="openCorrect">识别有误？手动校准</el-button>
+                <el-button type="warning" plain @click="openCorrect()">识别有误？手动校准</el-button>
               </div>
             </template>
             <template v-else>
               <el-alert title="未识别到食物，请换一张图片" type="warning" :closable="false" />
-              <el-button type="warning" plain style="margin-top:12px" @click="openCorrect">其实是食物？手动校准</el-button>
+              <el-button type="warning" plain style="margin-top:12px" @click="openCorrect()">其实是食物？手动校准</el-button>
             </template>
           </template>
         </div>
@@ -674,3 +676,4 @@ onMounted(() => {
 .opt-extra { float: right; margin-left: 16px; font-size: 12px; color: #909399; }
 .pager { margin-top: 12px; display: flex; justify-content: flex-end; }
 </style>
+
