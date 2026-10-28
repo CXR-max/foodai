@@ -31,9 +31,35 @@ export interface Recognition {
 /** 营养库菜品（手动校准下拉 + 营养预览用） */
 export interface FoodOption {
   name: string
+  name_en?: string | null
   category: string
+  category_l2?: string | null
   common_portion_g: number
-  per_100g: { calories: number; protein_g: number; fat_g: number; carb_g: number }
+  serving_g?: number | null
+  per_100g: {
+    calories: number
+    protein_g: number
+    fat_g: number
+    carb_g: number
+    fiber_g?: number | null
+    sodium_mg?: number | null
+    sugar_g?: number | null
+  }
+  food_type?: string | null
+  dish_style?: string | null
+  region?: string | null
+  cuisine?: string | null
+  state?: string | null
+  edible_ratio?: number | null
+  aliases?: string[]
+  relations?: { group_key: string; relation_type: string; name: string; distinguish_tip?: string | null }[]
+  verified?: boolean
+  active?: boolean
+  source?: string | null
+  source_type?: string | null
+  license?: string | null
+  source_url?: string | null
+  version?: string | null
 }
 
 export interface FoodRecord {
@@ -62,8 +88,20 @@ export const recognize = (file: File) => {
 export const getRecognitions = (page = 1) =>
   get<{ total: number; items: Recognition[] }>('/recognitions', { page })
 
-/** 营养库菜品清单（校准弹窗下拉与营养预览） */
-export const getFoodLibrary = () => get<FoodOption[]>('/foods')
+export interface FoodLibraryStats {
+  total: number
+  total_all: number
+  inactive: number
+  cuisines: Record<string, number>
+  food_types: Record<string, number>
+  sources: Record<string, number>
+}
+
+/** 营养库菜品清单（校准弹窗下拉与营养预览）；includeInactive 包含 staging */
+export const getFoodLibrary = (includeInactive = false) =>
+  get<FoodOption[]>('/foods', includeInactive ? { include_inactive: true } : undefined)
+
+export const getFoodLibraryStats = () => get<FoodLibraryStats>('/foods/stats')
 
 /** 手动校准识别结果：只改菜名+克数，营养值由后端按营养库重算 */
 export const correctRecognition = (id: number, data: { dish_name: string; portion_g: number }) =>
