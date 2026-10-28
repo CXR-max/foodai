@@ -1,9 +1,15 @@
-﻿param([string]$Model = "qwen2.5:7b")
+param([string]$Model = "qwen2.5:7b-instruct")
 
 $ErrorActionPreference = 'Stop'
 
 $env:OLLAMA_CONTEXT_LENGTH = '8192'
 $env:OLLAMA_KEEP_ALIVE = '-1'
+
+# 模型默认放仓库根目录的 models/（已 gitignore）；没有就退回 ~/.ollama/models
+$repoModels = Join-Path (Split-Path $PSScriptRoot -Parent) 'models'
+if (-not $env:OLLAMA_MODELS -and (Test-Path (Join-Path $repoModels 'blobs'))) {
+    $env:OLLAMA_MODELS = $repoModels
+}
 $ModelDir = if ($env:OLLAMA_MODELS) { $env:OLLAMA_MODELS } else { Join-Path $env:USERPROFILE '.ollama\models' }
 
 $candidates = @()
@@ -11,7 +17,8 @@ $cmd = Get-Command ollama -ErrorAction SilentlyContinue
 if ($cmd) { $candidates += $cmd.Source }
 $candidates += @(
     (Join-Path $env:LOCALAPPDATA 'Programs\Ollama\ollama.exe'),
-    (Join-Path $env:ProgramFiles 'Ollama\ollama.exe')
+    (Join-Path $env:ProgramFiles 'Ollama\ollama.exe'),
+    'E:\app\ollama\ollama.exe'
 )
 $Ollama = $candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
 

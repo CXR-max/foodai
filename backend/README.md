@@ -23,6 +23,23 @@ E:/app/miniconda3/python.exe -m venv .venv
 - 演示造数（排行榜预置几个用户）：`./.venv/Scripts/python.exe seed_demo.py`
 - 端到端自测（需先启动）：`./.venv/Scripts/python.exe e2e_test.py`
 
+## 模型配置（`.env`，不提交）
+
+| 用途 | 推荐配置 | 说明 |
+|---|---|---|
+| 文字 | `TEXT_PROVIDER=local` + `LLM_MODE=local` + `LOCAL_TEXT_MODEL=qwen2.5:7b-instruct` | 本地 Ollama，免费/离线；Ollama 没起时自动切云端 `CLOUD_TEXT_MODEL` |
+| 视觉 | `CLOUD_VISION_MODEL=glm-4v-flash` | 本地没有视觉模型，必须走云端；`CLOUD_VISION_FALLBACK_MODEL=glm-4.1v-thinking-flash` 作 429 限流兜底 |
+| 输出上限 | `LLM_VISION_MAX_TOKENS=1024` | `glm-4v-flash` 的硬上限，设大会报 `max_tokens 非法` |
+
+本地模型启动：
+
+```powershell
+# 模型放仓库根目录 models/（已 gitignore），脚本会自动指向
+.\scripts\start-ollama.ps1
+```
+
+> 换模型/改 `.env` 后必须重启 uvicorn，配置只在进程启动时读取。
+
 ## 营养库表（新增）
 
 - 表：`foods`、`food_aliases`、`food_relations`、`food_ingredients`、`food_recipes`、`food_recipe_items`、`import_batches`
