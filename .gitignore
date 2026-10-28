@@ -47,3 +47,8 @@ backend/server.log
 backend/server.err.log
 frontend/vite.log
 frontend/vite.err.log
+
+# 配置备份（含 key，绝不入库）
+.env.bak
+.env.*.bak
+*.env.bak
