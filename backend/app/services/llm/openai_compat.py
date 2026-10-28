@@ -81,13 +81,19 @@ class OpenAICompatProvider(LLMProvider):
 
     def _vision_once(self, messages: list[dict], model: str, thinking: bool, max_tokens: int) -> str:
         """单次视觉调用；thinking 参数走 extra_body 透传（智谱专有）"""
+        # glm-4v-flash 的 max_tokens 硬上限是 1024，超出直接 400；思考模型则需要更多空间
+        if "glm-4v-flash" in model:
+            max_tokens = min(max_tokens, 1024)
         kwargs = {
             "model": model,
             "messages": messages,
             "temperature": 0.3,
             "max_tokens": max_tokens,
         }
-        if thinking:
+        # 思考模型默认会输出大段推理，容易把 JSON 挤到截断；识别场景显式关闭思考
+        if "thinking" in model:
+            kwargs["extra_body"] = {"thinking": {"type": "enabled" if thinking else "disabled"}}
+        elif thinking:
             kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
         t0 = time.perf_counter()
         resp = self.vision_client.chat.completions.create(**kwargs)
