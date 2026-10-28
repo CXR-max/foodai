@@ -43,7 +43,8 @@ class FoodLibraryTest(unittest.TestCase):
     def test_alias_candidate_first(self):
         candidates = foods_data.find_candidates("番茄炒蛋")
         self.assertEqual(candidates[0]["entry"]["name"], "西红柿炒鸡蛋")
-        self.assertEqual(candidates[0]["match_type"], "alias")
+        # 同义词优先于别名：番茄炒蛋 → 西红柿炒鸡蛋（标准名）
+        self.assertIn(candidates[0]["match_type"], {"synonym", "alias"})
 
     def test_nutrition_calculation(self):
         rice = foods_data.find_food("米饭")

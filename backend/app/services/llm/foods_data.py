@@ -274,32 +274,107 @@ def get_library_stats() -> dict:
     }
 
 
-def find_food(dish_name: str) -> dict | None:
+MATCH_METHOD_LABELS = {
+    "exact": "精确命中",
+    "synonym": "同义归一",
+    "alias": "别名命中",
+    "contains": "包含匹配",
+    "fuzzy": "相似匹配",
+}
+
+# 相似度下限：低于它宁可不匹配（未收录 → 类别均值），避免"红烧鱼"硬配"红烧肉"
+FUZZY_THRESHOLD = 0.72
+
+
+def find_synonym(dish_name: str) -> dict | None:
+    """菜名命中同义组时返回该关系（含 canonical_name）"""
+    norm = normalize_name(dish_name)
+    for relation in _relations_by_name.get(norm, []):
+        if relation.get("relation_type") == "synonym" and relation.get("canonical_name"):
+            return relation
+    return None
+
+
+def match_entry(dish_name: str) -> dict | None:
+    """菜名 → 营养库条目 + 匹配方式，供上层判断是否需要用户确认
+
+    返回：{entry, method, score, query, canonical_name, group_key}
+    method: exact / synonym / alias / contains / fuzzy
+    """
     name = (dish_name or "").strip()
     if not name:
         return None
     norm = normalize_name(name)
     foods = _load()
+
+    def result(entry: dict, method: str, score: float, **extra) -> dict:
+        return {
+            "entry": entry,
+            "method": method,
+            "score": round(float(score), 3),
+            "query": name,
+            "canonical_name": entry["name"],
+            "group_key": None,
+            **extra,
+        }
+
     exact = _name_map.get(norm)
     if exact is not None:
-        return exact
+        return result(exact, "exact", 1.0)
+
+    synonym = find_synonym(name)
+    if synonym is not None:
+        canonical_norm = normalize_name(synonym["canonical_name"])
+        target = _name_map.get(canonical_norm) or _alias_map.get(canonical_norm)
+        if target is not None:
+            return result(target, "synonym", 0.99, group_key=synonym.get("group_key"))
+
     alias = _alias_map.get(norm)
     if alias is not None:
-        return alias
+        return result(alias, "alias", 0.98)
+
     contained = [
         food for food in foods
         if food["name_norm"] and food["name_norm"] in norm and len(food["name_norm"]) >= 2
     ]
     if contained:
-        return max(contained, key=lambda item: len(item["name_norm"]))
-    best, best_ratio = None, 0.0
+        best = max(contained, key=lambda item: len(item["name_norm"]))
+        return result(best, "contains", 0.9)
+
+    best_food, best_ratio = None, 0.0
     for food in foods:
         ratio = SequenceMatcher(None, food["name_norm"], norm).ratio()
         if ratio > best_ratio:
-            best, best_ratio = food, ratio
-    if best is not None and best_ratio >= 0.72:
-        return best
+            best_food, best_ratio = food, ratio
+    if best_food is not None and best_ratio >= FUZZY_THRESHOLD:
+        return result(best_food, "fuzzy", best_ratio)
     return None
+
+
+def find_food(dish_name: str) -> dict | None:
+    """兼容旧调用：只要条目"""
+    match = match_entry(dish_name)
+    return match["entry"] if match else None
+
+
+def describe_match(match: dict | None) -> str:
+    """把匹配结果转成一句人话，用于 note / 前端提示"""
+    if not match:
+        return "未匹配到营养库"
+    label = MATCH_METHOD_LABELS.get(match["method"], match["method"])
+    if match["method"] == "exact":
+        return f"营养值来自本地营养库（{label}）"
+    if match["method"] == "synonym":
+        return f"已按「{match['canonical_name']}」记录（{label}）"
+    return f"营养值来自本地营养库（{label} · {match['score']:.2f}）"
+
+
+def confusable_relations(dish_name: str) -> list[dict]:
+    """该菜所在的易混淆组（没有则空）"""
+    match = match_entry(dish_name)
+    if not match:
+        return []
+    return [r for r in match["entry"].get("relations", []) if r.get("relation_type") == "confusable"]
 
 
 def find_candidates(dish_name: str, category: str | None = None, limit: int = 5) -> list[dict]:
@@ -326,6 +401,12 @@ def find_candidates(dish_name: str, category: str | None = None, limit: int = 5)
     exact = _name_map.get(norm)
     if exact is not None:
         add(exact, "exact", 1.0)
+    synonym = find_synonym(name)
+    if synonym is not None:
+        canonical_norm = normalize_name(synonym["canonical_name"])
+        target = _name_map.get(canonical_norm) or _alias_map.get(canonical_norm)
+        if target is not None:
+            add(target, "synonym", 0.99, synonym)
     alias = _alias_map.get(norm)
     if alias is not None:
         add(alias, "alias", 0.98)

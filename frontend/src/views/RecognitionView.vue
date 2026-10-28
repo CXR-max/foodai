@@ -5,7 +5,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadRequestOptions } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
 import * as foodApi from '@/api/food'
-import type { FoodOption, Recognition } from '@/api/food'
+import type { FoodOption, MatchCandidate, Recognition } from '@/api/food'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -48,12 +48,56 @@ const previewNut = computed(() => {
   }
 })
 
+// ---- 低置信度 / 易混淆：候选确认（后端给出 match.needs_confirm 时才出现）----
+const confirmName = ref('')
+const confirmPortion = ref(200)
+const confirming = ref(false)
+const matchInfo = computed(() => current.value?.result?.match || null)
+const METHOD_LABELS: Record<string, string> = {
+  exact: '精确命中', synonym: '同义归一', alias: '别名命中',
+  contains: '包含匹配', fuzzy: '相似匹配', confusable: '易混淆',
+}
+
+function methodLabel(method: string) {
+  return METHOD_LABELS[method] || method
+}
+
+// 用后端候选初始化确认表单：默认选第一个（通常是模型原判）
+function initConfirm() {
+  const info = current.value?.result?.match
+  if (!info?.needs_confirm) return
+  const first = info.candidates?.[0]
+  confirmName.value = first?.name || current.value?.dish_name || ''
+  confirmPortion.value = Math.round(first?.common_portion_g || current.value?.result?.vision?.portion_g || 200)
+}
+
+function pickCandidate(c: MatchCandidate) {
+  confirmName.value = c.name
+  confirmPortion.value = Math.round(c.common_portion_g || confirmPortion.value)
+}
+
+async function confirmMatch() {
+  if (!current.value || !confirmName.value) return
+  confirming.value = true
+  try {
+    current.value = await foodApi.correctRecognition(current.value.id, {
+      dish_name: confirmName.value,
+      portion_g: confirmPortion.value,
+    })
+    ElMessage.success('已按你选择的菜品重算营养')
+    await loadHistory()
+  } finally {
+    confirming.value = false
+  }
+}
+
 // 自定义上传：拿到文件后调识别接口（120s 超时已封装在 api 层）
 async function doUpload(options: UploadRequestOptions) {
   recognizing.value = true
   current.value = null
   try {
     current.value = await foodApi.recognize(options.file)
+    initConfirm()
     if (!current.value.is_food) {
       ElMessage.warning('图片中未识别到食物，换一张试试？')
     } else if (current.value.provider === 'mock') {
@@ -99,6 +143,7 @@ async function rerunRec(row: Recognition) {
   try {
     const r = await foodApi.rerunRecognition(row.id)
     current.value = r        // ★ 右侧结果卡片直接展示重跑后的完整明细（克重/食材/营养）
+    initConfirm()
     if (!r.is_food) {
       ElMessage.warning('重新识别完成：图片中未识别到食物')
     } else if (r.provider === 'mock') {
@@ -229,6 +274,13 @@ onMounted(loadHistory)
                 <span class="dish">{{ current.dish_name }}</span>
                 <el-tag v-if="current.result.vision.corrected" type="warning" size="small">已手动校准</el-tag>
                 <el-tag type="info" size="small">识别来源：{{ current.provider === 'mock' ? '本地模拟' : 'AI 视觉模型' }}</el-tag>
+                <el-tag
+                  v-if="matchInfo"
+                  size="small" effect="plain"
+                  :type="matchInfo.needs_confirm ? 'warning' : 'success'"
+                >
+                  匹配：{{ matchInfo.method_label }} · {{ Math.round(matchInfo.score * 100) }}%
+                </el-tag>
               </div>
               <div v-if="!current.result.vision.corrected" class="conf">
                 置信度
@@ -259,6 +311,37 @@ onMounted(loadHistory)
                 <el-table-column prop="name" label="食材" />
                 <el-table-column prop="portion_g" label="估算克重(g)" width="140" />
               </el-table>
+
+              <div v-if="matchInfo?.needs_confirm && !current.result.vision.corrected" class="confirm-box">
+                <el-alert
+                  type="warning" :closable="false" show-icon
+                  :title="`需要你确认：${matchInfo.reasons.join('；')}`"
+                  description="从候选里选一个，或改克重后点确认，营养值会按营养库重算。"
+                />
+                <div class="cand-list">
+                  <div
+                    v-for="c in matchInfo.candidates" :key="c.name"
+                    class="cand" :class="{ active: confirmName === c.name }"
+                    @click="pickCandidate(c)"
+                  >
+                    <div class="cand-name">
+                      {{ c.name }}
+                      <el-tag size="small" type="info">{{ methodLabel(c.match_method) }} {{ Math.round(c.score * 100) }}%</el-tag>
+                    </div>
+                    <div class="cand-meta">
+                      {{ c.category }} · 标准 {{ c.common_portion_g }}g
+                      <span v-if="c.calories_per_100g"> · {{ Math.round(c.calories_per_100g) }} kcal/100g</span>
+                      <span v-if="c.distinguish_tip"> · {{ c.distinguish_tip }}</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="confirm-actions">
+                  <span class="muted">克重</span>
+                  <el-input-number v-model="confirmPortion" :min="10" :max="3000" :step="50" style="width:140px" />
+                  <span class="muted">g</span>
+                  <el-button type="warning" :loading="confirming" @click="confirmMatch">确认并重算营养</el-button>
+                </div>
+              </div>
 
               <div class="actions">
                 <el-button type="success" :disabled="!!current.food_record_id" @click="openSave">
@@ -398,6 +481,14 @@ onMounted(loadHistory)
 .basis { margin: 6px 0 0; font-size: 12px; color: #909399; }
 .hl { color: #f56c6c; font-weight: 700; }
 .actions { display: flex; gap: 10px; margin-top: 14px; }
+.confirm-box { margin: 4px 0 12px; }
+.cand-list { margin: 10px 0; display: flex; flex-direction: column; gap: 8px; }
+.cand { border: 1px solid #ebeef5; border-radius: 8px; padding: 8px 12px; cursor: pointer; transition: all .15s; }
+.cand:hover { border-color: #e6a23c; background: #fdf6ec; }
+.cand.active { border-color: #e6a23c; background: #fdf6ec; box-shadow: 0 0 0 1px #e6a23c inset; }
+.cand-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.cand-meta { font-size: 12px; color: #909399; margin-top: 4px; }
+.confirm-actions { display: flex; align-items: center; gap: 8px; }
 .ing-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .ing-label { font-size: 13px; color: #606266; }
 .muted { font-size: 12px; color: #909399; }

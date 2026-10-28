@@ -17,7 +17,7 @@ from app.models.health_profile import HealthProfile
 from app.models.recognition import Recognition
 from app.models.user import User
 from app.schemas.food_record import CorrectRecognitionIn, SaveRecognitionIn
-from app.services import nutrition, points
+from app.services import nutrition, points, recognition
 from app.services.achievements import unlock_all
 from app.services.images import compress_for_vision
 from app.services.llm import foods_data
@@ -45,7 +45,10 @@ def recognition_dict(r: Recognition) -> dict:
 
 
 def _analyze_image(image_bytes: bytes, content_type: str, profile_ctx: dict):
-    """调视觉模型 → 档位克数校准 → 营养库换算。返回 (vision, nut, raw_portion_g, provider)"""
+    """调视觉模型 → 档位克数校准 → 营养库换算 → 匹配判定。
+
+    返回 (vision, nut, raw_portion_g, provider, match_info)
+    """
     provider = get_llm_provider()
     vision = provider.recognize_food(image_bytes, content_type, profile_ctx)
 
@@ -58,8 +61,11 @@ def _analyze_image(image_bytes: bytes, content_type: str, profile_ctx: dict):
     nut = nutrition.match_and_calc(vision.dish_name, vision.portion_g or 0, vision.category)
     if not vision.is_food:
         nut = {"calories": 0, "protein_g": 0, "fat_g": 0, "carb_g": 0,
-               "matched": False, "matched_name": None, "note": "未识别到食物"}
-    return vision, nut, raw_portion_g, provider
+               "matched": False, "matched_name": None, "match_method": "none", "match_score": 0.0,
+               "nutrition_source": "none", "note": "未识别到食物"}
+    # 匹配方式 + 候选 + 是否需要用户确认（低置信度 / 相似匹配 / 易混淆 / 未收录）
+    match_info = recognition.evaluate(vision, nut)
+    return vision, nut, raw_portion_g, provider, match_info
 
 
 def _build_profile_ctx(db: Session, user_id: int) -> dict:
@@ -171,6 +177,19 @@ def correct_recognition(
     result["vision"] = vision
     result["nutrition"] = nut
 
+    # 校准后按新菜名重算匹配信息：确认过的不再要求确认
+    class _Corrected:
+        is_food = True
+        dish_name = data.dish_name
+        confidence = 1.0
+
+    match_info = recognition.evaluate(_Corrected(), nut)
+    match_info["needs_confirm"] = False
+    match_info["reason_codes"] = []
+    match_info["reasons"] = []
+    match_info["corrected"] = True
+    result["match"] = match_info
+
     rec.result = result
     rec.dish_name = data.dish_name
     rec.calories = nut["calories"]
@@ -266,12 +285,13 @@ def rerun_recognition(
         content_type = "image/webp"
 
     profile_ctx = _build_profile_ctx(db, user.id)
-    vision, nut, raw_portion_g, provider = _analyze_image(image_bytes, content_type, profile_ctx)
+    vision, nut, raw_portion_g, provider, match_info = _analyze_image(image_bytes, content_type, profile_ctx)
 
     rec.provider = provider.active_name
     rec.result = {
         "vision": {**vision.model_dump(), "portion_g_raw": raw_portion_g},
         "nutrition": nut,
+        "match": match_info,
     }
     rec.dish_name = vision.dish_name
     rec.calories = nut["calories"]

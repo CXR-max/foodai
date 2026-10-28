@@ -1,6 +1,35 @@
 // 食物识别 + 饮食记录接口
 import http, { get, patch, post } from './http'
 
+/** 低置信度 / 易混淆时的候选菜 */
+export interface MatchCandidate {
+  name: string
+  category?: string | null
+  common_portion_g: number
+  calories_per_100g?: number | null
+  match_method: string   // exact / synonym / alias / contains / fuzzy / confusable
+  score: number
+  distinguish_tip?: string | null
+  relation_type?: string | null
+  group_key?: string | null
+}
+
+/** 匹配判定：是否需要用户确认、候选、原因 */
+export interface MatchInfo {
+  query: string
+  matched: boolean
+  matched_name?: string | null
+  method: string
+  method_label: string
+  score: number
+  needs_confirm: boolean
+  reason_codes: string[]
+  reasons: string[]
+  candidates: MatchCandidate[]
+  nutrition_source?: string
+  corrected?: boolean
+}
+
 export interface Recognition {
   id: number
   image_url: string | null
@@ -24,7 +53,19 @@ export interface Recognition {
       ingredients: { name: string; portion_g: number }[]
       description: string
     }
-    nutrition: { calories: number; protein_g: number; fat_g: number; carb_g: number; matched: boolean; matched_name?: string | null; note: string }
+    nutrition: {
+      calories: number
+      protein_g: number
+      fat_g: number
+      carb_g: number
+      matched: boolean
+      matched_name?: string | null
+      match_method?: string
+      match_score?: number
+      nutrition_source?: string
+      note: string
+    }
+    match?: MatchInfo
   }
 }
 
