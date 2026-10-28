@@ -1,0 +1,2287 @@
+[
+  {
+    "name": "宫保鸡丁",
+    "cuisine": "川",
+    "region": "西南",
+    "dish_style": "川菜",
+    "category_l1": "荤菜",
+    "portion_g": 260,
+    "taste_tags": [
+      "微辣",
+      "咸鲜"
+    ],
+    "dietary_tags": [
+      "含花生"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "鸡胸肉",
+        "grams": 200
+      },
+      {
+        "name": "花生米",
+        "grams": 30
+      },
+      {
+        "name": "大葱",
+        "grams": 30
+      },
+      {
+        "name": "干辣椒",
+        "grams": 5
+      },
+      {
+        "name": "花椒",
+        "grams": 2
+      },
+      {
+        "name": "酱油",
+        "grams": 10
+      },
+      {
+        "name": "白糖",
+        "grams": 8
+      },
+      {
+        "name": "陈醋",
+        "grams": 8
+      },
+      {
+        "name": "食用油",
+        "grams": 20
+      },
+      {
+        "name": "淀粉",
+        "grams": 8
+      }
+    ]
+  },
+  {
+    "name": "麻婆豆腐",
+    "cuisine": "川",
+    "region": "西南",
+    "dish_style": "川菜",
+    "category_l1": "素菜",
+    "portion_g": 300,
+    "taste_tags": [
+      "麻辣"
+    ],
+    "dietary_tags": [
+      "含大豆"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "北豆腐",
+        "grams": 300
+      },
+      {
+        "name": "猪肉(瘦)",
+        "grams": 50
+      },
+      {
+        "name": "豆瓣酱",
+        "grams": 15
+      },
+      {
+        "name": "花椒",
+        "grams": 2
+      },
+      {
+        "name": "大蒜",
+        "grams": 8
+      },
+      {
+        "name": "大葱",
+        "grams": 15
+      },
+      {
+        "name": "食用油",
+        "grams": 20
+      },
+      {
+        "name": "淀粉",
+        "grams": 6
+      }
+    ],
+    "yield_g": 400
+  },
+  {
+    "name": "鱼香肉丝",
+    "cuisine": "川",
+    "region": "西南",
+    "dish_style": "川菜",
+    "category_l1": "荤菜",
+    "portion_g": 250,
+    "taste_tags": [
+      "酸甜",
+      "微辣"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "猪里脊",
+        "grams": 150
+      },
+      {
+        "name": "干木耳",
+        "grams": 5
+      },
+      {
+        "name": "胡萝卜",
+        "grams": 40
+      },
+      {
+        "name": "青椒",
+        "grams": 50
+      },
+      {
+        "name": "豆瓣酱",
+        "grams": 12
+      },
+      {
+        "name": "白糖",
+        "grams": 8
+      },
+      {
+        "name": "陈醋",
+        "grams": 10
+      },
+      {
+        "name": "酱油",
+        "grams": 8
+      },
+      {
+        "name": "食用油",
+        "grams": 20
+      }
+    ]
+  },
+  {
+    "name": "回锅肉",
+    "cuisine": "川",
+    "region": "西南",
+    "dish_style": "川菜",
+    "category_l1": "荤菜",
+    "portion_g": 220,
+    "taste_tags": [
+      "咸鲜",
+      "微辣"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "五花肉",
+        "grams": 150
+      },
+      {
+        "name": "青椒",
+        "grams": 80
+      },
+      {
+        "name": "豆瓣酱",
+        "grams": 15
+      },
+      {
+        "name": "甜面酱",
+        "grams": 8
+      },
+      {
+        "name": "大葱",
+        "grams": 20
+      },
+      {
+        "name": "食用油",
+        "grams": 10
+      }
+    ]
+  },
+  {
+    "name": "水煮牛肉",
+    "cuisine": "川",
+    "region": "西南",
+    "dish_style": "川菜",
+    "category_l1": "荤菜",
+    "portion_g": 350,
+    "taste_tags": [
+      "麻辣"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "牛肉(瘦)",
+        "grams": 200
+      },
+      {
+        "name": "绿豆芽",
+        "grams": 150
+      },
+      {
+        "name": "干辣椒",
+        "grams": 8
+      },
+      {
+        "name": "花椒",
+        "grams": 3
+      },
+      {
+        "name": "豆瓣酱",
+        "grams": 15
+      },
+      {
+        "name": "食用油",
+        "grams": 30
+      },
+      {
+        "name": "淀粉",
+        "grams": 10
+      },
+      {
+        "name": "大蒜",
+        "grams": 10
+      }
+    ],
+    "yield_g": 450
+  },
+  {
+    "name": "辣子鸡",
+    "cuisine": "川",
+    "region": "西南",
+    "dish_style": "川菜",
+    "category_l1": "荤菜",
+    "portion_g": 250,
+    "taste_tags": [
+      "麻辣"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "鸡腿肉",
+        "grams": 250
+      },
+      {
+        "name": "干辣椒",
+        "grams": 10
+      },
+      {
+        "name": "花椒",
+        "grams": 3
+      },
+      {
+        "name": "大蒜",
+        "grams": 10
+      },
+      {
+        "name": "生姜",
+        "grams": 8
+      },
+      {
+        "name": "食用油",
+        "grams": 40
+      },
+      {
+        "name": "料酒",
+        "grams": 10
+      }
+    ]
+  },
+  {
+    "name": "水煮鱼",
+    "cuisine": "川",
+    "region": "西南",
+    "dish_style": "川菜",
+    "category_l1": "荤菜",
+    "portion_g": 400,
+    "taste_tags": [
+      "麻辣"
+    ],
+    "dietary_tags": [
+      "含鱼"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "草鱼",
+        "grams": 300
+      },
+      {
+        "name": "绿豆芽",
+        "grams": 150
+      },
+      {
+        "name": "干辣椒",
+        "grams": 8
+      },
+      {
+        "name": "花椒",
+        "grams": 3
+      },
+      {
+        "name": "食用油",
+        "grams": 35
+      },
+      {
+        "name": "淀粉",
+        "grams": 10
+      },
+      {
+        "name": "生姜",
+        "grams": 8
+      }
+    ],
+    "yield_g": 550
+  },
+  {
+    "name": "干煸四季豆",
+    "cuisine": "川",
+    "region": "西南",
+    "dish_style": "川菜",
+    "category_l1": "素菜",
+    "portion_g": 220,
+    "taste_tags": [
+      "干香",
+      "微辣"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "四季豆",
+        "grams": 250
+      },
+      {
+        "name": "猪肉(瘦)",
+        "grams": 40
+      },
+      {
+        "name": "干辣椒",
+        "grams": 5
+      },
+      {
+        "name": "花椒",
+        "grams": 2
+      },
+      {
+        "name": "大蒜",
+        "grams": 8
+      },
+      {
+        "name": "食用油",
+        "grams": 25
+      }
+    ]
+  },
+  {
+    "name": "糖醋里脊",
+    "cuisine": "鲁",
+    "region": "华北",
+    "dish_style": "鲁菜",
+    "category_l1": "荤菜",
+    "portion_g": 240,
+    "taste_tags": [
+      "酸甜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "猪里脊",
+        "grams": 200
+      },
+      {
+        "name": "淀粉",
+        "grams": 30
+      },
+      {
+        "name": "白糖",
+        "grams": 25
+      },
+      {
+        "name": "陈醋",
+        "grams": 20
+      },
+      {
+        "name": "食用油",
+        "grams": 40
+      },
+      {
+        "name": "鸡蛋",
+        "grams": 30
+      }
+    ]
+  },
+  {
+    "name": "木须肉",
+    "cuisine": "鲁",
+    "region": "华北",
+    "dish_style": "鲁菜",
+    "category_l1": "荤菜",
+    "portion_g": 260,
+    "taste_tags": [
+      "咸鲜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "猪里脊",
+        "grams": 120
+      },
+      {
+        "name": "鸡蛋",
+        "grams": 100
+      },
+      {
+        "name": "干木耳",
+        "grams": 5
+      },
+      {
+        "name": "黄瓜",
+        "grams": 80
+      },
+      {
+        "name": "食用油",
+        "grams": 20
+      },
+      {
+        "name": "酱油",
+        "grams": 8
+      }
+    ]
+  },
+  {
+    "name": "醋溜白菜",
+    "cuisine": "鲁",
+    "region": "华北",
+    "dish_style": "鲁菜",
+    "category_l1": "素菜",
+    "portion_g": 250,
+    "taste_tags": [
+      "酸香"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "大白菜",
+        "grams": 300
+      },
+      {
+        "name": "陈醋",
+        "grams": 15
+      },
+      {
+        "name": "白糖",
+        "grams": 6
+      },
+      {
+        "name": "干辣椒",
+        "grams": 3
+      },
+      {
+        "name": "食用油",
+        "grams": 15
+      },
+      {
+        "name": "淀粉",
+        "grams": 5
+      }
+    ]
+  },
+  {
+    "name": "油焖大虾",
+    "cuisine": "鲁",
+    "region": "华北",
+    "dish_style": "鲁菜",
+    "category_l1": "荤菜",
+    "portion_g": 200,
+    "taste_tags": [
+      "咸甜"
+    ],
+    "dietary_tags": [
+      "含海鲜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "虾仁",
+        "grams": 200
+      },
+      {
+        "name": "白糖",
+        "grams": 8
+      },
+      {
+        "name": "酱油",
+        "grams": 10
+      },
+      {
+        "name": "大葱",
+        "grams": 20
+      },
+      {
+        "name": "食用油",
+        "grams": 20
+      }
+    ]
+  },
+  {
+    "name": "把子肉",
+    "cuisine": "鲁",
+    "region": "华北",
+    "dish_style": "鲁菜",
+    "category_l1": "荤菜",
+    "portion_g": 150,
+    "taste_tags": [
+      "酱香"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "五花肉",
+        "grams": 200
+      },
+      {
+        "name": "酱油",
+        "grams": 25
+      },
+      {
+        "name": "冰糖",
+        "grams": 15
+      },
+      {
+        "name": "八角",
+        "grams": 2
+      },
+      {
+        "name": "生姜",
+        "grams": 10
+      },
+      {
+        "name": "大葱",
+        "grams": 20
+      }
+    ]
+  },
+  {
+    "name": "白切鸡",
+    "cuisine": "粤",
+    "region": "华南",
+    "dish_style": "粤菜",
+    "category_l1": "荤菜",
+    "portion_g": 200,
+    "taste_tags": [
+      "清淡"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "鸡腿肉",
+        "grams": 250
+      },
+      {
+        "name": "生姜",
+        "grams": 15
+      },
+      {
+        "name": "大葱",
+        "grams": 20
+      },
+      {
+        "name": "盐",
+        "grams": 3
+      },
+      {
+        "name": "香油",
+        "grams": 5
+      }
+    ]
+  },
+  {
+    "name": "豉汁蒸排骨",
+    "cuisine": "粤",
+    "region": "华南",
+    "dish_style": "粤菜",
+    "category_l1": "荤菜",
+    "portion_g": 180,
+    "taste_tags": [
+      "咸鲜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "排骨",
+        "grams": 250
+      },
+      {
+        "name": "黄豆酱",
+        "grams": 15
+      },
+      {
+        "name": "大蒜",
+        "grams": 10
+      },
+      {
+        "name": "淀粉",
+        "grams": 8
+      },
+      {
+        "name": "白糖",
+        "grams": 4
+      },
+      {
+        "name": "食用油",
+        "grams": 8
+      }
+    ]
+  },
+  {
+    "name": "蚝油生菜",
+    "cuisine": "粤",
+    "region": "华南",
+    "dish_style": "粤菜",
+    "category_l1": "素菜",
+    "portion_g": 220,
+    "taste_tags": [
+      "鲜香"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "生菜",
+        "grams": 250
+      },
+      {
+        "name": "蚝油",
+        "grams": 12
+      },
+      {
+        "name": "大蒜",
+        "grams": 8
+      },
+      {
+        "name": "食用油",
+        "grams": 10
+      }
+    ]
+  },
+  {
+    "name": "清蒸鲈鱼",
+    "cuisine": "粤",
+    "region": "华南",
+    "dish_style": "粤菜",
+    "category_l1": "荤菜",
+    "portion_g": 250,
+    "taste_tags": [
+      "清淡",
+      "鲜"
+    ],
+    "dietary_tags": [
+      "含鱼"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "鲈鱼",
+        "grams": 300
+      },
+      {
+        "name": "大葱",
+        "grams": 20
+      },
+      {
+        "name": "生姜",
+        "grams": 10
+      },
+      {
+        "name": "酱油",
+        "grams": 12
+      },
+      {
+        "name": "食用油",
+        "grams": 8
+      }
+    ]
+  },
+  {
+    "name": "煲仔饭",
+    "cuisine": "粤",
+    "region": "华南",
+    "dish_style": "粤菜",
+    "category_l1": "主食",
+    "portion_g": 350,
+    "taste_tags": [
+      "咸香"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "大米",
+        "grams": 120
+      },
+      {
+        "name": "腊肉",
+        "grams": 60
+      },
+      {
+        "name": "小白菜",
+        "grams": 80
+      },
+      {
+        "name": "酱油",
+        "grams": 10
+      },
+      {
+        "name": "食用油",
+        "grams": 8
+      }
+    ]
+  },
+  {
+    "name": "蜜汁叉烧",
+    "cuisine": "粤",
+    "region": "华南",
+    "dish_style": "粤菜",
+    "category_l1": "荤菜",
+    "portion_g": 180,
+    "taste_tags": [
+      "甜咸"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "猪里脊",
+        "grams": 250
+      },
+      {
+        "name": "白糖",
+        "grams": 20
+      },
+      {
+        "name": "酱油",
+        "grams": 15
+      },
+      {
+        "name": "蚝油",
+        "grams": 8
+      },
+      {
+        "name": "料酒",
+        "grams": 10
+      },
+      {
+        "name": "淀粉",
+        "grams": 5
+      }
+    ]
+  },
+  {
+    "name": "狮子头",
+    "cuisine": "苏",
+    "region": "华东",
+    "dish_style": "苏菜",
+    "category_l1": "荤菜",
+    "portion_g": 200,
+    "taste_tags": [
+      "咸鲜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "五花肉",
+        "grams": 200
+      },
+      {
+        "name": "山药",
+        "grams": 50
+      },
+      {
+        "name": "鸡蛋",
+        "grams": 50
+      },
+      {
+        "name": "淀粉",
+        "grams": 15
+      },
+      {
+        "name": "大葱",
+        "grams": 15
+      },
+      {
+        "name": "生姜",
+        "grams": 8
+      },
+      {
+        "name": "酱油",
+        "grams": 10
+      }
+    ]
+  },
+  {
+    "name": "苏式汤面",
+    "cuisine": "苏",
+    "region": "华东",
+    "dish_style": "苏菜",
+    "category_l1": "主食",
+    "portion_g": 400,
+    "taste_tags": [
+      "咸鲜",
+      "微甜"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "lunch"
+    ],
+    "ingredients": [
+      {
+        "name": "面粉",
+        "grams": 120
+      },
+      {
+        "name": "猪肉(瘦)",
+        "grams": 80
+      },
+      {
+        "name": "大葱",
+        "grams": 20
+      },
+      {
+        "name": "酱油",
+        "grams": 15
+      },
+      {
+        "name": "白糖",
+        "grams": 5
+      },
+      {
+        "name": "盐",
+        "grams": 2
+      }
+    ],
+    "yield_g": 600
+  },
+  {
+    "name": "盐水鸭",
+    "cuisine": "苏",
+    "region": "华东",
+    "dish_style": "苏菜",
+    "category_l1": "荤菜",
+    "portion_g": 180,
+    "taste_tags": [
+      "咸鲜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "鸭肉",
+        "grams": 300
+      },
+      {
+        "name": "盐",
+        "grams": 10
+      },
+      {
+        "name": "花椒",
+        "grams": 2
+      },
+      {
+        "name": "生姜",
+        "grams": 10
+      },
+      {
+        "name": "大葱",
+        "grams": 20
+      }
+    ]
+  },
+  {
+    "name": "大煮干丝",
+    "cuisine": "苏",
+    "region": "华东",
+    "dish_style": "苏菜",
+    "category_l1": "荤菜",
+    "portion_g": 300,
+    "taste_tags": [
+      "鲜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "豆干",
+        "grams": 150
+      },
+      {
+        "name": "虾仁",
+        "grams": 50
+      },
+      {
+        "name": "小白菜",
+        "grams": 60
+      },
+      {
+        "name": "香菇",
+        "grams": 30
+      },
+      {
+        "name": "牛奶",
+        "grams": 50
+      },
+      {
+        "name": "食用油",
+        "grams": 8
+      }
+    ]
+  },
+  {
+    "name": "东坡肉",
+    "cuisine": "浙",
+    "region": "华东",
+    "dish_style": "浙菜",
+    "category_l1": "荤菜",
+    "portion_g": 160,
+    "taste_tags": [
+      "酱香",
+      "微甜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "五花肉",
+        "grams": 250
+      },
+      {
+        "name": "酱油",
+        "grams": 30
+      },
+      {
+        "name": "冰糖",
+        "grams": 20
+      },
+      {
+        "name": "料酒",
+        "grams": 30
+      },
+      {
+        "name": "生姜",
+        "grams": 10
+      },
+      {
+        "name": "大葱",
+        "grams": 20
+      }
+    ]
+  },
+  {
+    "name": "西湖醋鱼",
+    "cuisine": "浙",
+    "region": "华东",
+    "dish_style": "浙菜",
+    "category_l1": "荤菜",
+    "portion_g": 250,
+    "taste_tags": [
+      "酸甜"
+    ],
+    "dietary_tags": [
+      "含鱼"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "草鱼",
+        "grams": 300
+      },
+      {
+        "name": "陈醋",
+        "grams": 25
+      },
+      {
+        "name": "白糖",
+        "grams": 20
+      },
+      {
+        "name": "酱油",
+        "grams": 10
+      },
+      {
+        "name": "生姜",
+        "grams": 10
+      },
+      {
+        "name": "淀粉",
+        "grams": 8
+      }
+    ]
+  },
+  {
+    "name": "片儿川",
+    "cuisine": "浙",
+    "region": "华东",
+    "dish_style": "浙菜",
+    "category_l1": "主食",
+    "portion_g": 450,
+    "taste_tags": [
+      "咸鲜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "面粉",
+        "grams": 130
+      },
+      {
+        "name": "猪肉(瘦)",
+        "grams": 60
+      },
+      {
+        "name": "香菇",
+        "grams": 40
+      },
+      {
+        "name": "小白菜",
+        "grams": 60
+      },
+      {
+        "name": "酱油",
+        "grams": 10
+      },
+      {
+        "name": "食用油",
+        "grams": 10
+      }
+    ],
+    "yield_g": 650
+  },
+  {
+    "name": "宋嫂鱼羹",
+    "cuisine": "浙",
+    "region": "华东",
+    "dish_style": "浙菜",
+    "category_l1": "汤粥",
+    "portion_g": 350,
+    "taste_tags": [
+      "酸鲜"
+    ],
+    "dietary_tags": [
+      "含鱼"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "草鱼",
+        "grams": 150
+      },
+      {
+        "name": "鸡蛋",
+        "grams": 50
+      },
+      {
+        "name": "香菇",
+        "grams": 30
+      },
+      {
+        "name": "陈醋",
+        "grams": 10
+      },
+      {
+        "name": "淀粉",
+        "grams": 10
+      },
+      {
+        "name": "生姜",
+        "grams": 8
+      }
+    ],
+    "yield_g": 500
+  },
+  {
+    "name": "荔枝肉",
+    "cuisine": "闽",
+    "region": "华南",
+    "dish_style": "闽菜",
+    "category_l1": "荤菜",
+    "portion_g": 220,
+    "taste_tags": [
+      "酸甜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "猪里脊",
+        "grams": 200
+      },
+      {
+        "name": "土豆",
+        "grams": 80
+      },
+      {
+        "name": "白糖",
+        "grams": 15
+      },
+      {
+        "name": "陈醋",
+        "grams": 12
+      },
+      {
+        "name": "淀粉",
+        "grams": 20
+      },
+      {
+        "name": "食用油",
+        "grams": 35
+      }
+    ]
+  },
+  {
+    "name": "醉排骨",
+    "cuisine": "闽",
+    "region": "华南",
+    "dish_style": "闽菜",
+    "category_l1": "荤菜",
+    "portion_g": 200,
+    "taste_tags": [
+      "酸甜",
+      "蒜香"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "排骨",
+        "grams": 250
+      },
+      {
+        "name": "白糖",
+        "grams": 15
+      },
+      {
+        "name": "陈醋",
+        "grams": 15
+      },
+      {
+        "name": "酱油",
+        "grams": 10
+      },
+      {
+        "name": "大蒜",
+        "grams": 10
+      },
+      {
+        "name": "淀粉",
+        "grams": 15
+      },
+      {
+        "name": "食用油",
+        "grams": 30
+      }
+    ]
+  },
+  {
+    "name": "辣椒炒肉",
+    "cuisine": "湘",
+    "region": "华中",
+    "dish_style": "湘菜",
+    "category_l1": "荤菜",
+    "portion_g": 230,
+    "taste_tags": [
+      "鲜辣"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "五花肉",
+        "grams": 150
+      },
+      {
+        "name": "青椒",
+        "grams": 150
+      },
+      {
+        "name": "大蒜",
+        "grams": 10
+      },
+      {
+        "name": "酱油",
+        "grams": 10
+      },
+      {
+        "name": "食用油",
+        "grams": 15
+      }
+    ]
+  },
+  {
+    "name": "小炒黄牛肉",
+    "cuisine": "湘",
+    "region": "华中",
+    "dish_style": "湘菜",
+    "category_l1": "荤菜",
+    "portion_g": 230,
+    "taste_tags": [
+      "辣"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "牛肉(瘦)",
+        "grams": 180
+      },
+      {
+        "name": "青椒",
+        "grams": 100
+      },
+      {
+        "name": "干辣椒",
+        "grams": 5
+      },
+      {
+        "name": "大蒜",
+        "grams": 10
+      },
+      {
+        "name": "生姜",
+        "grams": 8
+      },
+      {
+        "name": "食用油",
+        "grams": 20
+      },
+      {
+        "name": "酱油",
+        "grams": 10
+      }
+    ]
+  },
+  {
+    "name": "腊味合蒸",
+    "cuisine": "湘",
+    "region": "华中",
+    "dish_style": "湘菜",
+    "category_l1": "荤菜",
+    "portion_g": 180,
+    "taste_tags": [
+      "咸香"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "腊肉",
+        "grams": 100
+      },
+      {
+        "name": "火腿",
+        "grams": 50
+      },
+      {
+        "name": "干辣椒",
+        "grams": 3
+      },
+      {
+        "name": "大蒜",
+        "grams": 8
+      }
+    ]
+  },
+  {
+    "name": "剁椒蒸鱼",
+    "cuisine": "湘",
+    "region": "华中",
+    "dish_style": "湘菜",
+    "category_l1": "荤菜",
+    "portion_g": 250,
+    "taste_tags": [
+      "鲜辣"
+    ],
+    "dietary_tags": [
+      "含鱼"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "草鱼",
+        "grams": 300
+      },
+      {
+        "name": "干辣椒",
+        "grams": 12
+      },
+      {
+        "name": "大蒜",
+        "grams": 15
+      },
+      {
+        "name": "生姜",
+        "grams": 8
+      },
+      {
+        "name": "食用油",
+        "grams": 15
+      },
+      {
+        "name": "盐",
+        "grams": 3
+      }
+    ]
+  },
+  {
+    "name": "笋干烧肉",
+    "cuisine": "徽",
+    "region": "华东",
+    "dish_style": "徽菜",
+    "category_l1": "荤菜",
+    "portion_g": 220,
+    "taste_tags": [
+      "咸香"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "五花肉",
+        "grams": 180
+      },
+      {
+        "name": "香菇",
+        "grams": 60
+      },
+      {
+        "name": "酱油",
+        "grams": 20
+      },
+      {
+        "name": "冰糖",
+        "grams": 10
+      },
+      {
+        "name": "八角",
+        "grams": 2
+      },
+      {
+        "name": "生姜",
+        "grams": 8
+      }
+    ]
+  },
+  {
+    "name": "徽州一品锅",
+    "cuisine": "徽",
+    "region": "华东",
+    "dish_style": "徽菜",
+    "category_l1": "荤菜",
+    "portion_g": 450,
+    "taste_tags": [
+      "咸鲜"
+    ],
+    "suitable_meals": [
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "五花肉",
+        "grams": 150
+      },
+      {
+        "name": "北豆腐",
+        "grams": 200
+      },
+      {
+        "name": "大白菜",
+        "grams": 200
+      },
+      {
+        "name": "粉丝",
+        "grams": 50
+      },
+      {
+        "name": "香菇",
+        "grams": 40
+      },
+      {
+        "name": "酱油",
+        "grams": 20
+      }
+    ],
+    "yield_g": 700
+  },
+  {
+    "name": "香菇炖鸡",
+    "cuisine": "徽",
+    "region": "华东",
+    "dish_style": "徽菜",
+    "category_l1": "荤菜",
+    "portion_g": 400,
+    "taste_tags": [
+      "鲜香"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "鸡腿肉",
+        "grams": 250
+      },
+      {
+        "name": "香菇",
+        "grams": 80
+      },
+      {
+        "name": "生姜",
+        "grams": 10
+      },
+      {
+        "name": "大葱",
+        "grams": 20
+      },
+      {
+        "name": "盐",
+        "grams": 4
+      },
+      {
+        "name": "料酒",
+        "grams": 10
+      }
+    ],
+    "yield_g": 600
+  },
+  {
+    "name": "西红柿炒鸡蛋",
+    "cuisine": "家常菜",
+    "region": "通用",
+    "dish_style": "家常菜",
+    "category_l1": "荤菜",
+    "portion_g": 280,
+    "taste_tags": [
+      "酸甜"
+    ],
+    "dietary_tags": [
+      "含蛋"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "西红柿",
+        "grams": 200
+      },
+      {
+        "name": "鸡蛋",
+        "grams": 120
+      },
+      {
+        "name": "白糖",
+        "grams": 6
+      },
+      {
+        "name": "食用油",
+        "grams": 15
+      },
+      {
+        "name": "盐",
+        "grams": 2
+      }
+    ]
+  },
+  {
+    "name": "青椒肉丝",
+    "cuisine": "家常菜",
+    "region": "通用",
+    "dish_style": "家常菜",
+    "category_l1": "荤菜",
+    "portion_g": 240,
+    "taste_tags": [
+      "咸鲜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "猪里脊",
+        "grams": 120
+      },
+      {
+        "name": "青椒",
+        "grams": 150
+      },
+      {
+        "name": "食用油",
+        "grams": 15
+      },
+      {
+        "name": "酱油",
+        "grams": 8
+      },
+      {
+        "name": "淀粉",
+        "grams": 6
+      }
+    ]
+  },
+  {
+    "name": "酸辣土豆丝",
+    "cuisine": "家常菜",
+    "region": "通用",
+    "dish_style": "家常菜",
+    "category_l1": "素菜",
+    "portion_g": 220,
+    "taste_tags": [
+      "酸辣"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "土豆",
+        "grams": 250
+      },
+      {
+        "name": "干辣椒",
+        "grams": 4
+      },
+      {
+        "name": "陈醋",
+        "grams": 15
+      },
+      {
+        "name": "食用油",
+        "grams": 15
+      },
+      {
+        "name": "盐",
+        "grams": 3
+      }
+    ]
+  },
+  {
+    "name": "地三鲜",
+    "cuisine": "家常菜",
+    "region": "通用",
+    "dish_style": "家常菜",
+    "category_l1": "素菜",
+    "portion_g": 300,
+    "taste_tags": [
+      "咸鲜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "土豆",
+        "grams": 150
+      },
+      {
+        "name": "茄子",
+        "grams": 150
+      },
+      {
+        "name": "青椒",
+        "grams": 80
+      },
+      {
+        "name": "食用油",
+        "grams": 30
+      },
+      {
+        "name": "酱油",
+        "grams": 10
+      },
+      {
+        "name": "大蒜",
+        "grams": 8
+      }
+    ]
+  },
+  {
+    "name": "蒜蓉西兰花",
+    "cuisine": "家常菜",
+    "region": "通用",
+    "dish_style": "家常菜",
+    "category_l1": "素菜",
+    "portion_g": 220,
+    "taste_tags": [
+      "清淡"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "西兰花",
+        "grams": 250
+      },
+      {
+        "name": "大蒜",
+        "grams": 12
+      },
+      {
+        "name": "食用油",
+        "grams": 10
+      },
+      {
+        "name": "盐",
+        "grams": 2
+      }
+    ]
+  },
+  {
+    "name": "红烧肉",
+    "cuisine": "家常菜",
+    "region": "通用",
+    "dish_style": "家常菜",
+    "category_l1": "荤菜",
+    "portion_g": 180,
+    "taste_tags": [
+      "酱香",
+      "微甜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "五花肉",
+        "grams": 250
+      },
+      {
+        "name": "酱油",
+        "grams": 25
+      },
+      {
+        "name": "冰糖",
+        "grams": 15
+      },
+      {
+        "name": "料酒",
+        "grams": 15
+      },
+      {
+        "name": "八角",
+        "grams": 2
+      },
+      {
+        "name": "生姜",
+        "grams": 8
+      }
+    ]
+  },
+  {
+    "name": "红烧排骨",
+    "cuisine": "家常菜",
+    "region": "通用",
+    "dish_style": "家常菜",
+    "category_l1": "荤菜",
+    "portion_g": 200,
+    "taste_tags": [
+      "酱香"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "排骨",
+        "grams": 300
+      },
+      {
+        "name": "酱油",
+        "grams": 20
+      },
+      {
+        "name": "冰糖",
+        "grams": 12
+      },
+      {
+        "name": "料酒",
+        "grams": 10
+      },
+      {
+        "name": "八角",
+        "grams": 2
+      },
+      {
+        "name": "生姜",
+        "grams": 8
+      }
+    ]
+  },
+  {
+    "name": "可乐鸡翅",
+    "cuisine": "家常菜",
+    "region": "通用",
+    "dish_style": "家常菜",
+    "category_l1": "荤菜",
+    "portion_g": 180,
+    "taste_tags": [
+      "甜咸"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "鸡翅",
+        "grams": 250
+      },
+      {
+        "name": "白糖",
+        "grams": 15
+      },
+      {
+        "name": "酱油",
+        "grams": 15
+      },
+      {
+        "name": "料酒",
+        "grams": 10
+      },
+      {
+        "name": "生姜",
+        "grams": 8
+      }
+    ]
+  },
+  {
+    "name": "土豆炖牛肉",
+    "cuisine": "家常菜",
+    "region": "通用",
+    "dish_style": "家常菜",
+    "category_l1": "荤菜",
+    "portion_g": 350,
+    "taste_tags": [
+      "咸香"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "牛肉(瘦)",
+        "grams": 200
+      },
+      {
+        "name": "土豆",
+        "grams": 200
+      },
+      {
+        "name": "胡萝卜",
+        "grams": 60
+      },
+      {
+        "name": "酱油",
+        "grams": 15
+      },
+      {
+        "name": "八角",
+        "grams": 2
+      },
+      {
+        "name": "生姜",
+        "grams": 8
+      }
+    ],
+    "yield_g": 420
+  },
+  {
+    "name": "番茄牛腩",
+    "cuisine": "家常菜",
+    "region": "通用",
+    "dish_style": "家常菜",
+    "category_l1": "荤菜",
+    "portion_g": 350,
+    "taste_tags": [
+      "酸甜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "牛腩",
+        "grams": 200
+      },
+      {
+        "name": "西红柿",
+        "grams": 200
+      },
+      {
+        "name": "洋葱",
+        "grams": 60
+      },
+      {
+        "name": "番茄酱",
+        "grams": 20
+      },
+      {
+        "name": "盐",
+        "grams": 3
+      },
+      {
+        "name": "食用油",
+        "grams": 10
+      }
+    ],
+    "yield_g": 500
+  },
+  {
+    "name": "紫菜蛋花汤",
+    "cuisine": "家常菜",
+    "region": "通用",
+    "dish_style": "家常菜",
+    "category_l1": "汤粥",
+    "portion_g": 400,
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "含蛋"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "紫菜",
+        "grams": 5
+      },
+      {
+        "name": "鸡蛋",
+        "grams": 50
+      },
+      {
+        "name": "香油",
+        "grams": 3
+      },
+      {
+        "name": "盐",
+        "grams": 2
+      },
+      {
+        "name": "大葱",
+        "grams": 10
+      }
+    ],
+    "yield_g": 450
+  },
+  {
+    "name": "冬瓜排骨汤",
+    "cuisine": "家常菜",
+    "region": "通用",
+    "dish_style": "家常菜",
+    "category_l1": "汤粥",
+    "portion_g": 500,
+    "taste_tags": [
+      "清淡"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "排骨",
+        "grams": 200
+      },
+      {
+        "name": "冬瓜",
+        "grams": 250
+      },
+      {
+        "name": "生姜",
+        "grams": 8
+      },
+      {
+        "name": "盐",
+        "grams": 3
+      },
+      {
+        "name": "大葱",
+        "grams": 10
+      }
+    ],
+    "yield_g": 600
+  },
+  {
+    "name": "蛋炒饭",
+    "cuisine": "家常菜",
+    "region": "通用",
+    "dish_style": "家常菜",
+    "category_l1": "主食",
+    "portion_g": 350,
+    "taste_tags": [
+      "咸香"
+    ],
+    "dietary_tags": [
+      "含蛋"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "lunch"
+    ],
+    "ingredients": [
+      {
+        "name": "米饭",
+        "grams": 250
+      },
+      {
+        "name": "鸡蛋",
+        "grams": 100
+      },
+      {
+        "name": "大葱",
+        "grams": 15
+      },
+      {
+        "name": "食用油",
+        "grams": 15
+      },
+      {
+        "name": "盐",
+        "grams": 2
+      }
+    ]
+  },
+  {
+    "name": "凉拌黄瓜",
+    "cuisine": "家常菜",
+    "region": "通用",
+    "dish_style": "家常菜",
+    "category_l1": "素菜",
+    "portion_g": 200,
+    "taste_tags": [
+      "清爽"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "黄瓜",
+        "grams": 250
+      },
+      {
+        "name": "大蒜",
+        "grams": 10
+      },
+      {
+        "name": "陈醋",
+        "grams": 10
+      },
+      {
+        "name": "香油",
+        "grams": 5
+      },
+      {
+        "name": "盐",
+        "grams": 2
+      }
+    ]
+  },
+  {
+    "name": "香菇滑鸡",
+    "cuisine": "家常菜",
+    "region": "通用",
+    "dish_style": "家常菜",
+    "category_l1": "荤菜",
+    "portion_g": 250,
+    "taste_tags": [
+      "鲜香"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "鸡腿肉",
+        "grams": 200
+      },
+      {
+        "name": "香菇",
+        "grams": 80
+      },
+      {
+        "name": "生姜",
+        "grams": 8
+      },
+      {
+        "name": "酱油",
+        "grams": 10
+      },
+      {
+        "name": "淀粉",
+        "grams": 8
+      },
+      {
+        "name": "食用油",
+        "grams": 10
+      }
+    ]
+  },
+  {
+    "name": "木耳炒肉",
+    "cuisine": "家常菜",
+    "region": "通用",
+    "dish_style": "家常菜",
+    "category_l1": "荤菜",
+    "portion_g": 240,
+    "taste_tags": [
+      "咸鲜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "猪肉(瘦)",
+        "grams": 120
+      },
+      {
+        "name": "干木耳",
+        "grams": 6
+      },
+      {
+        "name": "青椒",
+        "grams": 60
+      },
+      {
+        "name": "食用油",
+        "grams": 15
+      },
+      {
+        "name": "酱油",
+        "grams": 8
+      },
+      {
+        "name": "大蒜",
+        "grams": 8
+      }
+    ]
+  },
+  {
+    "name": "鸡胸肉沙拉",
+    "cuisine": "轻食",
+    "region": "通用",
+    "dish_style": "轻食",
+    "category_l1": "轻食",
+    "portion_g": 300,
+    "taste_tags": [
+      "清淡"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "鸡胸肉",
+        "grams": 120
+      },
+      {
+        "name": "生菜",
+        "grams": 100
+      },
+      {
+        "name": "西红柿",
+        "grams": 80
+      },
+      {
+        "name": "黄瓜",
+        "grams": 80
+      },
+      {
+        "name": "橄榄油",
+        "grams": 8
+      },
+      {
+        "name": "盐",
+        "grams": 1
+      }
+    ]
+  },
+  {
+    "name": "西兰花鸡胸",
+    "cuisine": "轻食",
+    "region": "通用",
+    "dish_style": "轻食",
+    "category_l1": "轻食",
+    "portion_g": 300,
+    "taste_tags": [
+      "清淡"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "鸡胸肉",
+        "grams": 120
+      },
+      {
+        "name": "西兰花",
+        "grams": 180
+      },
+      {
+        "name": "橄榄油",
+        "grams": 6
+      },
+      {
+        "name": "盐",
+        "grams": 1
+      },
+      {
+        "name": "大蒜",
+        "grams": 5
+      }
+    ]
+  },
+  {
+    "name": "凉拌木耳",
+    "cuisine": "轻食",
+    "region": "通用",
+    "dish_style": "轻食",
+    "category_l1": "素菜",
+    "portion_g": 200,
+    "taste_tags": [
+      "爽口"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "ingredients": [
+      {
+        "name": "干木耳",
+        "grams": 8
+      },
+      {
+        "name": "青椒",
+        "grams": 30
+      },
+      {
+        "name": "陈醋",
+        "grams": 10
+      },
+      {
+        "name": "香油",
+        "grams": 4
+      },
+      {
+        "name": "大蒜",
+        "grams": 6
+      }
+    ]
+  }
+]

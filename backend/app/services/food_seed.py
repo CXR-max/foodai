@@ -14,6 +14,7 @@ logger = logging.getLogger("food_seed")
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 SEED_FILE = DATA_DIR / "foods_seed.json"
+STAPLE_FILE = DATA_DIR / "food_staples.json"
 ALIAS_FILE = DATA_DIR / "food_aliases.json"
 RELATION_FILE = DATA_DIR / "food_relations.json"
 
@@ -83,9 +84,14 @@ def _upsert_food(db: Session, item: dict, force: bool) -> tuple[Food, bool]:
 
 def seed_foods_from_json(force: bool = False) -> dict:
     foods = _read_json(SEED_FILE)
+    # 常用食材（肉/蛋/菜/调料）：菜谱法算菜品的原子数据
+    if STAPLE_FILE.exists():
+        foods = foods + _read_json(STAPLE_FILE)
     aliases = _read_json(ALIAS_FILE) if ALIAS_FILE.exists() else []
     relations = _read_json(RELATION_FILE) if RELATION_FILE.exists() else []
-    checksum = hashlib.sha256(SEED_FILE.read_bytes()).hexdigest()
+    checksum = hashlib.sha256(
+        SEED_FILE.read_bytes() + (STAPLE_FILE.read_bytes() if STAPLE_FILE.exists() else b"")
+    ).hexdigest()
 
     db = SessionLocal()
     inserted = updated = 0
