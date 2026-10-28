@@ -22,6 +22,19 @@ CHINESE_SOURCES = {"tfda", "app_seed", "recipe"}
 
 ALLOWED_TYPES = {"ingredient", "single_food", "beverage"}
 
+# 常用度排序：名字里带这些字的先激活（蔬菜/肉/蛋/主食/常见水产），甜点零食和生僻物种靠后
+COMMON_KEYWORDS = (
+    "菜", "肉", "蛋", "豆", "米", "面", "麵", "粉", "油", "糖", "盐", "鹽", "酱", "醬", "醋",
+    "瓜", "菇", "耳", "笋", "筍", "萝卜", "蘿蔔", "葱", "蔥", "姜", "薑", "蒜", "椒",
+    "鱼", "魚", "虾", "蝦", "蟹", "贝", "貝", "奶", "果", "桃", "梨", "苹", "蘋",
+)
+
+
+def _common_score(food: Food) -> tuple[int, int]:
+    name = food.name_zh or ""
+    hit = any(word in name for word in COMMON_KEYWORDS)
+    return (0 if hit else 1, len(name))
+
 
 def is_clean(food: Food) -> tuple[bool, str]:
     name = (food.name_zh or "").strip()
@@ -51,6 +64,8 @@ def main() -> None:
     parser.add_argument("--source", help="来源，如 tfda")
     parser.add_argument("--type", dest="food_type", help="ingredient/single_food/beverage/dish")
     parser.add_argument("--limit", type=int, default=0, help="本次最多激活多少条（0=不限）")
+    parser.add_argument("--sort", default="common", choices=["common", "id"],
+                        help="common=先激活蔬菜/肉/主食等常用类，id=按入库顺序")
     parser.add_argument("--commit", action="store_true")
     args = parser.parse_args()
 
@@ -71,11 +86,20 @@ def main() -> None:
         rows = query.all()
 
         good, bad = [], []
+        seen: set[str] = set()
         for food in rows:
             ok, reason = is_clean(food)
-            if ok and (food.name_norm or food.name_zh) in active_names:
+            key = food.name_norm or food.name_zh
+            if ok and key in active_names:
                 ok, reason = False, "活跃池已有同名条目"
+            elif ok and key in seen:
+                ok, reason = False, "本批次内重名"
+            if ok:
+                seen.add(key)
             (good if ok else bad).append((food, reason))
+
+        if args.sort == "common":
+            good.sort(key=lambda item: _common_score(item[0]))
 
         if args.limit and len(good) > args.limit:
             good = good[: args.limit]

@@ -319,3 +319,35 @@ cd backend
 
 解析「表全体」工作表：食品番号、食品名、エネルギー(kcal)、たんぱく質、脂質、炭水化物、食物繊維総量、ナトリウム；廃棄率换算成可食部比例。
 日本数据没有「糖」字段，导入时会有 `missing nutrients: sugar_g` 告警，属正常。
+
+## 扩容活跃池（把 staging 变成「识别能命中」）
+
+三个工具脚本（都默认 dry-run，加 `--commit` 才写库）：
+
+```powershell
+cd backend
+# 1) 质量体检：缺热量、宏量不符、重名、可替换候选
+.\.venv\Scripts\python.exe -m scripts.nutrition_import.audit
+
+# 2) 去重 + 用 TFDA 官方检测值替换早期估算（旧值存 extra_nutrients.previous，可回滚）
+.\.venv\Scripts\python.exe -m scripts.nutrition_import.refresh --commit
+
+# 3) 批量激活 staging（自动拒绝脏名字/缺热量/宏量不符/与活跃池重名）
+.\.venv\Scripts\python.exe -m scripts.nutrition_import.promote --source tfda --type ingredient --limit 300 --commit
+```
+
+`promote` 的 `--sort common`（默认）会优先激活蔬菜/肉/蛋/主食这类常用条目，甜点零食和生僻物种排在后面。
+
+当前状态（2026-10-28）：
+
+| 来源 | 已激活 | 说明 |
+|---|---|---|
+| 内置菜 + 食材 | 188 | 48 道菜 + 80 食材 + 60 旧库（去重后） |
+| 菜谱法菜品 | 201 | 全部激活 |
+| TFDA 单品 | 193 | 水果等 |
+| TFDA 饮品 | 65 | |
+| TFDA 食材 | 1,240 | 蔬菜/肉/鱼/调料等 |
+| **合计** | **1,847** | |
+
+还没激活的：TFDA 菜品 423 道（要先补 `common_portion_g` 标准份）、CoFID/USDA/MEXT（英文/日文名，需中文映射后才能当「可命中」条目）。
+
