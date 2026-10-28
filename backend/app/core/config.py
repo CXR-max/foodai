@@ -76,6 +76,7 @@ class Settings(BaseSettings):
     LLM_VISION_MAX_RETRIES: int = 2   # 识别 JSON 校验失败重试次数（比文字宽松，防误降级 mock）
     LLM_VISION_RATE_RETRIES: int = 3  # 免费模型 429 限流时的退避重试次数（失败很快，重试成本低）
     LLM_FALLBACK_TO_MOCK: bool = True # 真模型失败后自动降级 mock（演示保命开关）
+    TEXT_FALLBACK_TO_CLOUD: bool = True  # 文字用本地模型时，连不上自动切云端（有 key 才生效）
 
     # ---- 识别防刷 ----
     VISION_DAILY_QUOTA: int = 50      # 每人每天最多识别次数（0=不限制）

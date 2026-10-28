@@ -10,7 +10,7 @@ echo.
 
 if not exist "%~dp0backend\.venv\Scripts\python.exe" (
     echo [错误] 未找到后端虚拟环境：backend\.venv
-    echo 请先执行 backend 目录下的安装步骤（见 部署说明.md）
+    echo 请先执行 backend 目录下的安装步骤（见 docs\deployment.md）
     pause
     exit /b 1
 )
@@ -77,3 +77,4 @@ goto :eof
 :wait_ok
 echo       本地千问已就绪  http://127.0.0.1:11434
 goto :eof
+

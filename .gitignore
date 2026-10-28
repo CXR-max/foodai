@@ -12,7 +12,18 @@ frontend/dist/
 
 # 环境
 .env
+.env.*
+!.env.example
 *.local
+
+# 机密：密钥/证书/凭据，绝不入库
+*.pem
+*.key
+*.p12
+*.pfx
+auth.json
+credentials*.json
+secrets*.json
 
 # 本地模型（Ollama 模型文件，体积大，不入库）
 # 用 /models/ 只匹配仓库根目录，避免误伤 backend/app/models 代码目录
@@ -47,3 +58,8 @@ backend/server.log
 backend/server.err.log
 frontend/vite.log
 frontend/vite.err.log
+
+# 配置备份（含 key，绝不入库）
+.env.bak
+.env.*.bak
+*.env.bak

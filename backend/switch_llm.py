@@ -26,9 +26,12 @@ PROFILES = {
     "zhipu": {
         "name": "智谱 GLM（云端·免费档）",
         "LLM_MODE": "cloud",
+        "TEXT_PROVIDER": "glm",
         "CLOUD_BASE_URL": "https://open.bigmodel.cn/api/paas/v4",
         "CLOUD_TEXT_MODEL": "glm-4-flash",
         "CLOUD_VISION_MODEL": "glm-4.6v-flash",
+        # 4.6v 经常 429，备用模型填一个实测能用的
+        "CLOUD_VISION_FALLBACK_MODEL": "glm-4v-flash",
         "LLM_TIMEOUT": "60",
         "LLM_DAY_MAX_TOKENS": "700",
         "apply_url": "https://open.bigmodel.cn  （注册后「API Keys」里创建，glm-4-flash 免费）",
@@ -36,6 +39,7 @@ PROFILES = {
     "qwen": {
         "name": "千问 Qwen（阿里云百炼·云端）",
         "LLM_MODE": "cloud",
+        "TEXT_PROVIDER": "qwen",
         "CLOUD_BASE_URL": "https://dashscope.aliyuncs.com/compatible-mode/v1",
         "CLOUD_TEXT_MODEL": "qwen-plus",
         "CLOUD_VISION_MODEL": "qwen-vl-plus",
@@ -46,17 +50,22 @@ PROFILES = {
     "local": {
         "name": "本地千问 Qwen2.5-7B（文字本地，视觉仍走云端）",
         "LLM_MODE": "local",
+        # ★ 关键：config 只认 TEXT_PROVIDER 决定文字走哪；只设 LLM_MODE=local 文字仍会发去云端
+        "TEXT_PROVIDER": "local",
         "LOCAL_TEXT_BASE_URL": "http://127.0.0.1:11434/v1",
         "LOCAL_TEXT_API_KEY": "ollama",
         "LOCAL_TEXT_MODEL": "qwen2.5:7b-instruct",
         "LLM_TIMEOUT": "300",  # CPU 跑本地模型慢（约 8 字/秒），放宽超时，避免没生成完就降级 mock
         # 7B 模型写 JSON 偏啰嗦，700 会在 exercise 字段前被截断，这里放到 1100 保证结构完整
         "LLM_DAY_MAX_TOKENS": "1100",
-        "apply_url": "先双击 D:\\foodai\\启动本地模型.bat 把服务跑起来",
+        # 本地 Ollama 没起时自动切云端（需要 CLOUD_API_KEY）
+        "TEXT_FALLBACK_TO_CLOUD": "True",
+        "apply_url": "先双击 scripts/start-ollama.ps1 把服务跑起来",
     },
     "mock": {
         "name": "模拟模式 Mock（零费用，不调用任何模型）",
         "LLM_MODE": "cloud",
+        "TEXT_PROVIDER": "glm",
         "LLM_TIMEOUT": "60",
         "LLM_DAY_MAX_TOKENS": "700",
         "apply_url": "无需 key",
@@ -120,6 +129,24 @@ def render(env: dict[str, str], profile: str, key: str | None) -> str:
 
     jwt = merged.get("JWT_SECRET") or "dev-secret-please-change"
 
+    # 模板里没列到的键（比如新加的开关）原样保留，避免切换一次丢一批配置
+    written = {
+        "JWT_SECRET", "JWT_EXPIRE_DAYS", "LLM_MODE", "TEXT_PROVIDER",
+        "CLOUD_BASE_URL", "CLOUD_API_KEY", "CLOUD_TEXT_MODEL", "CLOUD_VISION_MODEL",
+        "CLOUD_VISION_FALLBACK_MODEL", "ZHIPU_API_KEY", "QWEN_API_KEY",
+        "LOCAL_TEXT_BASE_URL", "LOCAL_TEXT_API_KEY", "LOCAL_TEXT_MODEL",
+        "LLM_TIMEOUT", "LLM_MAX_RETRIES", "LLM_MAX_TOKENS", "LLM_DAY_MAX_TOKENS",
+        "LLM_CHAT_MAX_TOKENS", "LLM_VISION_MAX_TOKENS", "LLM_FALLBACK_TO_MOCK",
+        "TEXT_FALLBACK_TO_CLOUD", "VISION_DAILY_QUOTA", "VISION_DEDUPE_HOURS",
+        "name", "apply_url",
+    }
+    extras = {k: v for k, v in merged.items() if k not in written}
+    extra_block = ""
+    if extras:
+        extra_block = "\n# ---- 其它配置（切换时原样保留）----\n" + "\n".join(
+            f"{k}={v}" for k, v in extras.items()
+        ) + "\n"
+
     vision_note = {
         "zhipu": "视觉 = glm-4.6v-flash（免费）",
         "qwen": "视觉 = qwen-vl-plus",
@@ -142,6 +169,8 @@ JWT_EXPIRE_DAYS={merged.get("JWT_EXPIRE_DAYS", "7")}
 # cloud = 文字 + 视觉都走云端 | local = 文字走本地千问服务，视觉走云端
 # 当前：{vision_note}
 LLM_MODE={merged["LLM_MODE"]}
+# 文字走哪家：glm=智谱云端 / qwen=阿里云端 / local=本地 Ollama（决定 text_base_url）
+TEXT_PROVIDER={merged["TEXT_PROVIDER"]}
 
 # ---- 云端配置 ----
 # {p["name"]}：{p["apply_url"]}
@@ -149,6 +178,8 @@ CLOUD_BASE_URL={merged["CLOUD_BASE_URL"]}
 CLOUD_API_KEY={merged["CLOUD_API_KEY"]}
 CLOUD_TEXT_MODEL={merged["CLOUD_TEXT_MODEL"]}
 CLOUD_VISION_MODEL={merged["CLOUD_VISION_MODEL"]}
+# 主视觉模型 429 限流时自动切这个
+CLOUD_VISION_FALLBACK_MODEL={merged.get("CLOUD_VISION_FALLBACK_MODEL", "")}
 
 # ---- 两家各自的 Key（切来切去不用重新粘贴；上面 CLOUD_API_KEY 由这里自动带出） ----
 ZHIPU_API_KEY={merged.get("ZHIPU_API_KEY", "")}
@@ -167,7 +198,12 @@ LLM_DAY_MAX_TOKENS={merged.get("LLM_DAY_MAX_TOKENS", "700")}
 LLM_CHAT_MAX_TOKENS={merged.get("LLM_CHAT_MAX_TOKENS", "128")}
 LLM_VISION_MAX_TOKENS={merged.get("LLM_VISION_MAX_TOKENS", "300")}
 LLM_FALLBACK_TO_MOCK={merged.get("LLM_FALLBACK_TO_MOCK", "True")}
-"""
+# 文字用本地模型时，连不上自动切云端
+TEXT_FALLBACK_TO_CLOUD={merged.get("TEXT_FALLBACK_TO_CLOUD", "True")}
+# 识别防刷
+VISION_DAILY_QUOTA={merged.get("VISION_DAILY_QUOTA", "50")}
+VISION_DEDUPE_HOURS={merged.get("VISION_DEDUPE_HOURS", "24")}
+{extra_block}"""
 
 
 def main() -> int:

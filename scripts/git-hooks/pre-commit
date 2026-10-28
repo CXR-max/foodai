@@ -1,0 +1,24 @@
+#!/bin/sh
+# 提交前自动扫一遍机密信息（启用方式见 README「机密信息」一节）
+# 说明：Git for Windows 用自带的 sh 跑钩子，PATH 里不一定有 python，
+#       所以优先用仓库自带的虚拟环境解释器，找不到再退回 PATH。
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+PYEXE="backend/.venv/Scripts/python.exe"
+if [ -x "$PYEXE" ]; then
+    "$PYEXE" scripts/check_secrets.py --staged
+    exit $?
+fi
+
+if command -v python >/dev/null 2>&1; then
+    python scripts/check_secrets.py --staged
+    exit $?
+fi
+
+if command -v py >/dev/null 2>&1; then
+    py -3 scripts/check_secrets.py --staged
+    exit $?
+fi
+
+echo "[warn] 未找到 python，跳过机密扫描（建议装好 backend/.venv）"
+exit 0
