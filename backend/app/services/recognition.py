@@ -94,4 +94,8 @@ def evaluate(vision, nutrition_result: dict | None = None) -> dict:
         "reasons": [REASON_LABELS[code] for code in codes],
         "candidates": candidates,
         "nutrition_source": nutrition_result.get("nutrition_source"),
+        # 前端做禁忌/过敏提示用：库内标准食材 + 标签（未命中时为空）
+        "dietary_tags": list(match["entry"].get("dietary_tags") or []) if match else [],
+        "taste_tags": list(match["entry"].get("taste_tags") or []) if match else [],
+        "ingredients": list(match["entry"].get("ingredients") or []) if match else [],
     }

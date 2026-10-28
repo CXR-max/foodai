@@ -6,6 +6,8 @@ import type { UploadRequestOptions } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
 import * as foodApi from '@/api/food'
 import type { FoodOption, MatchCandidate, Recognition } from '@/api/food'
+import { getOverview } from '@/api/stats'
+import { getProfile } from '@/api/profile'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -85,6 +87,96 @@ async function confirmMatch() {
       portion_g: confirmPortion.value,
     })
     ElMessage.success('已按你选择的菜品重算营养')
+    await loadHistory()
+  } finally {
+    confirming.value = false
+  }
+}
+
+// ---- 今日热量预算 + 禁忌/过敏提示（只做提示，不阻断保存）----
+const budget = ref<{ today: number; target: number | null } | null>(null)
+const restrictions = ref<string[]>([])
+const budgetPct = computed(() => {
+  if (!budget.value?.target) return 0
+  return Math.min(100, Math.round((budget.value.today / budget.value.target) * 100))
+})
+
+async function loadMeta() {
+  try {
+    const o = await getOverview()
+    budget.value = { today: o.today_calories, target: o.daily_target }
+  } catch { /* 未登录/接口异常时静默 */ }
+  try {
+    const p = await getProfile()
+    restrictions.value = p.dietary_restrictions || []
+  } catch { /* 同上 */ }
+}
+
+const ALLERGY_RULES: { key: string; words: string[] }[] = [
+  { key: '海鲜过敏', words: ['虾', '蟹', '鱼', '贝', '蛤', '鱿', '海参'] },
+  { key: '花生过敏', words: ['花生'] },
+  { key: '坚果过敏', words: ['花生', '核桃', '杏仁', '腰果', '榛子'] },
+  { key: '乳糖不耐', words: ['牛奶', '奶油', '黄油', '芝士', '酸奶'] },
+  { key: '麸质过敏', words: ['面粉', '面包', '面条', '馒头', '饺子', '面筋'] },
+  { key: '大豆过敏', words: ['豆腐', '豆干', '腐竹', '黄豆', '豆芽', '豆浆', '豆瓣酱'] },
+  { key: '不吃猪肉', words: ['猪肉', '五花', '排骨', '里脊', '火腿', '腊肉', '叉烧'] },
+  { key: '不吃牛肉', words: ['牛肉', '牛腩'] },
+  { key: '清真', words: ['猪肉', '五花', '排骨', '火腿', '腊肉', '料酒'] },
+]
+const MEAT_WORDS = ['肉', '鸡', '鸭', '鱼', '虾', '蟹', '排骨', '火腿', '腊肉', '牛', '羊']
+
+// 命中档案里的禁忌/过敏项时给红条提示（数据来自营养库标准食材 + 标签）
+const dietWarnings = computed(() => {
+  const info = matchInfo.value
+  if (!info || !current.value?.is_food) return []
+  const text = [current.value.dish_name, ...(info.ingredients || [])].join(' ')
+  const tags = [...(info.dietary_tags || []), ...(info.taste_tags || [])]
+  const hits: string[] = []
+  const portion = current.value.result.vision.portion_g || 1
+  const fatPer100 = ((current.value.result.nutrition.fat_g || 0) * 100) / portion
+
+  for (const rule of restrictions.value) {
+    if (rule === '素食' || rule === '蛋奶素') {
+      const hit = MEAT_WORDS.find((w) => text.includes(w))
+      if (hit) hits.push(`${rule}：这道菜含「${hit}」`)
+      continue
+    }
+    if (rule === '忌辣') {
+      if (tags.some((t) => t.includes('辣')) || ['辣椒', '花椒', '豆瓣酱'].some((w) => text.includes(w))) {
+        hits.push('忌辣：含辣椒/花椒/豆瓣酱')
+      }
+      continue
+    }
+    if (rule === '少油') {
+      if (fatPer100 > 15) hits.push(`少油：脂肪约 ${Math.round(fatPer100)}g/100g`)
+      continue
+    }
+    if (rule === '低糖') {
+      if (['白糖', '冰糖'].some((w) => text.includes(w))) hits.push('低糖：含糖调味')
+      continue
+    }
+    if (rule === '低盐') continue // 营养结果里暂无钠，留给后续
+    const map = ALLERGY_RULES.find((x) => x.key === rule)
+    if (!map) continue
+    const hit = map!.words.find((w) => text.includes(w) || tags.some((t) => t.includes(w)))
+    if (hit) hits.push(`${rule}：含「${hit}」`)
+  }
+  return [...new Set(hits)]
+})
+
+// 结果卡上的份量快捷：小/标准/大份 = 标准份 × 0.7 / 1 / 1.3
+async function quickPortion(factor: number) {
+  if (!current.value) return
+  const base = matchInfo.value?.candidates?.[0]?.common_portion_g
+    || current.value.result?.vision?.portion_g
+    || 200
+  confirming.value = true
+  try {
+    current.value = await foodApi.correctRecognition(current.value.id, {
+      dish_name: current.value.dish_name,
+      portion_g: Math.max(10, Math.round(base * factor)),
+    })
+    ElMessage.success(`已按${factor < 1 ? '小份' : factor > 1 ? '大份' : '标准份'}重算营养`)
     await loadHistory()
   } finally {
     confirming.value = false
@@ -173,6 +265,7 @@ async function confirmSave() {
     ElMessage.success(`已保存为饮食记录 +${r.points_awarded} 分`)
     saveDialog.value = false
     await loadHistory()
+    loadMeta()   // 预算卡刷新
     if (current.value) current.value.food_record_id = r.food_record_id
   } finally {
     saving.value = false
@@ -228,7 +321,10 @@ async function confirmCorrect() {
   }
 }
 
-onMounted(loadHistory)
+onMounted(() => {
+  loadHistory()
+  loadMeta()
+})
 </script>
 
 <template>
@@ -270,6 +366,22 @@ onMounted(loadHistory)
           <el-empty v-if="!current && !recognizing" description="上传图片后这里显示识别结果" :image-size="80" />
           <template v-else-if="current">
             <template v-if="current.is_food">
+              <div v-if="budget?.target" class="budget">
+                <span class="budget-text">
+                  今日 {{ Math.round(budget.today) }} / {{ budget.target }} kcal
+                  <b v-if="budget.today <= budget.target" class="muted">还可摄入 {{ Math.round(budget.target - budget.today) }}</b>
+                  <b v-else class="over">已超出 {{ Math.round(budget.today - budget.target) }}</b>
+                </span>
+                <el-progress
+                  :percentage="budgetPct" :stroke-width="8" :show-text="false"
+                  :status="budgetPct >= 100 ? 'exception' : 'success'" style="flex:1"
+                />
+              </div>
+              <el-alert
+                v-for="w in dietWarnings" :key="w"
+                :title="w" type="error" :closable="false" show-icon
+                style="margin-bottom:8px"
+              />
               <div class="result-head">
                 <span class="dish">{{ current.dish_name }}</span>
                 <el-tag v-if="current.result.vision.corrected" type="warning" size="small">已手动校准</el-tag>
@@ -341,6 +453,13 @@ onMounted(loadHistory)
                   <span class="muted">g</span>
                   <el-button type="warning" :loading="confirming" @click="confirmMatch">确认并重算营养</el-button>
                 </div>
+              </div>
+
+              <div class="portion-quick">
+                <span class="muted">份量：</span>
+                <el-button size="small" :loading="confirming" @click="quickPortion(0.7)">小份</el-button>
+                <el-button size="small" :loading="confirming" @click="quickPortion(1)">标准份</el-button>
+                <el-button size="small" :loading="confirming" @click="quickPortion(1.3)">大份</el-button>
               </div>
 
               <div class="actions">
@@ -489,6 +608,10 @@ onMounted(loadHistory)
 .cand-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
 .cand-meta { font-size: 12px; color: #909399; margin-top: 4px; }
 .confirm-actions { display: flex; align-items: center; gap: 8px; }
+.budget { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 8px 10px; background: #f5f7fa; border-radius: 8px; }
+.budget-text { font-size: 13px; color: #606266; white-space: nowrap; }
+.budget-text .over { color: #f56c6c; }
+.portion-quick { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
 .ing-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .ing-label { font-size: 13px; color: #606266; }
 .muted { font-size: 12px; color: #909399; }

@@ -28,6 +28,9 @@ export interface MatchInfo {
   candidates: MatchCandidate[]
   nutrition_source?: string
   corrected?: boolean
+  dietary_tags?: string[]
+  taste_tags?: string[]
+  ingredients?: string[]
 }
 
 export interface Recognition {
