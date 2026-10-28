@@ -108,6 +108,22 @@ cd backend
 
 > 改 `.env` 后必须重启 uvicorn；配置只在进程启动时读取。
 
+## 机密信息（不要提交）
+
+- `backend/.env`（含 `CLOUD_API_KEY` / `ZHIPU_API_KEY` / `QWEN_API_KEY` / `JWT_SECRET`）**已在 `.gitignore`**，只放本地；
+- 证书、`*.key`、`*.pem`、`auth.json`、`credentials*.json` 同样被忽略；
+- 仓库自带提交前扫描，命中疑似 key 会**阻止提交**：
+
+```powershell
+# 每个克隆只需执行一次（启用版本库里的钩子）
+git config core.hooksPath scripts/git-hooks
+
+# 手动全量检查
+python scripts/check_secrets.py
+```
+
+**万一误提交了 key**：`git rm --cached <文件>` → 立刻去平台**作废并重新生成**该 key（历史里的 key 已经泄露，改代码不够）→ 再提交。
+
 ## 营养库
 
 | 口径 | 数量 |
