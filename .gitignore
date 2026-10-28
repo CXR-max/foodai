@@ -18,6 +18,10 @@ frontend/dist/
 # 用 /models/ 只匹配仓库根目录，避免误伤 backend/app/models 代码目录
 /models/
 tools/*.zip
+# 可执行文件与压缩包：历史里已有 cloudflared.exe / foodai_new.zip（13MB+），
+# 这里只防止以后再提交同类大二进制（已进历史的文件 .gitignore 删不掉）
+tools/*.exe
+*.zip
 # llama.cpp 本地推理程序与 GGUF 模型（656MB，不入库）
 /tools/llama/
 
@@ -37,3 +41,9 @@ Thumbs.db
 .lark-slides/
 .claude/
 _compare.ps1
+
+# 本地服务日志
+backend/server.log
+backend/server.err.log
+frontend/vite.log
+frontend/vite.err.log

@@ -18,6 +18,65 @@ REASON_LABELS = {
     "confusable": "这道菜和同组菜品容易混淆",
 }
 
+# 档案禁忌 → 关键词。和前端同一套规则，后端算完放进结果，避免两边口径漂移。
+MEAT_WORDS = ["肉", "鸡", "鸭", "鱼", "虾", "蟹", "排骨", "火腿", "腊肉", "牛", "羊"]
+ALLERGY_RULES = {
+    "海鲜过敏": ["虾", "蟹", "鱼", "贝", "蛤", "鱿", "海参"],
+    "花生过敏": ["花生"],
+    "坚果过敏": ["花生", "核桃", "杏仁", "腰果", "榛子"],
+    "乳糖不耐": ["牛奶", "奶油", "黄油", "芝士", "酸奶"],
+    "麸质过敏": ["面粉", "面包", "面条", "馒头", "饺子", "面筋"],
+    "大豆过敏": ["豆腐", "豆干", "腐竹", "黄豆", "豆芽", "豆浆", "豆瓣酱"],
+    "不吃猪肉": ["猪肉", "五花", "排骨", "里脊", "火腿", "腊肉", "叉烧"],
+    "不吃牛肉": ["牛肉", "牛腩"],
+    "清真": ["猪肉", "五花", "排骨", "火腿", "腊肉", "料酒"],
+}
+
+
+def dietary_warnings(dish_body: dict, restrictions: list[str]) -> list[str]:
+    """按档案禁忌检查一道菜，返回人话提示（只提示，不阻断保存）。
+
+    dish_body: {dish_name, ingredients, dietary_tags, taste_tags, portion_g, nutrition}
+    """
+    if not restrictions:
+        return []
+    name = str(dish_body.get("dish_name") or "")
+    ingredients = [str(i.get("name") or "") for i in (dish_body.get("ingredients") or [])]
+    tags = list(dish_body.get("dietary_tags") or []) + list(dish_body.get("taste_tags") or [])
+    text = " ".join([name, *ingredients])
+    nutrition = dish_body.get("nutrition") or {}
+    portion = float(dish_body.get("portion_g") or 0) or 1.0
+    fat_per_100 = (float(nutrition.get("fat_g") or 0) * 100) / portion
+
+    hits: list[str] = []
+    for rule in restrictions:
+        if rule in {"素食", "蛋奶素"}:
+            hit = next((w for w in MEAT_WORDS if w in text), None)
+            if hit:
+                hits.append(f"{rule}：这道菜含「{hit}」")
+            continue
+        if rule == "忌辣":
+            if any("辣" in t for t in tags) or any(w in text for w in ("辣椒", "花椒", "豆瓣酱")):
+                hits.append("忌辣：含辣椒/花椒/豆瓣酱")
+            continue
+        if rule == "少油":
+            if fat_per_100 > 15:
+                hits.append(f"少油：脂肪约 {round(fat_per_100)}g/100g")
+            continue
+        if rule == "低糖":
+            if any(w in text for w in ("白糖", "冰糖")):
+                hits.append("低糖：含糖调味")
+            continue
+        if rule == "低盐":
+            continue
+        words = ALLERGY_RULES.get(rule)
+        if not words:
+            continue
+        hit = next((w for w in words if w in text or any(w in t for t in tags)), None)
+        if hit:
+            hits.append(f"{rule}：含「{hit}」")
+    return list(dict.fromkeys(hits))
+
 
 def _candidate(food: dict, method: str, score: float, relation: dict | None = None) -> dict:
     per100 = food.get("per_100g") or {}

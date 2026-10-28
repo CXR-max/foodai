@@ -52,6 +52,9 @@ export interface DishItem {
   }
   match?: MatchInfo
   corrected?: boolean
+  dietary_tags?: string[]
+  taste_tags?: string[]
+  warnings?: string[]
 }
 
 export interface Recognition {
@@ -92,6 +95,7 @@ export interface Recognition {
     match?: MatchInfo
     dishes?: DishItem[]
     food_record_ids?: number[]
+    dietary_warnings?: string[]
   }
 }
 
