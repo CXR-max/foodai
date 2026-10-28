@@ -17,6 +17,7 @@ from app.routers import (
     recognitions, rewards, stats,
 )
 from app.services.achievement_seed import seed_achievements
+from app.services.food_seed import seed_foods_if_empty
 from app.services.llm.provider import get_llm_provider
 
 # 预置的积分商城奖励（首次启动自动写入，想加奖励改这个列表）
@@ -52,6 +53,7 @@ async def lifespan(app: FastAPI):
     """应用启动/关闭钩子"""
     seed_rewards()
     seed_achievements(SessionLocal())
+    seed_foods_if_empty()
     yield
 
 

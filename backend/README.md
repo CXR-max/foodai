@@ -20,6 +20,22 @@ E:/app/miniconda3/python.exe -m venv .venv
 - 演示造数（排行榜预置几个用户）：`./.venv/Scripts/python.exe seed_demo.py`
 - 端到端自测（需先启动）：`./.venv/Scripts/python.exe e2e_test.py`
 
+## 营养库表（新增）
+
+- 表：`foods`、`food_aliases`、`food_relations`、`food_ingredients`、`food_recipes`、`food_recipe_items`、`import_batches`
+- 内置种子：八大菜系 + 家常菜 + 轻食 + 单个食物/饮品，启动时 `foods` 为空会自动导入；也可手动：
+  `./.venv/Scripts/python.exe seed_foods.py`（`--force` 覆盖）
+- 外部数据导入（先安装导入依赖，再 dry-run，确认后加 `--commit`）：
+  `./.venv/Scripts/python.exe -m pip install -r requirements-import.txt`
+  `./.venv/Scripts/python.exe -m scripts.nutrition_import.importer 文件.csv --source tfda --version 2026 --license OGDL-1.0`
+- 易混淆候选生成：`./.venv/Scripts/python.exe -m scripts.nutrition_import.relations`
+- 自建菜谱（食材克重 → 菜品营养）：`./.venv/Scripts/python.exe -m scripts.nutrition_import.recipes recipe.json --commit`
+- 启用/停用 staging 条目：`./.venv/Scripts/python.exe -m scripts.nutrition_import.activate --source tfda --food-type single_food --commit`
+- 数据源、许可、字段映射、K-FIND 申请步骤和手动下载步骤见 [app/data/SOURCES.md](app/data/SOURCES.md)
+- 手工整理 CSV 可复制 [app/data/import_template.csv](app/data/import_template.csv)
+- 查看全部（含 staging）：`GET /api/foods?include_inactive=true`；规模统计：`GET /api/foods/stats`
+- 当前已接入 TFDA 与 CoFID 适配器，默认 `active=false` 进入 staging，避免干扰识别活跃池
+
 ## 目录结构（一个功能 = 一个文件，好找好改）
 
 ```
@@ -39,9 +55,9 @@ backend/
     │   ├── security.py        # 密码哈希(pbkdf2) + JWT
     │   └── deps.py            # "当前登录用户"依赖
     ├── db/session.py          # 数据库连接
-    ├── models/                # ★ 11 张表定义（users/health_profiles/recognitions/
-    │                          #   food_records/diet_plans+plan_days/check_ins/
-    │                          #   points_logs/weight_logs/rewards/redemptions）
+    ├── models/                # ★ 18 张表定义（业务 11 张 + 营养库 7 张：
+    │                          #   foods/food_aliases/food_relations/food_ingredients/
+    │                          #   food_recipes/food_recipe_items/import_batches）
     ├── schemas/               # API 请求参数校验
     ├── routers/               # ★ API 路由，按模块一个文件：
     │                          #   auth 认证 / profile 档案 / recognitions 识别 /

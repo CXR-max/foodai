@@ -1,0 +1,26 @@
+[
+  {"group_key": "syn_tomato_egg", "relation_type": "synonym", "name": "番茄炒蛋", "canonical_name": "西红柿炒鸡蛋", "priority": 10},
+  {"group_key": "syn_tomato_egg", "relation_type": "synonym", "name": "西红柿炒蛋", "canonical_name": "西红柿炒鸡蛋", "priority": 10},
+  {"group_key": "syn_xiaochao", "relation_type": "synonym", "name": "小炒肉", "canonical_name": "辣椒炒肉", "priority": 10},
+  {"group_key": "syn_xiaochao", "relation_type": "synonym", "name": "农家小炒肉", "canonical_name": "辣椒炒肉", "priority": 10},
+  {"group_key": "syn_gongbao", "relation_type": "synonym", "name": "宫爆鸡丁", "canonical_name": "宫保鸡丁", "priority": 10},
+
+  {"group_key": "con_braised_pork", "relation_type": "confusable", "name": "红烧肉", "canonical_name": null, "distinguish_tip": "浙式红烧肉偏甜、带皮五花；东坡肉更甜、块更大；把子肉酱香更重", "nutrition_delta": {"energy_kcal": -55, "fat_g": -7}, "priority": 20},
+  {"group_key": "con_braised_pork", "relation_type": "confusable", "name": "东坡肉", "canonical_name": null, "distinguish_tip": "东坡肉黄酒/冰糖更重、块更大；红烧肉汤汁更薄", "nutrition_delta": {"energy_kcal": 55, "fat_g": 7}, "priority": 20},
+  {"group_key": "con_braised_pork", "relation_type": "confusable", "name": "把子肉", "canonical_name": null, "distinguish_tip": "把子肉酱香咸鲜、常配米饭；红烧肉偏甜", "nutrition_delta": {"energy_kcal": -60, "fat_g": -6}, "priority": 20},
+
+  {"group_key": "con_braised_ribs", "relation_type": "confusable", "name": "红烧肉", "canonical_name": null, "distinguish_tip": "红烧肉是五花肉；红烧排骨带骨、蛋白质更高", "nutrition_delta": {"energy_kcal": 155, "fat_g": 21}, "priority": 20},
+  {"group_key": "con_braised_ribs", "relation_type": "confusable", "name": "红烧排骨", "canonical_name": null, "distinguish_tip": "红烧排骨带骨；红烧肉是纯五花肉", "nutrition_delta": {"energy_kcal": -155, "fat_g": -21}, "priority": 20},
+
+  {"group_key": "con_hui_guo", "relation_type": "confusable", "name": "辣椒炒肉", "canonical_name": null, "distinguish_tip": "辣椒炒肉湘式鲜辣；回锅肉川式豆瓣酱、肉片煸卷", "nutrition_delta": {"energy_kcal": -105, "fat_g": -11}, "priority": 20},
+  {"group_key": "con_hui_guo", "relation_type": "confusable", "name": "回锅肉", "canonical_name": null, "distinguish_tip": "回锅肉有豆瓣酱、肉片煸卷；辣椒炒肉更清爽", "nutrition_delta": {"energy_kcal": 105, "fat_g": 11}, "priority": 20},
+
+  {"group_key": "con_yuxiang", "relation_type": "confusable", "name": "鱼香肉丝", "canonical_name": null, "distinguish_tip": "鱼香肉丝有肉丝；鱼香茄子以茄子为主、热量更低", "nutrition_delta": {"energy_kcal": 15, "fat_g": 0.4}, "priority": 20},
+  {"group_key": "con_yuxiang", "relation_type": "confusable", "name": "鱼香茄子", "canonical_name": null, "distinguish_tip": "鱼香茄子以茄子为主；鱼香肉丝有肉丝", "nutrition_delta": {"energy_kcal": -15, "fat_g": -0.4}, "priority": 20},
+
+  {"group_key": "con_fish", "relation_type": "confusable", "name": "水煮鱼", "canonical_name": null, "distinguish_tip": "水煮鱼麻辣红油；酸菜鱼酸菜汤底、汤更多", "nutrition_delta": {"energy_kcal": 55, "fat_g": 6}, "priority": 20},
+  {"group_key": "con_fish", "relation_type": "confusable", "name": "酸菜鱼", "canonical_name": null, "distinguish_tip": "酸菜鱼酸菜汤底；水煮鱼麻辣红油", "nutrition_delta": {"energy_kcal": -55, "fat_g": -6}, "priority": 20},
+
+  {"group_key": "con_steamed_fish", "relation_type": "confusable", "name": "清蒸鲈鱼", "canonical_name": null, "distinguish_tip": "清蒸鲈鱼清淡；西湖醋鱼带糖醋汁", "nutrition_delta": {"energy_kcal": -3, "fat_g": 0.5}, "priority": 20},
+  {"group_key": "con_steamed_fish", "relation_type": "confusable", "name": "西湖醋鱼", "canonical_name": null, "distinguish_tip": "西湖醋鱼带糖醋汁；清蒸鲈鱼清淡", "nutrition_delta": {"energy_kcal": 3, "fat_g": -0.5}, "priority": 20}
+]
