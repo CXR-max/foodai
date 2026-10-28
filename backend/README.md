@@ -9,12 +9,15 @@ AI 健康管理平台后端。**默认 mock 模式，无需任何 API key 即可
 E:/app/miniconda3/python.exe -m venv .venv
 ./.venv/Scripts/python.exe -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-# 2. 首次：建数据库表
-./.venv/Scripts/python.exe -m alembic upgrade head
+# 2. 首次：一键建库（迁移 + 种子 + 200 道菜谱 + 激活 121 道）
+./.venv/Scripts/python.exe seed_all.py
 
 # 3. 启动（之后每天开发只需这一条）
 ./.venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8000
 ```
+
+> `seed_all.py` 可重复执行（幂等）；只建表不灌数据可以用 `python -m alembic upgrade head`。
+> 它会导入 200 道菜谱并把「家常菜 / 川 / 粤 / 鲁 / 苏」121 道设为 active，其余 79 道留在 staging。
 
 - 接口文档：http://localhost:8000/docs
 - 演示造数（排行榜预置几个用户）：`./.venv/Scripts/python.exe seed_demo.py`
@@ -28,6 +31,7 @@ E:/app/miniconda3/python.exe -m venv .venv
 - 外部数据导入（先安装导入依赖，再 dry-run，确认后加 `--commit`）：
   `./.venv/Scripts/python.exe -m pip install -r requirements-import.txt`
   `./.venv/Scripts/python.exe -m scripts.nutrition_import.importer 文件.csv --source tfda --version 2026 --license OGDL-1.0`
+- 已内置的适配器：`tfda.py`、`cofid.py`、`usda.py`（FNDDS 2021-2023）、`mext.py`（日本 2023）、`recipes.py`（食材克重→菜品）、`activate.py`（staging 启停）
 - 易混淆候选生成：`./.venv/Scripts/python.exe -m scripts.nutrition_import.relations`
 - 自建菜谱（食材克重 → 菜品营养）：`./.venv/Scripts/python.exe -m scripts.nutrition_import.recipes recipe.json --commit`
 - 启用/停用 staging 条目：`./.venv/Scripts/python.exe -m scripts.nutrition_import.activate --source tfda --food-type single_food --commit`

@@ -77,6 +77,10 @@ class Settings(BaseSettings):
     LLM_VISION_RATE_RETRIES: int = 3  # 免费模型 429 限流时的退避重试次数（失败很快，重试成本低）
     LLM_FALLBACK_TO_MOCK: bool = True # 真模型失败后自动降级 mock（演示保命开关）
 
+    # ---- 识别防刷 ----
+    VISION_DAILY_QUOTA: int = 50      # 每人每天最多识别次数（0=不限制）
+    VISION_DEDUPE_HOURS: int = 24     # 同图去重窗口（小时内重复上传直接回放上次结果）
+
     # ---- 派生：当前生效的文字 / 视觉配置（业务代码只认这几个）----
     @property
     def is_local(self) -> bool:

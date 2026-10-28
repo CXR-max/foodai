@@ -2,12 +2,14 @@
 识别结果可以"保存为饮食记录"（转为 food_records 并得积分）；
 历史记录支持分页 / 删除 / 重新识别。
 """
+import hashlib
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from app.core.config import settings
 from app.core.deps import get_current_user
@@ -19,7 +21,7 @@ from app.models.user import User
 from app.schemas.food_record import CorrectRecognitionIn, SaveRecognitionIn
 from app.services import nutrition, points, recognition
 from app.services.achievements import unlock_all
-from app.services.images import compress_for_vision
+from app.services.images import compress_for_vision, validate_image
 from app.services.llm import foods_data
 from app.services.llm.provider import get_llm_provider
 from app.services.llm.schemas import RecognizedDish
@@ -145,11 +147,42 @@ async def create_recognition(
     if len(image_bytes) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="图片不能超过 10MB")
 
+    # 真解码校验：坏图/伪造 MIME/超大分辨率不送模型，直接 400（省一次视觉调用）
+    try:
+        validate_image(image_bytes)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    # 防刷 1：每日识别配额
+    quota = settings.VISION_DAILY_QUOTA
+    if quota > 0:
+        since = datetime.now() - timedelta(days=1)
+        used = (db.query(Recognition)
+                .filter(Recognition.user_id == user.id, Recognition.created_at >= since)
+                .count())
+        if used >= quota:
+            raise HTTPException(status_code=429,
+                                detail=f"今天已识别 {used} 次，达到每日上限 {quota} 次，明天再来")
+
+    # 防刷 2：同图去重（窗口内重复上传直接回放上次结果，不再烧一次视觉调用）
+    digest = hashlib.sha256(image_bytes).hexdigest()
+    if settings.VISION_DEDUPE_HOURS > 0:
+        window = datetime.now() - timedelta(hours=settings.VISION_DEDUPE_HOURS)
+        recent = (db.query(Recognition)
+                  .filter(Recognition.user_id == user.id, Recognition.created_at >= window)
+                  .order_by(Recognition.created_at.desc()).limit(50).all())
+        for old in recent:
+            if (old.result or {}).get("image_sha256") == digest:
+                return {**recognition_dict(old), "replayed": True}
+
     # 压缩瘦身：长边 ≤1024 + JPEG，显著减少视觉 token 与上传耗时（失败自动回退原图）
     image_bytes, content_type = compress_for_vision(image_bytes, file.content_type or "image/jpeg")
 
     profile_ctx = _build_profile_ctx(db, user.id)
-    vision, dishes, nut, raw_portion_g, provider = _analyze_image(image_bytes, content_type, profile_ctx)
+    # 视觉调用是同步阻塞的：丢到线程池执行，避免一次识别把整个事件循环卡住（其他人全排队）
+    vision, dishes, nut, raw_portion_g, provider = await run_in_threadpool(
+        _analyze_image, image_bytes, content_type, profile_ctx
+    )
 
     # 图片存到 uploads/，用 uuid 防中文路径问题（存压缩后的版本，省空间）
     ext = ALLOWED_TYPES.get(content_type, ".jpg")
@@ -165,6 +198,7 @@ async def create_recognition(
             "nutrition": nut,
             "match": dishes[0]["match"] if dishes else recognition.evaluate(vision, nut),
             "dishes": dishes,                # 每道菜：克重/营养/匹配/是否需要确认
+            "image_sha256": digest,          # 同图去重用（原图哈希）
         },
         dish_name=vision.dish_name,
         calories=nut["calories"],

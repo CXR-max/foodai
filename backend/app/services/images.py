@@ -12,6 +12,32 @@ logger = logging.getLogger("llm")
 
 MAX_EDGE = 1024      # 长边最大像素（菜品细节足够，且显著减少视觉 token）
 JPEG_QUALITY = 80    # JPEG 质量（肉眼几乎无差，体积大幅下降）
+MAX_PIXELS = 40_000_000   # 4000 万像素上限（防解压炸弹）
+MIN_EDGE = 32        # 太小的图没有识别价值
+
+
+def validate_image(image_bytes: bytes) -> tuple[int, int]:
+    """真解码校验图片：坏图/伪造 MIME/超大图直接抛 ValueError。
+
+    只看客户端 content_type 不够——服务器必须自己解一次，
+    否则坏图会白白消耗一次视觉调用（60s + 配额）。
+    """
+    try:
+        with Image.open(io.BytesIO(image_bytes)) as probe:
+            probe.verify()                      # 只校验完整性，不加载像素
+    except Exception as exc:  # noqa: BLE001
+        raise ValueError("图片无法解析，请换一张 jpg/png/webp") from exc
+
+    with Image.open(io.BytesIO(image_bytes)) as img:
+        width, height = img.size
+        fmt = (img.format or "").upper()
+    if fmt not in {"JPEG", "PNG", "WEBP"}:
+        raise ValueError("图片格式不支持，仅限 jpg/png/webp")
+    if width * height > MAX_PIXELS:
+        raise ValueError("图片分辨率过大，请压缩后再传")
+    if min(width, height) < MIN_EDGE:
+        raise ValueError("图片太小，无法识别")
+    return width, height
 
 
 def compress_for_vision(image_bytes: bytes, content_type: str) -> tuple[bytes, str]:
