@@ -146,7 +146,7 @@ onMounted(load)
 
     <!-- 使用补签卡弹窗 -->
     <el-dialog v-model="makeupDialog" title="使用补签卡" width="360px">
-      <p style="margin-top:0;color:#7c7669">选择要补签的日期（补签后该天记为已打卡，并奖励积分）</p>
+      <p style="margin-top:0;color:var(--muted)">选择要补签的日期（补签后该天记为已打卡，并奖励积分）</p>
       <el-date-picker
         v-model="makeupDate"
         type="date"

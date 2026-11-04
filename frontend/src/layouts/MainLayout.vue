@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 主布局：74px 图标轨 + 报告式顶栏（昵称/积分/退出）；打卡菜单带"今日未打卡"红点
+// 主布局：248px 白色文字侧栏 + 顶栏（标题/日期/积分）；打卡菜单带"今日未打卡"红点
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -8,7 +8,7 @@ import { hasPendingCheckin, refreshTodayCheckin } from '@/stores/todayCheckin'
 const auth = useAuthStore()
 const route = useRoute()
 
-// 图标使用 1.6px 线性描边（与“营养研究所”视觉一致），path 为静态常量
+// 图标使用 1.7px 线性描边，path 为静态常量
 const menus = [
   {
     path: '/dashboard', title: '仪表盘',
@@ -81,33 +81,36 @@ onBeforeUnmount(() => window.removeEventListener('focus', refreshDot))
 
 <template>
   <div class="shell">
-    <!-- ================= 图标轨 ================= -->
-    <aside class="rail">
-      <router-link to="/dashboard" class="rail-logo" title="识膳智行">膳</router-link>
+    <!-- ================= 白色文字侧栏 ================= -->
+    <aside class="sidebar">
+      <router-link to="/dashboard" class="brand">
+        <span class="brand-mark">膳</span>
+        <span class="brand-text">
+          <span class="brand-name">识膳智行</span>
+          <span class="brand-scope">AI 健康管理</span>
+        </span>
+      </router-link>
 
-      <nav class="rail-nav">
+      <nav class="nav">
         <router-link
           v-for="m in menus" :key="m.path" :to="m.path"
-          class="rail-btn" :class="{ on: route.path === m.path }" :title="m.title"
+          class="nav-link" :class="{ on: route.path === m.path }"
         >
           <svg class="ico" viewBox="0 0 24 24">
             <path v-for="(d, i) in m.paths" :key="i" :d="d" />
           </svg>
+          <span class="nav-title">{{ m.title }}</span>
           <span v-if="showDot(m.path)" class="dot"></span>
-          <span class="rail-tip">{{ m.title }}</span>
         </router-link>
       </nav>
 
-      <div class="rail-spacer"></div>
-
-      <button class="rail-btn rail-quit" title="退出登录" @click="auth.logout()">
-        <svg class="ico" viewBox="0 0 24 24">
-          <path d="M14 4H6v16h8M10 12h10M17 8.5L20.5 12 17 15.5" />
-        </svg>
-        <span class="rail-tip">退出登录</span>
-      </button>
-
-      <div class="rail-avatar" :title="auth.user?.nickname || ''">{{ initial }}</div>
+      <div class="sidebar-foot">
+        <div class="user-row" :title="auth.user?.nickname || ''">
+          <span class="avatar">{{ initial }}</span>
+          <span class="who">{{ auth.user?.nickname }}</span>
+        </div>
+        <button class="quit" @click="auth.logout()">退出登录</button>
+      </div>
     </aside>
 
     <!-- ================= 主区 ================= -->
@@ -119,7 +122,6 @@ onBeforeUnmount(() => window.removeEventListener('focus', refreshDot))
         </div>
         <div class="topbar-r">
           <span class="chip chip-accent">积分 <b>{{ auth.user?.points_total ?? 0 }}</b></span>
-          <span class="nickname">{{ auth.user?.nickname }}</span>
         </div>
       </header>
 
@@ -133,131 +135,145 @@ onBeforeUnmount(() => window.removeEventListener('focus', refreshDot))
 <style scoped>
 .shell {
   display: grid;
-  grid-template-columns: 74px minmax(0, 1fr);
+  grid-template-columns: 248px minmax(0, 1fr);
   height: 100%;
   background: var(--paper);
 }
 
-/* ---------- 图标轨 ---------- */
-.rail {
-  background: var(--rail);
+/* ---------- 白色文字侧栏 ---------- */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 18px 0 16px;
-  gap: 3px;
+  padding: 20px 14px 16px;
   position: relative;
   z-index: 20;
+  overflow-y: auto;
 }
 
-.rail-logo {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  background: var(--lime);
-  color: var(--ink);
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px 20px;
+  text-decoration: none;
+}
+.brand-mark {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 11px;
+  background: var(--accent);
+  color: #fff;
   display: grid;
   place-items: center;
-  font-family: var(--serif);
-  font-weight: 700;
+  font-family: var(--sans);
+  font-weight: 800;
   font-size: 17px;
-  margin-bottom: 20px;
-  transition: transform 0.2s;
 }
-.rail-logo:hover { transform: translateY(-1px); }
+.brand-name {
+  display: block;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: var(--ink);
+}
+.brand-scope {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 3px;
+}
 
-.rail-nav {
+.nav {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 3px;
+  gap: 2px;
 }
-
-.rail-btn {
+.nav-link {
   position: relative;
-  width: 44px;
-  height: 44px;
-  border: 0;
-  background: transparent;
-  color: var(--rail-text);
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  transition: background 0.18s, color 0.18s;
-  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  color: #47504f;
+  font-size: 13.5px;
+  text-decoration: none;
+  transition: background 0.14s, color 0.14s;
 }
-.rail-btn .ico {
-  width: 20px;
-  height: 20px;
+.nav-link .ico {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.6;
+  stroke-width: 1.7;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.rail-btn:hover { color: var(--rail-hover); background: var(--rail-2); }
-.rail-btn.on { background: var(--rail-2); color: var(--lime); }
-.rail-btn.on::before {
-  content: '';
-  position: absolute;
-  left: -15px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 18px;
-  background: var(--lime);
-  border-radius: 0 2px 2px 0;
-}
-
-.rail-btn .dot {
-  position: absolute;
-  top: 9px;
-  right: 9px;
-  width: 6px;
-  height: 6px;
+.nav-link:hover { background: #eef6f5; color: var(--ink); }
+.nav-link.on { background: var(--accent-soft); color: var(--accent-deep); font-weight: 600; }
+.nav-link.on .ico { color: var(--accent); }
+.nav-link .dot {
+  margin-left: auto;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--clay);
-  border: 2px solid var(--rail);
 }
 
-.rail-tip {
-  position: absolute;
-  left: 52px;
-  top: 50%;
-  transform: translate(-4px, -50%);
-  background: var(--rail);
-  color: var(--paper);
-  border: 1px solid var(--rail-line);
-  font-size: 11.5px;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-  padding: 5px 10px;
-  border-radius: 4px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.16s, transform 0.16s;
-  z-index: 40;
+.sidebar-foot {
+  margin-top: auto;
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
-.rail-btn:hover .rail-tip { opacity: 1; transform: translate(0, -50%); }
-
-.rail-spacer { flex: 1; }
-
-.rail-quit { margin-bottom: 14px; }
-
-.rail-avatar {
-  width: 34px;
-  height: 34px;
+.user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  min-width: 0;
+}
+.avatar {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
   border-radius: 50%;
-  background: var(--rail-2);
-  color: var(--rail-hover);
   display: grid;
   place-items: center;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--accent-soft);
+  color: var(--accent-deep);
   font-family: var(--mono);
-  letter-spacing: 0.02em;
-  border: 1px solid var(--rail-line);
 }
+.user-row .who {
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.quit {
+  border: 1px solid var(--line-2);
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  height: 36px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.quit:hover { background: var(--clay-soft); color: var(--clay-deep); border-color: var(--clay); }
 
 /* ---------- 顶栏 ---------- */
 .main {
@@ -280,10 +296,9 @@ onBeforeUnmount(() => window.removeEventListener('focus', refreshDot))
 
 .topbar-l { display: flex; align-items: baseline; gap: 14px; min-width: 0; }
 .topbar-title {
-  font-family: var(--serif);
   font-size: 18px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-weight: 800;
+  letter-spacing: -0.01em;
   color: var(--ink);
 }
 .topbar-date {
@@ -294,7 +309,6 @@ onBeforeUnmount(() => window.removeEventListener('focus', refreshDot))
 }
 
 .topbar-r { display: flex; align-items: center; gap: 14px; }
-.nickname { font-size: 13px; color: var(--ink-2); }
 
 /* ---------- 内容区 ---------- */
 .content {
@@ -305,10 +319,7 @@ onBeforeUnmount(() => window.removeEventListener('focus', refreshDot))
 }
 
 @media (max-width: 1080px) {
-  .shell { grid-template-columns: 60px minmax(0, 1fr); }
-  .rail-btn { width: 40px; height: 40px; }
-  .rail-btn.on::before { left: -11px; }
-  .rail-logo { width: 34px; height: 34px; margin-bottom: 14px; }
+  .shell { grid-template-columns: 200px minmax(0, 1fr); }
   .topbar { padding: 0 18px; }
   .topbar-date { display: none; }
 }

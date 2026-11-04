@@ -98,7 +98,7 @@ onActivated(load)   // 从其他页面切回来自动刷新 = 实时排名
   color: var(--muted);
 }
 .row.top { --medal: var(--ochre); box-shadow: inset 3px 0 0 var(--medal); }
-.row.top:nth-child(3) { --medal: #8b9cb3; }
+.row.top:nth-child(3) { --medal: #9aa5a6; }
 .row.top:nth-child(4) { --medal: var(--clay); }
 .row.top .rank { color: var(--medal); }
 .row.top:nth-child(2) .rank { font-size: 19px; }
@@ -137,7 +137,7 @@ onActivated(load)   // 从其他页面切回来自动刷新 = 实时排名
   margin-top: 22px;
   border: 1px solid var(--line);
   border-left: 3px solid var(--accent);
-  background: #f6f9fd;
+  background: #f0f9f7;
   border-radius: 4px;
   padding: 16px 20px;
   display: flex;

@@ -5,120 +5,124 @@
    ============================================================ */
 
 :root {
-  /* ---- 基础色：浅纸白，卡片纯白（不再整体压成灰米色） ---- */
-  --paper: #f8f6f1;
-  --paper-2: #efebe2;
+  /* ---- 基础色：浅灰绿底，卡片纯白 ---- */
+  --paper: #f4f6f7;
+  --paper-2: #e8eef0;
   --surface: #ffffff;
-  --ink: #24242a;
-  --ink-2: #4c4c55;
-  --muted: #8b8b95;
-  --line: #e6e2d8;
-  --line-2: #d6d0c2;
+  --ink: #171a1c;
+  --ink-2: #4b5457;
+  --muted: #6d7679;
+  --line: #e4eaec;
+  --line-2: #d2dcde;
 
-  /* ---- 主色：藏蓝（替代原版过亮的 #409eff） ---- */
-  --accent: #3a5a8c;
-  --accent-deep: #2c476f;
-  --accent-soft: #e7edf7;
-  --indigo: #3a5a8c;
-  --indigo-soft: #e7edf7;
+  /* ---- 主色：青绿 teal ---- */
+  --accent: #17756b;
+  --accent-deep: #10605a;
+  --accent-soft: #dcf3ef;
+  --indigo: #2f6fb5;
+  --indigo-soft: #e4f0fb;
 
-  /* ---- 语义色：保留原版绿/橙/红色相，略降亮度以适配纸白底 ---- */
-  --sage: #5ca83c;
-  --sage-deep: #46852c;
-  --sage-soft: #eaf5e2;
+  /* ---- 语义色 ---- */
+  --sage: #2f7a45;
+  --sage-deep: #14532d;
+  --sage-soft: #ddf5e5;
 
-  --ochre: #e0982f;
-  --ochre-deep: #b8781d;
-  --ochre-soft: #fcf0dc;
+  --ochre: #b0741a;
+  --ochre-deep: #6b4310;
+  --ochre-soft: #fcf0da;
 
-  --clay: #d95757;
-  --clay-deep: #b33f3f;
-  --clay-soft: #fbe8e8;
+  --clay: #b3372f;
+  --clay-deep: #7d1c17;
+  --clay-soft: #fde7e5;
 
-  /* ---- 辅助色：给不同模块/物品各自的颜色 ---- */
-  --teal: #2e9c86;
-  --teal-deep: #1f7b69;
-  --teal-soft: #e0f3ee;
+  /* ---- 辅助色：物品色盘（六个色相） ---- */
+  --teal: #17756b;
+  --teal-deep: #0b403a;
+  --teal-soft: #dcf3ef;
 
-  --plum: #7c6bb5;
-  --plum-deep: #60509b;
-  --plum-soft: #ede9f8;
+  --plum: #8b4a7a;
+  --plum-deep: #5a2b4e;
+  --plum-soft: #f8e8f3;
 
-  --lime: #cdea9f;
-  --lime-soft: #f0f9e6;
+  --lime: #4fc3b5;
+  --lime-soft: #e6f6f3;
 
-  /* ---- 深色轨道：藏青（有颜色，不再是纯黑） ---- */
-  --rail: #1f2b3a;
-  --rail-2: #2b3a4d;
-  --rail-line: #3a4a5e;
-  --rail-text: #9fb0c4;
-  --rail-hover: #e6eef8;
+  /* ---- 深色轨道：登录页品牌区改用青绿渐变，此组仅作兜底 ---- */
+  --rail: #10605a;
+  --rail-2: #17756b;
+  --rail-line: #3a9389;
+  --rail-text: #bfe5df;
+  --rail-hover: #eaf7f4;
 
-  /* ---- 字体 ---- */
-  --serif: 'Source Han Serif SC', 'Noto Serif SC', 'Songti SC', SimSun, Georgia, serif;
-  --sans: 'HarmonyOS Sans SC', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+  /* ---- 圆角 ---- */
+  --radius-card: 20px;
+  --radius-control: 10px;
+
+  /* ---- 字体：营养色盘全无衬线 ---- */
+  --serif: 'Manrope', 'Noto Sans SC', 'HarmonyOS Sans SC', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --sans: 'Manrope', 'Noto Sans SC', 'HarmonyOS Sans SC', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
   --mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, 'Courier New', monospace;
 
   /* ---- Element Plus 主题映射 ---- */
-  --el-color-primary: #3a5a8c;
-  --el-color-primary-light-3: #5b7aa8;
-  --el-color-primary-light-5: #8ba2c2;
-  --el-color-primary-light-7: #b8c6da;
-  --el-color-primary-light-8: #cdd7e7;
-  --el-color-primary-light-9: #e7edf7;
-  --el-color-primary-dark-2: #2c476f;
+  --el-color-primary: #17756b;
+  --el-color-primary-light-3: #3b8d84;
+  --el-color-primary-light-5: #74b3ad;
+  --el-color-primary-light-7: #a3d2ce;
+  --el-color-primary-light-8: #bce0dd;
+  --el-color-primary-light-9: #dcf3ef;
+  --el-color-primary-dark-2: #10605a;
 
-  --el-color-success: #5ca83c;
-  --el-color-success-light-3: #7dbb63;
-  --el-color-success-light-5: #a3ce8f;
-  --el-color-success-light-7: #c8e2bc;
-  --el-color-success-light-8: #d8ebcf;
-  --el-color-success-light-9: #eaf5e2;
-  --el-color-success-dark-2: #46852c;
+  --el-color-success: #2f7a45;
+  --el-color-success-light-3: #5a9a6d;
+  --el-color-success-light-5: #87b998;
+  --el-color-success-light-7: #b3d4bf;
+  --el-color-success-light-8: #cce3d5;
+  --el-color-success-light-9: #ddf5e5;
+  --el-color-success-dark-2: #14532d;
 
-  --el-color-warning: #e0982f;
-  --el-color-warning-light-3: #e7ad59;
-  --el-color-warning-light-5: #edc488;
-  --el-color-warning-light-7: #f3d9b7;
-  --el-color-warning-light-8: #f6e4cc;
-  --el-color-warning-light-9: #fcf0dc;
-  --el-color-warning-dark-2: #b8781d;
+  --el-color-warning: #b0741a;
+  --el-color-warning-light-3: #c28f4b;
+  --el-color-warning-light-5: #d2ad7d;
+  --el-color-warning-light-7: #e2ccae;
+  --el-color-warning-light-8: #ead9c4;
+  --el-color-warning-light-9: #fcf0da;
+  --el-color-warning-dark-2: #6b4310;
 
-  --el-color-danger: #d95757;
-  --el-color-danger-light-3: #e17979;
-  --el-color-danger-light-5: #e9a2a2;
-  --el-color-danger-light-7: #f1c9c9;
-  --el-color-danger-light-8: #f5d9d9;
-  --el-color-danger-light-9: #fbe8e8;
-  --el-color-danger-dark-2: #b33f3f;
+  --el-color-danger: #b3372f;
+  --el-color-danger-light-3: #c35e57;
+  --el-color-danger-light-5: #d38e89;
+  --el-color-danger-light-7: #e3bcb9;
+  --el-color-danger-light-8: #ecd2d0;
+  --el-color-danger-light-9: #fde7e5;
+  --el-color-danger-dark-2: #7d1c17;
 
-  --el-color-error: #d95757;
-  --el-color-info: #8b8b95;
-  --el-color-info-light-3: #a6a6ae;
-  --el-color-info-light-5: #bdbdc3;
-  --el-color-info-light-7: #d4d4d8;
-  --el-color-info-light-8: #e3e3e6;
-  --el-color-info-light-9: #f1f1f3;
-  --el-color-info-dark-2: #6f6f79;
+  --el-color-error: #b3372f;
+  --el-color-info: #6d7679;
+  --el-color-info-light-3: #8c9496;
+  --el-color-info-light-5: #aab0b2;
+  --el-color-info-light-7: #c8cccd;
+  --el-color-info-light-8: #d8dbdc;
+  --el-color-info-light-9: #eef2f3;
+  --el-color-info-dark-2: #4b5457;
 
-  --el-text-color-primary: #24242a;
-  --el-text-color-regular: #4c4c55;
-  --el-text-color-secondary: #8b8b95;
-  --el-text-color-placeholder: #b0b0b8;
-  --el-border-color: #d6d0c2;
-  --el-border-color-light: #e6e2d8;
-  --el-border-color-lighter: #ece8de;
-  --el-border-color-extra-light: #f2efe8;
+  --el-text-color-primary: #171a1c;
+  --el-text-color-regular: #4b5457;
+  --el-text-color-secondary: #6d7679;
+  --el-text-color-placeholder: #9aa5a6;
+  --el-border-color: #d2dcde;
+  --el-border-color-light: #e4eaec;
+  --el-border-color-lighter: #e8eef0;
+  --el-border-color-extra-light: #eef2f3;
   --el-fill-color-blank: #ffffff;
-  --el-fill-color-light: #efebe2;
-  --el-fill-color-lighter: #f5f2ea;
+  --el-fill-color-light: #f5f9fa;
+  --el-fill-color-lighter: #f8fafb;
   --el-bg-color: #ffffff;
   --el-bg-color-overlay: #ffffff;
-  --el-border-radius-base: 4px;
-  --el-border-radius-small: 3px;
+  --el-border-radius-base: 10px;
+  --el-border-radius-small: 8px;
   --el-font-family: var(--sans);
-  --el-box-shadow-light: 0 12px 32px -20px rgba(40, 32, 20, 0.45);
-  --el-box-shadow: 0 18px 48px -28px rgba(40, 32, 20, 0.5);
+  --el-box-shadow-light: 0 12px 32px -20px rgba(11, 64, 58, 0.45);
+  --el-box-shadow: 0 18px 48px -28px rgba(11, 64, 58, 0.5);
 }
 
 /* ============================================================
@@ -157,11 +161,11 @@ a { color: var(--accent); text-decoration: none; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--paper); }
 ::-webkit-scrollbar-thumb {
-  background: #d5cdbd;
+  background: #c5d0d2;
   border: 3px solid var(--paper);
   border-radius: 999px;
 }
-::-webkit-scrollbar-thumb:hover { background: #c1b8a5; }
+::-webkit-scrollbar-thumb:hover { background: #aab8ba; }
 
 /* ============================================================
    页面通用容器
@@ -175,10 +179,10 @@ a { color: var(--accent); text-decoration: none; }
 .page-card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 20px 22px;
+  border-radius: var(--radius-card);
+  padding: 22px 24px;
   margin-bottom: 16px;
-  box-shadow: 0 1px 2px rgba(36, 36, 42, 0.04);
+  box-shadow: none;
 }
 
 .page-title {
@@ -286,7 +290,7 @@ a { color: var(--accent); text-decoration: none; }
 .ticket {
   border: 1px solid var(--line);
   background: var(--surface);
-  border-radius: 4px;
+  border-radius: var(--radius-card);
 }
 
 /* ============================================================
@@ -441,7 +445,7 @@ a { color: var(--accent); text-decoration: none; }
 .el-card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--radius-card);
   box-shadow: none !important;
 }
 .el-card__header { border-bottom: 1px solid var(--line); padding: 16px 20px; }
@@ -450,8 +454,8 @@ a { color: var(--accent); text-decoration: none; }
 .el-dialog {
   background: var(--surface);
   border: 1px solid var(--line-2);
-  border-radius: 6px;
-  box-shadow: 0 30px 80px -40px rgba(30, 24, 14, 0.6);
+  border-radius: 16px;
+  box-shadow: 0 30px 80px -40px rgba(11, 64, 58, 0.55);
   padding: 22px 24px;
 }
 .el-dialog__title { font-family: var(--serif); font-size: 17px; font-weight: 600; }
@@ -594,7 +598,7 @@ a { color: var(--accent); text-decoration: none; }
 .el-message-box {
   background: var(--surface);
   border: 1px solid var(--line-2);
-  border-radius: 6px;
+  border-radius: 16px;
   padding: 20px 22px;
 }
 .el-message-box__title { font-family: var(--serif); font-size: 16px; }
@@ -641,8 +645,8 @@ a { color: var(--accent); text-decoration: none; }
 }
 
 .auth-brand {
-  background: var(--rail);
-  color: var(--paper);
+  background: linear-gradient(160deg, #10605a, #17756b);
+  color: #eaf7f4;
   padding: 28px 26px;
   display: flex;
   flex-direction: column;
@@ -658,19 +662,19 @@ a { color: var(--accent); text-decoration: none; }
   width: 220px;
   height: 220px;
   border-radius: 50%;
-  border: 1px solid var(--rail-line);
+  border: 1px solid rgba(255, 255, 255, 0.16);
 }
-.ab-top { font-size: 9px; letter-spacing: 0.18em; color: #8f8da2; }
+.ab-top { font-size: 9px; letter-spacing: 0.18em; color: #bfe5df; }
 .ab-logo {
   width: 40px;
   height: 40px;
-  border-radius: 11px;
-  background: var(--lime);
-  color: var(--ink);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--accent);
   display: grid;
   place-items: center;
-  font-family: var(--serif);
-  font-weight: 700;
+  font-family: var(--sans);
+  font-weight: 800;
   font-size: 18px;
   margin-bottom: 18px;
 }
@@ -678,25 +682,25 @@ a { color: var(--accent); text-decoration: none; }
   font-family: var(--serif);
   font-size: 36px;
   line-height: 1.12;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   margin: 0;
-  color: #f3efe4;
+  color: #ffffff;
 }
-.ab-title em { font-style: normal; color: var(--lime); }
-.ab-sub { margin: 12px 0 0; font-size: 12px; color: #b9b6c8; letter-spacing: 0.04em; }
-.ab-list { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--rail-line); }
+.ab-title em { font-style: normal; color: #9fe3d9; }
+.ab-sub { margin: 12px 0 0; font-size: 12px; color: #bfe5df; letter-spacing: 0.04em; }
+.ab-list { list-style: none; padding: 0; margin: 0; border-top: 1px solid rgba(255, 255, 255, 0.16); }
 .ab-list li {
   display: grid;
   grid-template-columns: 26px 1fr;
   gap: 10px;
   padding: 9px 0;
-  border-bottom: 1px solid #302e3d;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   font-size: 11.5px;
-  color: #c9c7d6;
+  color: #d5efe9;
 }
-.ab-list .no { font-family: var(--mono); font-size: 9px; color: var(--lime); letter-spacing: 0.1em; }
-.ab-foot { margin-top: auto; font-size: 8.5px; letter-spacing: 0.18em; color: #7b7889; }
+.ab-list .no { font-family: var(--mono); font-size: 9px; color: #9fe3d9; letter-spacing: 0.1em; }
+.ab-foot { margin-top: auto; font-size: 8.5px; letter-spacing: 0.18em; color: rgba(255, 255, 255, 0.55); }
 
 .auth-form { padding: 36px 38px 30px; display: flex; flex-direction: column; justify-content: center; }
 .auth-title { font-family: var(--serif); font-size: 26px; font-weight: 600; margin: 0; letter-spacing: 0.03em; }
