@@ -676,8 +676,8 @@ onMounted(reloadAll)
 }
 .cell.pad { background: transparent; cursor: default; }
 .cell .cell-d { font-size: 8.5px; color: rgba(23, 26, 28, 0.45); }
-.cell.lv1 { background: #cde9e4; }
-.cell.lv2 { background: #7fc3ba; }
+.cell.lv1 { background: #bce0dd; }
+.cell.lv2 { background: #74b3ad; }
 .cell.lv3 { background: var(--accent); }
 .cell.lv3 .cell-d { color: #fff; }
 .cell:hover:not(.pad) { outline: 1px solid var(--accent); outline-offset: 1px; }
@@ -685,8 +685,8 @@ onMounted(reloadAll)
 .legend { display: flex; align-items: center; gap: 5px; margin-top: 10px; font-size: 8.5px; letter-spacing: 0.1em; color: var(--muted); }
 .lg { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
 .lg.lv0 { background: var(--paper-2); }
-.lg.lv1 { background: #cde9e4; }
-.lg.lv2 { background: #7fc3ba; }
+.lg.lv1 { background: #bce0dd; }
+.lg.lv2 { background: #74b3ad; }
 .lg.lv3 { background: var(--accent); }
 
 /* AI 点评 */

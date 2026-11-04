@@ -255,7 +255,7 @@ a { color: var(--accent); text-decoration: none; }
 .chip-accent {
   background: var(--accent);
   border-color: var(--accent);
-  color: #f3f0f8;
+  color: #ffffff;
 }
 .chip-accent b { color: var(--lime); }
 
@@ -489,7 +489,7 @@ a { color: var(--accent); text-decoration: none; }
 /* --- 进度条 --- */
 .el-progress-bar__outer { background-color: var(--paper-2); border-radius: 999px; }
 .el-progress-bar__inner {
-  background: linear-gradient(90deg, var(--accent), #7b7fa4 62%, var(--clay));
+  background: linear-gradient(90deg, var(--accent), #4fc3b5 62%, var(--clay));
   border-radius: 999px;
 }
 .el-progress__text { font-family: var(--mono); font-size: 11px !important; color: var(--muted); }
@@ -501,10 +501,10 @@ a { color: var(--accent); text-decoration: none; }
   padding: 11px 14px;
   align-items: center;
 }
-.el-alert--warning.is-light { background: var(--ochre-soft); border-color: #e8d3a8; color: var(--ochre-deep); }
-.el-alert--success.is-light { background: var(--sage-soft); border-color: #cfdcc0; color: var(--sage-deep); }
-.el-alert--error.is-light { background: var(--clay-soft); border-color: #edcdbe; color: var(--clay-deep); }
-.el-alert--info.is-light { background: var(--indigo-soft); border-color: #d3d3e4; color: var(--accent-deep); }
+.el-alert--warning.is-light { background: var(--ochre-soft); border-color: #ead9c4; color: var(--ochre-deep); }
+.el-alert--success.is-light { background: var(--sage-soft); border-color: #cce3d5; color: var(--sage-deep); }
+.el-alert--error.is-light { background: var(--clay-soft); border-color: #ecd2d0; color: var(--clay-deep); }
+.el-alert--info.is-light { background: var(--indigo-soft); border-color: #bce0dd; color: var(--accent-deep); }
 .el-alert__title { font-size: 12.5px; line-height: 1.65; }
 .el-alert__description { font-size: 12px; }
 
@@ -569,7 +569,7 @@ a { color: var(--accent); text-decoration: none; }
 .el-empty__description p { color: var(--muted); font-size: 12.5px; }
 
 /* --- 加载遮罩 --- */
-.el-loading-mask { background-color: rgba(253, 251, 246, 0.72); }
+.el-loading-mask { background-color: rgba(244, 246, 247, 0.72); }
 
 /* --- 下拉 / 弹层 --- */
 .el-popper.is-light {

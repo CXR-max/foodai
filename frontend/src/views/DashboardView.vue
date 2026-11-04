@@ -84,11 +84,11 @@ const chartOption = computed(() => {
       trigger: 'axis',
       valueFormatter: (v: number) => `${v} kcal`,
       backgroundColor: '#ffffff',
-      borderColor: '#d6d0c2',
-      textStyle: { color: '#24242a', fontSize: 12 },
+      borderColor: '#d2dcde',
+      textStyle: { color: '#171a1c', fontSize: 12 },
     },
     legend: target
-      ? { data: ['摄入热量', '每日目标'], top: 4, right: 6, itemWidth: 12, itemHeight: 8, textStyle: { fontSize: 11, color: '#8b8b95' } }
+      ? { data: ['摄入热量', '每日目标'], top: 4, right: 6, itemWidth: 12, itemHeight: 8, textStyle: { fontSize: 11, color: '#6d7679' } }
       : { show: false },
     grid: { left: 10, right: 18, top: target ? 44 : 26, bottom: 6, containLabel: true },
     xAxis: {
@@ -96,15 +96,15 @@ const chartOption = computed(() => {
       boundaryGap: false,
       data: list.map((c) => c.date.slice(5)),
       axisTick: { show: false },
-      axisLine: { lineStyle: { color: '#e6e2d8' } },
-      axisLabel: { color: '#8b8b95', fontSize: 11, hideOverlap: true },
+      axisLine: { lineStyle: { color: '#e4eaec' } },
+      axisLabel: { color: '#6d7679', fontSize: 11, hideOverlap: true },
     },
     yAxis: {
       type: 'value',
       name: 'kcal',
-      nameTextStyle: { color: '#8b8b95', fontSize: 11 },
-      axisLabel: { color: '#8b8b95', fontSize: 11 },
-      splitLine: { lineStyle: { color: '#ece8de', type: 'dashed' } },
+      nameTextStyle: { color: '#6d7679', fontSize: 11 },
+      axisLabel: { color: '#6d7679', fontSize: 11 },
+      splitLine: { lineStyle: { color: '#e8eef0', type: 'dashed' } },
     },
     series: [
       {
@@ -115,8 +115,8 @@ const chartOption = computed(() => {
         symbolSize: 5,
         barMaxWidth: 14,
         data: list.map((c) => c.calories),
-        itemStyle: { color: '#3a5a8c', borderRadius: isMonth ? [3, 3, 0, 0] : 0 },
-        lineStyle: { color: '#3a5a8c', width: 2 },
+        itemStyle: { color: '#17756b', borderRadius: isMonth ? [3, 3, 0, 0] : 0 },
+        lineStyle: { color: '#17756b', width: 2 },
         areaStyle: isMonth
           ? undefined
           : {
@@ -136,8 +136,8 @@ const chartOption = computed(() => {
             type: 'line',
             data: list.map(() => target),
             symbol: 'none',
-            lineStyle: { color: '#d95757', type: 'dashed', width: 1.2 },
-            itemStyle: { color: '#d95757' },
+            lineStyle: { color: '#b3372f', type: 'dashed', width: 1.2 },
+            itemStyle: { color: '#b3372f' },
           }]
         : []),
     ],
@@ -354,12 +354,12 @@ onMounted(load)
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
-  border: 1px solid #f3d9b7;
+  border: 1px solid #e2ccae;
   background: var(--ochre-soft);
   border-radius: 4px;
   margin-bottom: 26px;
 }
-.notice.clear { border-color: #c8e2bc; background: var(--sage-soft); }
+.notice.clear { border-color: #b3d4bf; background: var(--sage-soft); }
 .notice-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ochre); flex: 0 0 7px; }
 .notice.clear .notice-dot { background: var(--sage); }
 .notice-text { font-size: 12.5px; color: var(--ochre-deep); }
@@ -491,7 +491,7 @@ onMounted(load)
   justify-content: space-between;
   align-items: baseline;
   padding: 13px 18px;
-  border-bottom: 1px solid #cdd7e7;
+  border-bottom: 1px solid #bce0dd;
   background: var(--accent-soft);
 }
 .ticket-k { font-size: 9px; letter-spacing: 0.16em; color: var(--accent-deep); }

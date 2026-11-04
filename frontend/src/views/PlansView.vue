@@ -353,7 +353,7 @@ onMounted(async () => {
 
     <!-- 历史方案切换 -->
     <div v-if="plans.length" class="page-card">
-      <span style="margin-right:8px;color:#7c7669">历史方案：</span>
+      <span style="margin-right:8px;color:#6d7679">历史方案：</span>
       <el-select :model-value="current?.id" style="width:260px" @change="(v: number) => openPlan(v)">
         <el-option v-for="p in plans" :key="p.id" :value="p.id" :label="p.title" />
       </el-select>
@@ -403,7 +403,7 @@ onMounted(async () => {
               <div class="exercise-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2.5 2.5" /></svg></div>
               <div style="flex:1">
                 <b>{{ day.exercise.type }}</b>
-                <span style="color:#7c7669;margin-left:10px">{{ day.exercise.duration_min }} 分钟 · 消耗约 {{ day.exercise.calories_burned }} kcal</span>
+                <span style="color:#6d7679;margin-left:10px">{{ day.exercise.duration_min }} 分钟 · 消耗约 {{ day.exercise.calories_burned }} kcal</span>
                 <div class="tips" v-if="day.exercise.tips">{{ day.exercise.tips }}</div>
               </div>
             </div>
@@ -483,7 +483,7 @@ onMounted(async () => {
 .day-head { display: flex; justify-content: space-between; align-items: center; }
 .meal-item { padding: 2px 0; }
 .meal-item .portion { color: var(--muted); font-size: 12px; margin-left: 6px; }
-.exercise-card { margin-top: 12px; background: #f0f3d8; border: 1px solid #dde1d9; }
+.exercise-card { margin-top: 12px; background: #e6f6f3; border: 1px solid #d2dcde; }
 .exercise-row { display: flex; align-items: center; gap: 14px; }
 .exercise-icon { width: 30px; height: 30px; display: grid; place-items: center; color: var(--accent); flex: 0 0 30px; }
 .exercise-icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }

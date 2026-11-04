@@ -28,8 +28,8 @@ function xAxisCfg() {
     boundaryGap: true,
     data: labels.value,
     axisTick: { show: false },
-    axisLine: { lineStyle: { color: '#e6e2d8' } },
-    axisLabel: { color: '#8b8b95', fontSize: 11, hideOverlap: true, margin: 10 },
+    axisLine: { lineStyle: { color: '#e4eaec' } },
+    axisLabel: { color: '#6d7679', fontSize: 11, hideOverlap: true, margin: 10 },
   }
 }
 function yAxisCfg(unit: string) {
@@ -37,9 +37,9 @@ function yAxisCfg(unit: string) {
     type: 'value',
     name: unit,
     nameGap: 12,
-    nameTextStyle: { color: '#8b8b95', fontSize: 11, align: 'right', padding: [0, 0, 4, 0] },
-    axisLabel: { color: '#8b8b95', fontSize: 11 },
-    splitLine: { lineStyle: { color: '#ece8de', type: 'dashed' } },
+    nameTextStyle: { color: '#6d7679', fontSize: 11, align: 'right', padding: [0, 0, 4, 0] },
+    axisLabel: { color: '#6d7679', fontSize: 11 },
+    splitLine: { lineStyle: { color: '#e8eef0', type: 'dashed' } },
   }
 }
 const legendCfg = {
@@ -49,7 +49,7 @@ const legendCfg = {
   itemWidth: 12,
   itemHeight: 8,
   itemGap: 12,
-  textStyle: { fontSize: 12, color: '#4c4c55' },
+  textStyle: { fontSize: 12, color: '#4b5457' },
 }
 const baseGrid = { left: 6, right: 14, top: 46, bottom: 4, containLabel: true }
 
@@ -75,7 +75,7 @@ function seriesOf(kind: BarLine, name: string, data: number[], color: string) {
 const calOption = computed(() => {
   const target = trends.value?.daily_target ?? null
   const series: any[] = [
-    seriesOf(calKind.value, '摄入热量', pts.value.map((p) => p.calories), '#5ca83c'),
+    seriesOf(calKind.value, '摄入热量', pts.value.map((p) => p.calories), '#2f7a45'),
   ]
   if (target) {
     series.push({
@@ -83,8 +83,8 @@ const calOption = computed(() => {
       type: 'line',
       data: pts.value.map(() => target),
       symbol: 'none',
-      lineStyle: { color: '#d95757', type: 'dashed', width: 1.5 },
-      itemStyle: { color: '#d95757' },
+      lineStyle: { color: '#b3372f', type: 'dashed', width: 1.5 },
+      itemStyle: { color: '#b3372f' },
       z: 3,
     })
   }
@@ -100,11 +100,11 @@ const calOption = computed(() => {
 
 // ---- 运动消耗 ----
 const burnOption = computed(() => {
-  const s: any = seriesOf(burnKind.value, '运动消耗', pts.value.map((p) => p.burn), '#e0982f')
+  const s: any = seriesOf(burnKind.value, '运动消耗', pts.value.map((p) => p.burn), '#b0741a')
   // 柱状时给每一天画一个浅色底槽，空白天也能看出"这天没运动"（30 天太密就不画，避免条纹噪点）
   if (burnKind.value === 'bar' && pts.value.length <= 14) {
     s.showBackground = true
-    s.backgroundStyle = { color: '#f4f1ea', borderRadius: [4, 4, 0, 0] }
+    s.backgroundStyle = { color: '#e8eef0', borderRadius: [4, 4, 0, 0] }
   }
   return {
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (v: number) => `${v} kcal` },
@@ -117,7 +117,7 @@ const burnOption = computed(() => {
 })
 
 // ---- 营养素：堆叠柱 / 折线 / 饼图（区间总量占比） ----
-const nutrientColors = { protein: '#3a5a8c', fat: '#e0982f', carb: '#5ca83c' }
+const nutrientColors = { protein: '#17756b', fat: '#b0741a', carb: '#2f7a45' }
 
 const nutrientSums = computed(() => {
   const s = { protein: 0, fat: 0, carb: 0 }
@@ -140,7 +140,7 @@ const nutrientOption = computed(() => {
         center: ['50%', '50%'],
         avoidLabelOverlap: true,
         itemStyle: { borderColor: '#fff', borderWidth: 2 },
-        label: { formatter: '{b}\n{d}%', fontSize: 12, color: '#4c4c55', lineHeight: 16 },
+        label: { formatter: '{b}\n{d}%', fontSize: 12, color: '#4b5457', lineHeight: 16 },
         labelLine: { length: 10, length2: 12 },
         data: [
           { name: '蛋白质', value: s.protein, itemStyle: { color: nutrientColors.protein } },
@@ -187,8 +187,8 @@ const weightOption = computed(() => ({
     smooth: true,
     symbol: 'circle',
     symbolSize: 5,
-    lineStyle: { color: '#3a5a8c', width: 2.5 },
-    itemStyle: { color: '#3a5a8c' },
+    lineStyle: { color: '#17756b', width: 2.5 },
+    itemStyle: { color: '#17756b' },
     areaStyle: { color: 'rgba(58,90,140,0.14)' },
   }],
 }))
@@ -363,7 +363,7 @@ onMounted(() => { loadCharts() })
       <div v-loading="reportLoading" style="min-height:200px">
         <template v-if="report">
           <div class="report-head">
-            <div class="score-ring" :style="{ borderColor: report.score >= 75 ? '#5e7355' : report.score >= 50 ? '#a9722f' : '#a9563c' }">
+            <div class="score-ring" :style="{ borderColor: report.score >= 75 ? '#2f7a45' : report.score >= 50 ? '#b0741a' : '#b3372f' }">
               <b>{{ report.score }}</b><span>健康分</span>
             </div>
             <div class="head-stats">

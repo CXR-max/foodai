@@ -844,7 +844,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #e8cdc4;
+  border: 1px solid #ecd2d0;
   background: var(--clay-soft);
   color: var(--clay-deep);
   font-size: 12px;
@@ -948,9 +948,9 @@ onMounted(() => {
   color: var(--ink-2);
   background: var(--surface);
 }
-.tag-pill.ok { border-color: #d6dccd; background: #eef0e9; color: #4c5c45; }
-.tag-pill.warn-pill { border-color: #f3d9b7; background: var(--ochre-soft); color: var(--ochre-deep); }
-.tag-pill.mock { border-color: #e8cdc4; background: var(--clay-soft); color: var(--clay-deep); }
+.tag-pill.ok { border-color: #b3d4bf; background: #e6f6f3; color: #14532d; }
+.tag-pill.warn-pill { border-color: #e2ccae; background: var(--ochre-soft); color: var(--ochre-deep); }
+.tag-pill.mock { border-color: #ecd2d0; background: var(--clay-soft); color: var(--clay-deep); }
 .conf {
   margin-left: auto;
   font-family: var(--mono);
@@ -1000,7 +1000,7 @@ onMounted(() => {
 }
 .dish-card:hover { border-color: var(--ink); }
 .dn { font-size: 12.5px; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 6px; }
-.need { font-size: 9px; color: var(--clay-deep); border: 1px solid #e8cdc4; border-radius: 999px; padding: 0 5px; font-weight: 400; }
+.need { font-size: 9px; color: var(--clay-deep); border: 1px solid #ecd2d0; border-radius: 999px; padding: 0 5px; font-weight: 400; }
 .dv { font-size: 9.5px; color: var(--muted); }
 .dc { font-size: 9px; color: var(--accent); letter-spacing: 0.06em; }
 
@@ -1018,7 +1018,7 @@ onMounted(() => {
 .ing b { font-weight: 600; color: var(--ink); font-size: 9.5px; }
 
 /* 候选确认 */
-.confirm-box { margin-top: 16px; border: 1px solid #f3d9b7; background: var(--surface); border-radius: 4px; padding: 13px 15px; }
+.confirm-box { margin-top: 16px; border: 1px solid #e2ccae; background: var(--surface); border-radius: 4px; padding: 13px 15px; }
 .confirm-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .confirm-k { font-size: 9px; letter-spacing: 0.16em; color: var(--ochre); }
 .confirm-t { font-size: 11.5px; color: var(--ochre-deep); }

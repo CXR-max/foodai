@@ -36,11 +36,11 @@ const bmiPreview = computed(() => {
 })
 const bmiColor = computed(() => {
   const b = bmiPreview.value
-  if (b == null) return '#7c7669'
-  if (b < 18.5) return '#5a5f8c'
-  if (b < 24) return '#5e7355'
-  if (b < 28) return '#a9722f'
-  return '#a9563c'
+  if (b == null) return '#6d7679'
+  if (b < 18.5) return '#2f6fb5'
+  if (b < 24) return '#2f7a45'
+  if (b < 28) return '#b0741a'
+  return '#b3372f'
 })
 
 const newWeight = ref<number | null>(null)
@@ -86,7 +86,7 @@ const weightOption = computed(() => ({
   yAxis: { type: 'value', scale: true, name: 'kg' },
   series: [{
     type: 'line', smooth: true, data: weights.value.map((w) => w.weight_kg),
-    lineStyle: { color: '#5e7355' }, itemStyle: { color: '#5e7355' },
+    lineStyle: { color: '#2f7a45' }, itemStyle: { color: '#2f7a45' },
     areaStyle: { color: 'rgba(103,194,58,0.12)' },
   }],
 }))
@@ -195,7 +195,7 @@ onMounted(load)
 
 <style scoped>
 .bmi { font-size: 42px; font-weight: 800; margin: 4px 0 8px; }
-.bmi-card { border-top: 3px solid var(--accent); background: #f7f9fd; }
+.bmi-card { border-top: 3px solid var(--accent); background: #f0f9f7; }
 .weight-card { border-top: 3px solid var(--teal); }
 .page-title { margin-top: 18px; }
 .bf-tip { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.5; padding-top: 8px; }
