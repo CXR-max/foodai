@@ -451,28 +451,28 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.sub { color: #7c7669; font-size: 13px; }
-.wizard-box { border: 1px solid #e2dbcb; border-radius: 8px; padding: 12px 14px; height: 100%; background: #fdfbf6; }
-.wizard-title { font-weight: 600; color: #5a5f8c; margin-bottom: 8px; }
+.sub { color: var(--muted); font-size: 13px; }
+.wizard-box { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; height: 100%; background: var(--surface); }
+.wizard-title { font-weight: 600; color: var(--accent); margin-bottom: 8px; }
 .chat-title { display: flex; justify-content: space-between; align-items: center; }
-.pref-label { font-size: 13px; color: #46413a; margin: 10px 0 4px; }
+.pref-label { font-size: 13px; color: var(--ink-2); margin: 10px 0 4px; }
 
-.session { border: 1px solid #e2dbcb; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
+.session { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
 .session-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.session-time { color: #7c7669; font-size: 12px; }
+.session-time { color: var(--muted); font-size: 12px; }
 .session-msg { font-size: 13px; line-height: 1.6; margin: 4px 0; white-space: pre-wrap; }
-.session-msg.user b { color: #5a5f8c; }
-.session-msg.assistant b { color: #5e7355; }
+.session-msg.user b { color: var(--accent); }
+.session-msg.assistant b { color: var(--sage); }
 
 .chat-box { display: flex; flex-direction: column; }
 .chat-list { flex: 1; min-height: 180px; max-height: 260px; overflow-y: auto; padding: 4px 2px; }
-.chat-empty { color: #a8a293; font-size: 13px; line-height: 1.6; }
+.chat-empty { color: var(--muted); font-size: 13px; line-height: 1.6; }
 .chat-row { display: flex; margin-bottom: 8px; }
 .chat-row.user { justify-content: flex-end; }
 .chat-row.assistant { justify-content: flex-start; }
 .bubble { max-width: 85%; padding: 8px 12px; border-radius: 10px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
-.chat-row.user .bubble { background: #5a5f8c; color: #fff; }
-.chat-row.assistant .bubble { background: #ede8dd; color: #1c1a17; }
+.chat-row.user .bubble { background: var(--accent); color: #fff; }
+.chat-row.assistant .bubble { background: var(--paper-2); color: var(--ink); }
 .chat-input { display: flex; gap: 8px; margin-top: 8px; }
 
 .gen-actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-top: 14px; }
@@ -482,12 +482,12 @@ onMounted(async () => {
 
 .day-head { display: flex; justify-content: space-between; align-items: center; }
 .meal-item { padding: 2px 0; }
-.meal-item .portion { color: #7c7669; font-size: 12px; margin-left: 6px; }
+.meal-item .portion { color: var(--muted); font-size: 12px; margin-left: 6px; }
 .exercise-card { margin-top: 12px; background: #f0f3d8; border: 1px solid #dde1d9; }
 .exercise-row { display: flex; align-items: center; gap: 14px; }
 .exercise-icon { width: 30px; height: 30px; display: grid; place-items: center; color: var(--accent); flex: 0 0 30px; }
 .exercise-icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
-.tips { color: #7c7669; font-size: 13px; margin-top: 4px; }
+.tips { color: var(--muted); font-size: 13px; margin-top: 4px; }
 .edit-meal { margin-bottom: 18px; }
 .edit-meal-title { font-weight: 600; margin-bottom: 8px; }
 .edit-item { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }

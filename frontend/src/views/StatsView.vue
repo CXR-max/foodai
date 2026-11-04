@@ -28,8 +28,8 @@ function xAxisCfg() {
     boundaryGap: true,
     data: labels.value,
     axisTick: { show: false },
-    axisLine: { lineStyle: { color: '#e4e7ed' } },
-    axisLabel: { color: '#7c7669', fontSize: 11, hideOverlap: true, margin: 10 },
+    axisLine: { lineStyle: { color: '#e6e2d8' } },
+    axisLabel: { color: '#8b8b95', fontSize: 11, hideOverlap: true, margin: 10 },
   }
 }
 function yAxisCfg(unit: string) {
@@ -37,9 +37,9 @@ function yAxisCfg(unit: string) {
     type: 'value',
     name: unit,
     nameGap: 12,
-    nameTextStyle: { color: '#7c7669', fontSize: 11, align: 'right', padding: [0, 0, 4, 0] },
-    axisLabel: { color: '#7c7669', fontSize: 11 },
-    splitLine: { lineStyle: { color: '#ede8dd', type: 'dashed' } },
+    nameTextStyle: { color: '#8b8b95', fontSize: 11, align: 'right', padding: [0, 0, 4, 0] },
+    axisLabel: { color: '#8b8b95', fontSize: 11 },
+    splitLine: { lineStyle: { color: '#ece8de', type: 'dashed' } },
   }
 }
 const legendCfg = {
@@ -49,7 +49,7 @@ const legendCfg = {
   itemWidth: 12,
   itemHeight: 8,
   itemGap: 12,
-  textStyle: { fontSize: 12, color: '#46413a' },
+  textStyle: { fontSize: 12, color: '#4c4c55' },
 }
 const baseGrid = { left: 6, right: 14, top: 46, bottom: 4, containLabel: true }
 
@@ -75,7 +75,7 @@ function seriesOf(kind: BarLine, name: string, data: number[], color: string) {
 const calOption = computed(() => {
   const target = trends.value?.daily_target ?? null
   const series: any[] = [
-    seriesOf(calKind.value, '摄入热量', pts.value.map((p) => p.calories), '#5e7355'),
+    seriesOf(calKind.value, '摄入热量', pts.value.map((p) => p.calories), '#5ca83c'),
   ]
   if (target) {
     series.push({
@@ -83,8 +83,8 @@ const calOption = computed(() => {
       type: 'line',
       data: pts.value.map(() => target),
       symbol: 'none',
-      lineStyle: { color: '#a9563c', type: 'dashed', width: 1.5 },
-      itemStyle: { color: '#a9563c' },
+      lineStyle: { color: '#d95757', type: 'dashed', width: 1.5 },
+      itemStyle: { color: '#d95757' },
       z: 3,
     })
   }
@@ -100,11 +100,11 @@ const calOption = computed(() => {
 
 // ---- 运动消耗 ----
 const burnOption = computed(() => {
-  const s: any = seriesOf(burnKind.value, '运动消耗', pts.value.map((p) => p.burn), '#a9722f')
+  const s: any = seriesOf(burnKind.value, '运动消耗', pts.value.map((p) => p.burn), '#e0982f')
   // 柱状时给每一天画一个浅色底槽，空白天也能看出"这天没运动"（30 天太密就不画，避免条纹噪点）
   if (burnKind.value === 'bar' && pts.value.length <= 14) {
     s.showBackground = true
-    s.backgroundStyle = { color: '#f7f8fa', borderRadius: [4, 4, 0, 0] }
+    s.backgroundStyle = { color: '#f4f1ea', borderRadius: [4, 4, 0, 0] }
   }
   return {
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (v: number) => `${v} kcal` },
@@ -117,7 +117,7 @@ const burnOption = computed(() => {
 })
 
 // ---- 营养素：堆叠柱 / 折线 / 饼图（区间总量占比） ----
-const nutrientColors = { protein: '#5a5f8c', fat: '#a9722f', carb: '#5e7355' }
+const nutrientColors = { protein: '#3a5a8c', fat: '#e0982f', carb: '#5ca83c' }
 
 const nutrientSums = computed(() => {
   const s = { protein: 0, fat: 0, carb: 0 }
@@ -140,7 +140,7 @@ const nutrientOption = computed(() => {
         center: ['50%', '50%'],
         avoidLabelOverlap: true,
         itemStyle: { borderColor: '#fff', borderWidth: 2 },
-        label: { formatter: '{b}\n{d}%', fontSize: 12, color: '#46413a', lineHeight: 16 },
+        label: { formatter: '{b}\n{d}%', fontSize: 12, color: '#4c4c55', lineHeight: 16 },
         labelLine: { length: 10, length2: 12 },
         data: [
           { name: '蛋白质', value: s.protein, itemStyle: { color: nutrientColors.protein } },
@@ -187,9 +187,9 @@ const weightOption = computed(() => ({
     smooth: true,
     symbol: 'circle',
     symbolSize: 5,
-    lineStyle: { color: '#5a5f8c', width: 2.5 },
-    itemStyle: { color: '#5a5f8c' },
-    areaStyle: { color: 'rgba(64,158,255,0.14)' },
+    lineStyle: { color: '#3a5a8c', width: 2.5 },
+    itemStyle: { color: '#3a5a8c' },
+    areaStyle: { color: 'rgba(58,90,140,0.14)' },
   }],
 }))
 
@@ -398,8 +398,8 @@ onMounted(() => { loadCharts() })
 <style scoped>
 .toolbar { display: flex; align-items: center; justify-content: space-between; }
 .toolbar-right { display: flex; align-items: center; gap: 12px; }
-.hint { color: #7c7669; font-size: 13px; }
-.note { color: #7c7669; font-size: 12px; text-align: center; margin: 6px 0 0; }
+.hint { color: var(--muted); font-size: 13px; }
+.note { color: var(--muted); font-size: 12px; text-align: center; margin: 6px 0 0; }
 
 /* 卡片标题 + 图表形态切换 */
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
@@ -407,36 +407,39 @@ onMounted(() => { loadCharts() })
 
 /* 指标卡 */
 .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 18px 20px; }
-.kpi { display: flex; flex-direction: column; gap: 4px; padding: 4px 14px; border-left: 3px solid #e2dbcb; }
-.kpi:first-child { border-left: none; padding-left: 4px; }
-.kpi-label { font-size: 13px; color: #7c7669; }
-.kpi-value { font-size: 24px; font-weight: 700; color: #1c1a17; line-height: 1.2; }
-.kpi-value em { font-size: 12px; font-weight: 400; color: #7c7669; font-style: normal; margin-left: 4px; }
-.kpi-sub { font-size: 12px; color: #7c7669; }
-.kpi-sub b.ok { color: #5e7355; }
-.kpi-value.up, .kpi-sub b.up { color: #a9563c; }
-.kpi-value.down { color: #5e7355; }
+.kpi { display: flex; flex-direction: column; gap: 4px; padding: 4px 14px; border-left: 3px solid var(--tone, var(--line)); }
+.kpi:nth-child(1) { --tone: var(--sage); border-left: none; padding-left: 4px; }
+.kpi:nth-child(2) { --tone: var(--ochre); }
+.kpi:nth-child(3) { --tone: var(--accent); }
+.kpi:nth-child(4) { --tone: var(--plum); }
+.kpi-label { font-size: 13px; color: var(--muted); }
+.kpi-value { font-size: 24px; font-weight: 700; color: var(--tone, var(--ink)); line-height: 1.2; }
+.kpi-value em { font-size: 12px; font-weight: 400; color: var(--muted); font-style: normal; margin-left: 4px; }
+.kpi-sub { font-size: 12px; color: var(--muted); }
+.kpi-sub b.ok { color: var(--sage); }
+.kpi-value.up, .kpi-sub b.up { color: var(--clay); }
+.kpi-value.down { color: var(--sage); }
 
 /* 营养结构均值 */
 .nut-rows { padding: 6px 8px 0; }
-.nut-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px dashed #eae4d7; font-size: 14px; }
+.nut-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px dashed var(--line); font-size: 14px; }
 .nut-row:last-of-type { border-bottom: none; }
-.nut-name { width: 46px; color: #46413a; flex-shrink: 0; }
-.nut-bar { flex: 1; height: 10px; background: #ede8dd; border-radius: 6px; overflow: hidden; }
+.nut-name { width: 46px; color: var(--ink-2); flex-shrink: 0; }
+.nut-bar { flex: 1; height: 10px; background: var(--paper-2); border-radius: 6px; overflow: hidden; }
 .nut-bar i { display: block; height: 100%; border-radius: 6px; transition: width .4s; }
 .nut-row b { min-width: 78px; text-align: right; font-size: 15px; }
-.nut-row b em { font-size: 11px; color: #7c7669; font-style: normal; margin-left: 3px; }
+.nut-row b em { font-size: 11px; color: var(--muted); font-style: normal; margin-left: 3px; }
 .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 
 /* AI 周报 */
 .report-head { display: flex; align-items: center; gap: 20px; }
 .score-ring {
-  width: 84px; height: 84px; border-radius: 50%; border: 5px solid #5e7355;
+  width: 84px; height: 84px; border-radius: 50%; border: 5px solid var(--sage);
   display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0;
 }
 .score-ring b { font-size: 26px; }
-.score-ring span { font-size: 11px; color: #7c7669; }
-.head-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; font-size: 13px; color: #46413a; }
-.head-stats b { font-size: 17px; color: #1c1a17; margin-right: 4px; }
-.report-list { margin: 6px 0 12px; padding-left: 20px; color: #46413a; font-size: 14px; line-height: 1.8; }
+.score-ring span { font-size: 11px; color: var(--muted); }
+.head-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; font-size: 13px; color: var(--ink-2); }
+.head-stats b { font-size: 17px; color: var(--ink); margin-right: 4px; }
+.report-list { margin: 6px 0 12px; padding-left: 20px; color: var(--ink-2); font-size: 14px; line-height: 1.8; }
 </style>

@@ -5,26 +5,54 @@
    ============================================================ */
 
 :root {
-  /* ---- 基础色 ---- */
-  --paper: #f6f3ec;
-  --paper-2: #ede8dd;
-  --surface: #fdfbf6;
-  --ink: #1c1a17;
-  --ink-2: #46413a;
-  --muted: #7c7669;
-  --line: #e2dbcb;
-  --line-2: #cfc6b2;
+  /* ---- 基础色：浅纸白，卡片纯白（不再整体压成灰米色） ---- */
+  --paper: #f8f6f1;
+  --paper-2: #efebe2;
+  --surface: #ffffff;
+  --ink: #24242a;
+  --ink-2: #4c4c55;
+  --muted: #8b8b95;
+  --line: #e6e2d8;
+  --line-2: #d6d0c2;
 
-  /* ---- 强调 ---- */
-  --accent: #5a5f8c;
-  --accent-deep: #4a4f78;
-  --accent-soft: #e8e9f1;
-  --lime: #dde49c;
-  --lime-soft: #f0f3d8;
-  --clay: #a9563c;
-  --clay-soft: #f6e7e1;
-  --ochre: #a9722f;
-  --sage: #5e7355;
+  /* ---- 主色：藏蓝（替代原版过亮的 #409eff） ---- */
+  --accent: #3a5a8c;
+  --accent-deep: #2c476f;
+  --accent-soft: #e7edf7;
+  --indigo: #3a5a8c;
+  --indigo-soft: #e7edf7;
+
+  /* ---- 语义色：保留原版绿/橙/红色相，略降亮度以适配纸白底 ---- */
+  --sage: #5ca83c;
+  --sage-deep: #46852c;
+  --sage-soft: #eaf5e2;
+
+  --ochre: #e0982f;
+  --ochre-deep: #b8781d;
+  --ochre-soft: #fcf0dc;
+
+  --clay: #d95757;
+  --clay-deep: #b33f3f;
+  --clay-soft: #fbe8e8;
+
+  /* ---- 辅助色：给不同模块/物品各自的颜色 ---- */
+  --teal: #2e9c86;
+  --teal-deep: #1f7b69;
+  --teal-soft: #e0f3ee;
+
+  --plum: #7c6bb5;
+  --plum-deep: #60509b;
+  --plum-soft: #ede9f8;
+
+  --lime: #cdea9f;
+  --lime-soft: #f0f9e6;
+
+  /* ---- 深色轨道：藏青（有颜色，不再是纯黑） ---- */
+  --rail: #1f2b3a;
+  --rail-2: #2b3a4d;
+  --rail-line: #3a4a5e;
+  --rail-text: #9fb0c4;
+  --rail-hover: #e6eef8;
 
   /* ---- 字体 ---- */
   --serif: 'Source Han Serif SC', 'Noto Serif SC', 'Songti SC', SimSun, Georgia, serif;
@@ -32,60 +60,60 @@
   --mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, 'Courier New', monospace;
 
   /* ---- Element Plus 主题映射 ---- */
-  --el-color-primary: #5a5f8c;
-  --el-color-primary-light-3: #7c80a5;
-  --el-color-primary-light-5: #9a9db9;
-  --el-color-primary-light-7: #bcbece;
-  --el-color-primary-light-8: #cfd0dd;
-  --el-color-primary-light-9: #e8e9f1;
-  --el-color-primary-dark-2: #4a4f78;
+  --el-color-primary: #3a5a8c;
+  --el-color-primary-light-3: #5b7aa8;
+  --el-color-primary-light-5: #8ba2c2;
+  --el-color-primary-light-7: #b8c6da;
+  --el-color-primary-light-8: #cdd7e7;
+  --el-color-primary-light-9: #e7edf7;
+  --el-color-primary-dark-2: #2c476f;
 
-  --el-color-success: #5e7355;
-  --el-color-success-light-3: #869779;
-  --el-color-success-light-5: #a8b39e;
-  --el-color-success-light-7: #cbd1c4;
-  --el-color-success-light-8: #dde1d9;
-  --el-color-success-light-9: #eef0eb;
-  --el-color-success-dark-2: #4c5c45;
+  --el-color-success: #5ca83c;
+  --el-color-success-light-3: #7dbb63;
+  --el-color-success-light-5: #a3ce8f;
+  --el-color-success-light-7: #c8e2bc;
+  --el-color-success-light-8: #d8ebcf;
+  --el-color-success-light-9: #eaf5e2;
+  --el-color-success-dark-2: #46852c;
 
-  --el-color-warning: #a9722f;
-  --el-color-warning-light-3: #bd9159;
-  --el-color-warning-light-5: #ceaf86;
-  --el-color-warning-light-7: #e0cbb4;
-  --el-color-warning-light-8: #e9dacb;
-  --el-color-warning-light-9: #f5ede4;
-  --el-color-warning-dark-2: #875b26;
+  --el-color-warning: #e0982f;
+  --el-color-warning-light-3: #e7ad59;
+  --el-color-warning-light-5: #edc488;
+  --el-color-warning-light-7: #f3d9b7;
+  --el-color-warning-light-8: #f6e4cc;
+  --el-color-warning-light-9: #fcf0dc;
+  --el-color-warning-dark-2: #b8781d;
 
-  --el-color-danger: #a9563c;
-  --el-color-danger-light-3: #bb7c67;
-  --el-color-danger-light-5: #cba094;
-  --el-color-danger-light-7: #dcc4bd;
-  --el-color-danger-light-8: #e5d3cd;
-  --el-color-danger-light-9: #f4e9e6;
-  --el-color-danger-dark-2: #874530;
+  --el-color-danger: #d95757;
+  --el-color-danger-light-3: #e17979;
+  --el-color-danger-light-5: #e9a2a2;
+  --el-color-danger-light-7: #f1c9c9;
+  --el-color-danger-light-8: #f5d9d9;
+  --el-color-danger-light-9: #fbe8e8;
+  --el-color-danger-dark-2: #b33f3f;
 
-  --el-color-error: #a9563c;
-  --el-color-info: #8a8476;
-  --el-color-info-light-3: #a9a498;
-  --el-color-info-light-5: #c0bcb3;
-  --el-color-info-light-7: #d6d3cd;
-  --el-color-info-light-8: #e2e0db;
-  --el-color-info-light-9: #f1f0ed;
-  --el-color-info-dark-2: #6e6a60;
+  --el-color-error: #d95757;
+  --el-color-info: #8b8b95;
+  --el-color-info-light-3: #a6a6ae;
+  --el-color-info-light-5: #bdbdc3;
+  --el-color-info-light-7: #d4d4d8;
+  --el-color-info-light-8: #e3e3e6;
+  --el-color-info-light-9: #f1f1f3;
+  --el-color-info-dark-2: #6f6f79;
 
-  --el-text-color-primary: #1c1a17;
-  --el-text-color-regular: #46413a;
-  --el-text-color-secondary: #7c7669;
-  --el-text-color-placeholder: #a8a293;
-  --el-border-color: #cfc6b2;
-  --el-border-color-light: #e2dbcb;
-  --el-border-color-lighter: #eae4d7;
-  --el-border-color-extra-light: #f0ece2;
-  --el-fill-color-blank: #fdfbf6;
-  --el-fill-color-light: #ede8dd;
-  --el-fill-color-lighter: #f2eee5;
-  --el-bg-color: #fdfbf6;
-  --el-bg-color-overlay: #fdfbf6;
+  --el-text-color-primary: #24242a;
+  --el-text-color-regular: #4c4c55;
+  --el-text-color-secondary: #8b8b95;
+  --el-text-color-placeholder: #b0b0b8;
+  --el-border-color: #d6d0c2;
+  --el-border-color-light: #e6e2d8;
+  --el-border-color-lighter: #ece8de;
+  --el-border-color-extra-light: #f2efe8;
+  --el-fill-color-blank: #ffffff;
+  --el-fill-color-light: #efebe2;
+  --el-fill-color-lighter: #f5f2ea;
+  --el-bg-color: #ffffff;
+  --el-bg-color-overlay: #ffffff;
   --el-border-radius-base: 4px;
   --el-border-radius-small: 3px;
   --el-font-family: var(--sans);
@@ -150,6 +178,7 @@ a { color: var(--accent); text-decoration: none; }
   border-radius: 4px;
   padding: 20px 22px;
   margin-bottom: 16px;
+  box-shadow: 0 1px 2px rgba(36, 36, 42, 0.04);
 }
 
 .page-title {
@@ -176,7 +205,7 @@ a { color: var(--accent); text-decoration: none; }
   font-family: var(--mono);
   font-size: 10px;
   letter-spacing: 0.16em;
-  color: var(--muted);
+  color: var(--accent);
   text-transform: uppercase;
 }
 .sec-title {
@@ -220,9 +249,9 @@ a { color: var(--accent); text-decoration: none; }
 }
 .chip b { font-weight: 600; color: var(--ink); }
 .chip-accent {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: #f3efe4;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #f3f0f8;
 }
 .chip-accent b { color: var(--lime); }
 
@@ -261,6 +290,35 @@ a { color: var(--accent); text-decoration: none; }
 }
 
 /* ============================================================
+   分区配色（全局可用）：给区块加颜色
+   ============================================================ */
+.tone-indigo { --tone: var(--indigo); --tone-deep: var(--accent-deep); --tone-soft: var(--indigo-soft); }
+.tone-clay   { --tone: var(--clay);   --tone-deep: var(--clay-deep);   --tone-soft: var(--clay-soft); }
+.tone-ochre  { --tone: var(--ochre);  --tone-deep: var(--ochre-deep);  --tone-soft: var(--ochre-soft); }
+.tone-sage   { --tone: var(--sage);   --tone-deep: var(--sage-deep);   --tone-soft: var(--sage-soft); }
+.tone-teal   { --tone: var(--teal);   --tone-deep: var(--teal-deep);   --tone-soft: var(--teal-soft); }
+.tone-plum   { --tone: var(--plum);   --tone-deep: var(--plum-deep);   --tone-soft: var(--plum-soft); }
+.tone-lime   { --tone: #7fb02f;       --tone-deep: #5f8a1f;           --tone-soft: var(--lime-soft); }
+
+/* 淡色卡片：软底 + 同色系墨字 */
+.card-tint {
+  border: 1px solid color-mix(in srgb, var(--tone) 26%, var(--line));
+  background: var(--tone-soft);
+  border-radius: 4px;
+}
+.card-tint .card-k { color: var(--tone-deep); }
+
+/* 用来标记「类型」的小色块 */
+.swatch {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tone, var(--accent));
+  flex: 0 0 6px;
+}
+
+/* ============================================================
    Element Plus 覆盖
    ============================================================ */
 
@@ -289,19 +347,19 @@ a { color: var(--accent); text-decoration: none; }
   --el-button-hover-text-color: #fff;
 }
 .el-button--success:not(.is-plain):not(.is-text):not(.is-link) {
-  --el-button-bg-color: var(--ink);
-  --el-button-border-color: var(--ink);
-  --el-button-text-color: var(--paper);
-  --el-button-hover-bg-color: #000;
-  --el-button-hover-border-color: #000;
+  --el-button-bg-color: var(--sage);
+  --el-button-border-color: var(--sage);
+  --el-button-text-color: #fff;
+  --el-button-hover-bg-color: var(--sage-deep);
+  --el-button-hover-border-color: var(--sage-deep);
   --el-button-hover-text-color: #fff;
 }
 .el-button--warning:not(.is-plain):not(.is-text):not(.is-link) {
-  --el-button-bg-color: var(--clay);
-  --el-button-border-color: var(--clay);
+  --el-button-bg-color: var(--ochre);
+  --el-button-border-color: var(--ochre);
   --el-button-text-color: #fff;
-  --el-button-hover-bg-color: #8f452f;
-  --el-button-hover-border-color: #8f452f;
+  --el-button-hover-bg-color: var(--ochre-deep);
+  --el-button-hover-border-color: var(--ochre-deep);
   --el-button-hover-text-color: #fff;
 }
 .el-button.is-plain {
@@ -319,11 +377,11 @@ a { color: var(--accent); text-decoration: none; }
   background: var(--paper-2);
   color: var(--ink-2);
 }
-.el-tag--success { background: #e9ece2; color: #4e6045; }
-.el-tag--warning { background: var(--clay-soft); color: #8f452f; }
-.el-tag--danger { background: var(--clay-soft); color: #8f452f; }
+.el-tag--success { background: var(--sage-soft); color: var(--sage-deep); }
+.el-tag--warning { background: var(--ochre-soft); color: var(--ochre-deep); }
+.el-tag--danger { background: var(--clay-soft); color: var(--clay-deep); }
 .el-tag--info { background: var(--paper-2); color: var(--muted); }
-.el-tag--primary { background: var(--accent-soft); color: var(--accent-deep); }
+.el-tag--primary { background: var(--indigo-soft); color: var(--accent-deep); }
 .el-tag.is-plain { background: transparent; border-color: var(--line-2); }
 
 /* --- 表单控件 --- */
@@ -357,10 +415,10 @@ a { color: var(--accent); text-decoration: none; }
   box-shadow: none !important;
 }
 .el-radio-button__original-radio:checked + .el-radio-button__inner {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--paper);
-  box-shadow: -1px 0 0 0 var(--ink) !important;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: -1px 0 0 0 var(--accent) !important;
 }
 .el-radio-button:first-child .el-radio-button__inner { border-radius: 999px 0 0 999px; }
 .el-radio-button:last-child .el-radio-button__inner { border-radius: 0 999px 999px 0; }
@@ -368,8 +426,8 @@ a { color: var(--accent); text-decoration: none; }
 
 .el-radio__input.is-checked .el-radio__inner,
 .el-checkbox__input.is-checked .el-checkbox__inner {
-  background: var(--ink);
-  border-color: var(--ink);
+  background: var(--accent);
+  border-color: var(--accent);
 }
 .el-radio__input.is-checked + .el-radio__label { color: var(--ink); }
 
@@ -426,7 +484,10 @@ a { color: var(--accent); text-decoration: none; }
 
 /* --- 进度条 --- */
 .el-progress-bar__outer { background-color: var(--paper-2); border-radius: 999px; }
-.el-progress-bar__inner { background-color: var(--accent); border-radius: 999px; }
+.el-progress-bar__inner {
+  background: linear-gradient(90deg, var(--accent), #7b7fa4 62%, var(--clay));
+  border-radius: 999px;
+}
 .el-progress__text { font-family: var(--mono); font-size: 11px !important; color: var(--muted); }
 
 /* --- 提示条 --- */
@@ -436,10 +497,10 @@ a { color: var(--accent); text-decoration: none; }
   padding: 11px 14px;
   align-items: center;
 }
-.el-alert--warning.is-light { background: #f7efe3; border-color: #e7d5bb; color: #7d5626; }
-.el-alert--success.is-light { background: #eef0e9; border-color: #d6dccd; color: #4c5c45; }
-.el-alert--error.is-light { background: var(--clay-soft); border-color: #e8cdc4; color: #8f452f; }
-.el-alert--info.is-light { background: var(--paper-2); border-color: var(--line); color: var(--ink-2); }
+.el-alert--warning.is-light { background: var(--ochre-soft); border-color: #e8d3a8; color: var(--ochre-deep); }
+.el-alert--success.is-light { background: var(--sage-soft); border-color: #cfdcc0; color: var(--sage-deep); }
+.el-alert--error.is-light { background: var(--clay-soft); border-color: #edcdbe; color: var(--clay-deep); }
+.el-alert--info.is-light { background: var(--indigo-soft); border-color: #d3d3e4; color: var(--accent-deep); }
 .el-alert__title { font-size: 12.5px; line-height: 1.65; }
 .el-alert__description { font-size: 12px; }
 
@@ -477,9 +538,9 @@ a { color: var(--accent); text-decoration: none; }
   font-size: 12px;
 }
 .el-pagination.is-background .el-pager li.is-active {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--paper);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 .el-pagination.is-background .btn-prev,
 .el-pagination.is-background .btn-next {
@@ -580,7 +641,7 @@ a { color: var(--accent); text-decoration: none; }
 }
 
 .auth-brand {
-  background: var(--ink);
+  background: var(--rail);
   color: var(--paper);
   padding: 28px 26px;
   display: flex;
@@ -597,9 +658,9 @@ a { color: var(--accent); text-decoration: none; }
   width: 220px;
   height: 220px;
   border-radius: 50%;
-  border: 1px solid #332e25;
+  border: 1px solid var(--rail-line);
 }
-.ab-top { font-size: 9px; letter-spacing: 0.18em; color: #8c867a; }
+.ab-top { font-size: 9px; letter-spacing: 0.18em; color: #8f8da2; }
 .ab-logo {
   width: 40px;
   height: 40px;
@@ -623,19 +684,19 @@ a { color: var(--accent); text-decoration: none; }
   color: #f3efe4;
 }
 .ab-title em { font-style: normal; color: var(--lime); }
-.ab-sub { margin: 12px 0 0; font-size: 12px; color: #b8b1a2; letter-spacing: 0.04em; }
-.ab-list { list-style: none; padding: 0; margin: 0; border-top: 1px solid #332e25; }
+.ab-sub { margin: 12px 0 0; font-size: 12px; color: #b9b6c8; letter-spacing: 0.04em; }
+.ab-list { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--rail-line); }
 .ab-list li {
   display: grid;
   grid-template-columns: 26px 1fr;
   gap: 10px;
   padding: 9px 0;
-  border-bottom: 1px solid #2a251d;
+  border-bottom: 1px solid #302e3d;
   font-size: 11.5px;
-  color: #c9c2b2;
+  color: #c9c7d6;
 }
 .ab-list .no { font-family: var(--mono); font-size: 9px; color: var(--lime); letter-spacing: 0.1em; }
-.ab-foot { margin-top: auto; font-size: 8.5px; letter-spacing: 0.18em; color: #6f6a5e; }
+.ab-foot { margin-top: auto; font-size: 8.5px; letter-spacing: 0.18em; color: #7b7889; }
 
 .auth-form { padding: 36px 38px 30px; display: flex; flex-direction: column; justify-content: center; }
 .auth-title { font-family: var(--serif); font-size: 26px; font-weight: 600; margin: 0; letter-spacing: 0.03em; }

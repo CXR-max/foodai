@@ -22,6 +22,12 @@ const filtered = computed(() =>
   tab.value === 'all' ? rewards.value : rewards.value.filter((r) => r.category === tab.value),
 )
 
+// 每件物品自己的颜色：按 id 稳定分配，避免整页一个色
+const TONES = ['indigo', 'teal', 'ochre', 'sage', 'plum', 'clay']
+function toneOf(r: Reward) {
+  return TONES[r.id % TONES.length]
+}
+
 // ---- 使用补签卡 ----
 const makeupDialog = ref(false)
 const makeupTarget = ref<any>(null)
@@ -97,8 +103,8 @@ onMounted(load)
 
       <el-row :gutter="14">
         <el-col v-for="r in filtered" :key="r.id" :span="6">
-          <el-card shadow="hover" class="reward">
-            <div class="icon">{{ r.icon }}</div>
+          <el-card shadow="hover" class="reward" :class="`tone-${toneOf(r)}`">
+            <div class="icon-wrap"><span class="icon">{{ r.icon }}</span></div>
             <div class="name">{{ r.name }}</div>
             <div class="desc">{{ r.description }}</div>
             <div class="foot">
@@ -158,20 +164,31 @@ onMounted(load)
 </template>
 
 <style scoped>
-.head { display: flex; justify-content: space-between; align-items: center; }
+.head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
 .head :deep(.el-tabs) { flex: 1; }
 .head :deep(.el-tabs__header) { margin-bottom: 0; }
 .right { display: flex; gap: 10px; align-items: center; padding-bottom: 8px; }
-.reward { text-align: center; margin-bottom: 14px; }
-.reward .icon { font-size: 34px; margin: 10px 0 8px; filter: grayscale(1); opacity: 0.55; }
+.reward { text-align: center; margin-bottom: 14px; border-top: 3px solid var(--tone, var(--accent)); }
+.reward .icon-wrap {
+  width: 56px;
+  height: 56px;
+  margin: 10px auto 8px;
+  border-radius: 50%;
+  background: var(--tone-soft, var(--paper-2));
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  line-height: 1;
+}
+.reward .icon { filter: none; opacity: 1; }
 .reward .name { font-weight: 700; }
-.reward .desc { color: #7c7669; font-size: 12px; height: 34px; margin: 6px 0; }
-.reward .foot { display: flex; justify-content: space-between; margin-bottom: 8px; }
-.cost { color: #a9722f; font-weight: 800; font-size: 17px; }
-.stock { color: #a8a293; font-size: 12px; }
-.redeem-item { border: 1px dashed #cfc6b2; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+.reward .desc { color: var(--muted); font-size: 12px; height: 34px; margin: 6px 0; }
+.reward .foot { display: flex; justify-content: space-between; margin-bottom: 8px; align-items: baseline; }
+.cost { color: var(--tone-deep, var(--ochre-deep)); font-weight: 800; font-size: 17px; font-family: var(--mono); }
+.stock { color: var(--muted); font-size: 12px; }
+.redeem-item { border: 1px dashed var(--line-2); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
 .redeem-item .row1 { display: flex; justify-content: space-between; font-weight: 600; }
-.redeem-item .code { margin-top: 6px; color: #5e7355; letter-spacing: 1px; }
-.redeem-item .time { color: #a8a293; font-size: 12px; margin-top: 4px; }
+.redeem-item .code { margin-top: 6px; color: var(--sage-deep); letter-spacing: 1px; }
+.redeem-item .time { color: var(--muted); font-size: 12px; margin-top: 4px; }
 .use-row { margin-top: 8px; display: flex; justify-content: flex-end; }
 </style>

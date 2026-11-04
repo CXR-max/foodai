@@ -97,7 +97,10 @@ onActivated(load)   // 从其他页面切回来自动刷新 = 实时排名
   font-weight: 600;
   color: var(--muted);
 }
-.row.top .rank { color: var(--accent); }
+.row.top { --medal: var(--ochre); box-shadow: inset 3px 0 0 var(--medal); }
+.row.top:nth-child(3) { --medal: #8b9cb3; }
+.row.top:nth-child(4) { --medal: var(--clay); }
+.row.top .rank { color: var(--medal); }
 .row.top:nth-child(2) .rank { font-size: 19px; }
 
 .who { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -113,8 +116,8 @@ onActivated(load)   // 从其他页面切回来自动刷新 = 实时排名
 }
 .me-chip {
   font-size: 9.5px;
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--accent);
+  color: #fff;
   border-radius: 999px;
   padding: 1px 8px;
 }
@@ -125,7 +128,7 @@ onActivated(load)   // 从其他页面切回来自动刷新 = 实时排名
   font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
-.row.top .pts { color: var(--accent); }
+.row.top .pts { color: var(--medal); }
 .right { text-align: right; }
 
 .empty { padding: 40px 0; text-align: center; font-size: 10px; letter-spacing: 0.16em; color: var(--muted); }
@@ -133,7 +136,8 @@ onActivated(load)   // 从其他页面切回来自动刷新 = 实时排名
 .mine {
   margin-top: 22px;
   border: 1px solid var(--line);
-  background: var(--surface);
+  border-left: 3px solid var(--accent);
+  background: #f6f9fd;
   border-radius: 4px;
   padding: 16px 20px;
   display: flex;

@@ -140,7 +140,7 @@ onBeforeUnmount(() => window.removeEventListener('focus', refreshDot))
 
 /* ---------- 图标轨 ---------- */
 .rail {
-  background: var(--ink);
+  background: var(--rail);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -179,7 +179,7 @@ onBeforeUnmount(() => window.removeEventListener('focus', refreshDot))
   height: 44px;
   border: 0;
   background: transparent;
-  color: #8c867a;
+  color: var(--rail-text);
   border-radius: 10px;
   display: grid;
   place-items: center;
@@ -196,8 +196,8 @@ onBeforeUnmount(() => window.removeEventListener('focus', refreshDot))
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.rail-btn:hover { color: #ded7c6; background: #262219; }
-.rail-btn.on { background: #262219; color: var(--lime); }
+.rail-btn:hover { color: var(--rail-hover); background: var(--rail-2); }
+.rail-btn.on { background: var(--rail-2); color: var(--lime); }
 .rail-btn.on::before {
   content: '';
   position: absolute;
@@ -218,7 +218,7 @@ onBeforeUnmount(() => window.removeEventListener('focus', refreshDot))
   height: 6px;
   border-radius: 50%;
   background: var(--clay);
-  border: 2px solid var(--ink);
+  border: 2px solid var(--rail);
 }
 
 .rail-tip {
@@ -226,9 +226,9 @@ onBeforeUnmount(() => window.removeEventListener('focus', refreshDot))
   left: 52px;
   top: 50%;
   transform: translate(-4px, -50%);
-  background: var(--ink);
+  background: var(--rail);
   color: var(--paper);
-  border: 1px solid #332e25;
+  border: 1px solid var(--rail-line);
   font-size: 11.5px;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -249,14 +249,14 @@ onBeforeUnmount(() => window.removeEventListener('focus', refreshDot))
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: #2e2920;
-  color: #d9d2c1;
+  background: var(--rail-2);
+  color: var(--rail-hover);
   display: grid;
   place-items: center;
   font-size: 12px;
   font-family: var(--mono);
   letter-spacing: 0.02em;
-  border: 1px solid #3a342a;
+  border: 1px solid var(--rail-line);
 }
 
 /* ---------- 顶栏 ---------- */

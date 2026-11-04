@@ -23,6 +23,12 @@ const COND_UNITS: Record<string, string> = {
   manual_exercise_count: '次', points_total: '分', plan_count: '份',
 }
 
+// 每件徽章自己的颜色（按 id 稳定分配，12 枚不会整片同色）
+const TONES = ['indigo', 'teal', 'ochre', 'sage', 'plum', 'clay']
+function toneOf(a: Achievement) {
+  return TONES[a.id % TONES.length]
+}
+
 function condText(a: Achievement) {
   return `${COND_LABELS[a.condition_type] || a.condition_type} ${a.threshold} ${COND_UNITS[a.condition_type] || ''}`
 }
@@ -75,8 +81,8 @@ onMounted(load)
 
       <el-row :gutter="14" v-loading="loading">
         <el-col v-for="a in items" :key="a.id" :span="6">
-          <el-card shadow="hover" class="ach" :class="{ locked: !a.unlocked }">
-            <div class="icon">{{ a.icon }}</div>
+          <el-card shadow="hover" class="ach" :class="[`tone-${toneOf(a)}`, { locked: !a.unlocked }]">
+            <div class="icon-wrap"><span class="icon">{{ a.icon }}</span></div>
             <div class="name">{{ a.name }}</div>
             <div class="cat">
               <el-tag size="small" :type="a.category === 'title' ? 'danger' : 'primary'" effect="plain">
@@ -107,13 +113,25 @@ onMounted(load)
 
 <style scoped>
 .head { display: flex; justify-content: space-between; align-items: flex-start; }
-.sub { color: #7c7669; font-size: 13px; }
-.ach { text-align: center; margin-bottom: 14px; height: 100%; }
-.ach.locked { opacity: 0.55; }
-.ach .icon { font-size: 34px; margin: 10px 0 8px; filter: grayscale(1); opacity: 0.6; }
+.sub { color: var(--muted); font-size: 13px; }
+.ach { text-align: center; margin-bottom: 14px; height: 100%; border-top: 3px solid var(--tone, var(--accent)); }
+.ach.locked { opacity: 0.72; }
+.ach .icon-wrap {
+  width: 58px;
+  height: 58px;
+  margin: 10px auto 8px;
+  border-radius: 50%;
+  background: var(--tone-soft, var(--paper-2));
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  line-height: 1;
+}
+.ach .icon { filter: none; opacity: 1; }
+.ach.locked .icon { filter: grayscale(0.6); opacity: 0.9; }
 .ach .name { font-weight: 700; margin-bottom: 6px; }
 .ach .cat { margin-bottom: 6px; }
-.ach .desc { color: #46413a; font-size: 13px; min-height: 36px; }
-.ach .cond { color: #a8a293; font-size: 12px; margin: 6px 0; }
+.ach .desc { color: var(--ink-2); font-size: 13px; min-height: 36px; }
+.ach .cond { color: var(--tone-deep, var(--muted)); font-size: 12px; margin: 6px 0; font-family: var(--mono); }
 .ach .foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
 </style>

@@ -199,8 +199,8 @@ onBeforeUnmount(() => {
 .cta-row { display: flex; align-items: center; gap: 18px; margin-top: 34px; flex-wrap: wrap; }
 .enter {
   border: 0;
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--accent);
+  color: #fff;
   font-family: var(--sans);
   font-size: 14px;
   letter-spacing: 0.06em;
@@ -209,7 +209,7 @@ onBeforeUnmount(() => {
   cursor: pointer;
   transition: transform 0.2s, background 0.2s;
 }
-.enter:hover { transform: translateY(-2px); background: #000; }
+.enter:hover { transform: translateY(-2px); background: var(--accent-deep); }
 .enter span { display: inline-block; margin-left: 6px; transition: transform 0.2s; }
 .enter:hover span { transform: translateX(4px); }
 .hint { font-size: 9px; letter-spacing: 0.14em; color: var(--muted); }

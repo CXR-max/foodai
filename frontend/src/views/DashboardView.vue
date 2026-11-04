@@ -83,12 +83,12 @@ const chartOption = computed(() => {
     tooltip: {
       trigger: 'axis',
       valueFormatter: (v: number) => `${v} kcal`,
-      backgroundColor: '#fdfbf6',
-      borderColor: '#cfc6b2',
-      textStyle: { color: '#1c1a17', fontSize: 12 },
+      backgroundColor: '#ffffff',
+      borderColor: '#d6d0c2',
+      textStyle: { color: '#24242a', fontSize: 12 },
     },
     legend: target
-      ? { data: ['摄入热量', '每日目标'], top: 4, right: 6, itemWidth: 12, itemHeight: 8, textStyle: { fontSize: 11, color: '#7c7669' } }
+      ? { data: ['摄入热量', '每日目标'], top: 4, right: 6, itemWidth: 12, itemHeight: 8, textStyle: { fontSize: 11, color: '#8b8b95' } }
       : { show: false },
     grid: { left: 10, right: 18, top: target ? 44 : 26, bottom: 6, containLabel: true },
     xAxis: {
@@ -96,15 +96,15 @@ const chartOption = computed(() => {
       boundaryGap: false,
       data: list.map((c) => c.date.slice(5)),
       axisTick: { show: false },
-      axisLine: { lineStyle: { color: '#e2dbcb' } },
-      axisLabel: { color: '#7c7669', fontSize: 11, hideOverlap: true },
+      axisLine: { lineStyle: { color: '#e6e2d8' } },
+      axisLabel: { color: '#8b8b95', fontSize: 11, hideOverlap: true },
     },
     yAxis: {
       type: 'value',
       name: 'kcal',
-      nameTextStyle: { color: '#7c7669', fontSize: 11 },
-      axisLabel: { color: '#7c7669', fontSize: 11 },
-      splitLine: { lineStyle: { color: '#eae4d7', type: 'dashed' } },
+      nameTextStyle: { color: '#8b8b95', fontSize: 11 },
+      axisLabel: { color: '#8b8b95', fontSize: 11 },
+      splitLine: { lineStyle: { color: '#ece8de', type: 'dashed' } },
     },
     series: [
       {
@@ -115,9 +115,20 @@ const chartOption = computed(() => {
         symbolSize: 5,
         barMaxWidth: 14,
         data: list.map((c) => c.calories),
-        itemStyle: { color: '#5a5f8c', borderRadius: isMonth ? [3, 3, 0, 0] : 0 },
-        lineStyle: { color: '#5a5f8c', width: 2 },
-        areaStyle: isMonth ? undefined : { color: 'rgba(90,95,140,0.10)' },
+        itemStyle: { color: '#3a5a8c', borderRadius: isMonth ? [3, 3, 0, 0] : 0 },
+        lineStyle: { color: '#3a5a8c', width: 2 },
+        areaStyle: isMonth
+          ? undefined
+          : {
+              color: {
+                type: 'linear',
+                x: 0, y: 0, x2: 0, y2: 1,
+                colorStops: [
+                  { offset: 0, color: 'rgba(58,90,140,0.26)' },
+                  { offset: 1, color: 'rgba(58,90,140,0.02)' },
+                ],
+              },
+            },
       },
       ...(target
         ? [{
@@ -125,8 +136,8 @@ const chartOption = computed(() => {
             type: 'line',
             data: list.map(() => target),
             symbol: 'none',
-            lineStyle: { color: '#a9563c', type: 'dashed', width: 1.2 },
-            itemStyle: { color: '#a9563c' },
+            lineStyle: { color: '#d95757', type: 'dashed', width: 1.2 },
+            itemStyle: { color: '#d95757' },
           }]
         : []),
     ],
@@ -202,7 +213,10 @@ onMounted(load)
           </div>
 
           <div class="meals">
-            <div v-for="m in meals" :key="m.key" class="meal" :class="{ done: todayRecords.some((r) => r.meal_type === m.key) }">
+            <div
+              v-for="m in meals" :key="m.key"
+              class="meal" :class="[`meal-${m.key}`, { done: todayRecords.some((r) => r.meal_type === m.key) }]"
+            >
               <div class="meal-name">{{ m.label }}</div>
               <div class="meal-val mono" :class="{ empty: !m.kcal }">{{ m.kcal ? m.kcal : '待记录' }}</div>
             </div>
@@ -340,19 +354,19 @@ onMounted(load)
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
-  border: 1px solid #e7d5bb;
-  background: #f7efe3;
+  border: 1px solid #f3d9b7;
+  background: var(--ochre-soft);
   border-radius: 4px;
   margin-bottom: 26px;
 }
-.notice.clear { border-color: #d6dccd; background: #eef0e9; }
-.notice-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ochre); flex: 0 0 6px; }
+.notice.clear { border-color: #c8e2bc; background: var(--sage-soft); }
+.notice-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ochre); flex: 0 0 7px; }
 .notice.clear .notice-dot { background: var(--sage); }
-.notice-text { font-size: 12.5px; color: #7d5626; }
-.notice.clear .notice-text { color: #4c5c45; }
+.notice-text { font-size: 12.5px; color: var(--ochre-deep); }
+.notice.clear .notice-text { color: var(--sage-deep); }
 .notice-sub { margin-left: auto; font-size: 10px; letter-spacing: 0.12em; color: var(--muted); }
 .notice .btn-ghost { border-color: currentColor; color: inherit; }
-.notice .btn-ghost:hover { background: var(--ink); color: var(--paper); }
+.notice .btn-ghost:hover { background: var(--ink); color: #fff; }
 
 /* ---------- 首屏 ---------- */
 .hero {
@@ -379,7 +393,7 @@ onMounted(load)
   letter-spacing: -0.01em;
   margin: 0;
 }
-.greet span { color: var(--muted); }
+.greet span { color: var(--accent); }
 .greet-sub {
   margin: 12px 0 0;
   font-size: 12.5px;
@@ -396,19 +410,19 @@ onMounted(load)
   height: 150px;
   flex: 0 0 150px;
   border-radius: 50%;
-  background: conic-gradient(var(--accent) calc(var(--p) * 1%), var(--line-2) 0);
+  background: conic-gradient(from -90deg, var(--accent) calc(var(--p) * 1%), var(--accent-soft) 0);
 }
 .ring::after {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.5), transparent 62%);
+  background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.55), transparent 62%);
 }
 .ring-in {
   position: absolute;
   inset: 15px;
-  background: var(--paper);
+  background: var(--surface);
   border-radius: 50%;
   display: flex;
   flex-direction: column;
@@ -441,22 +455,28 @@ onMounted(load)
   border-top: 1px solid var(--line);
   padding-top: 18px;
 }
-.meal { position: relative; padding-right: 10px; }
+.meal { position: relative; padding-right: 10px; --meal: var(--accent); }
+.meal-breakfast { --meal: var(--ochre); }
+.meal-lunch { --meal: var(--clay); }
+.meal-dinner { --meal: var(--accent); }
+.meal-snack { --meal: var(--sage); }
 .meal::before {
   content: '';
   position: absolute;
   top: -22px;
   left: 0;
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--line-2);
-  border: 2px solid var(--paper);
+  border: 2px solid var(--surface);
 }
-.meal.done::before { background: var(--accent); }
+.meal.done::before { background: var(--meal); }
+.meal.done .meal-name { color: var(--meal); }
 .meal-name { font-size: 11.5px; color: var(--muted); margin-bottom: 5px; }
 .meal-val { font-size: 13px; font-weight: 600; }
-.meal-val.empty { color: #b9b09c; font-weight: 400; font-size: 11.5px; }
+.meal.done .meal-val { color: var(--meal); }
+.meal-val.empty { color: var(--muted); font-weight: 400; font-size: 11.5px; }
 
 /* 数据票 */
 .stats-card {
@@ -471,11 +491,11 @@ onMounted(load)
   justify-content: space-between;
   align-items: baseline;
   padding: 13px 18px;
-  border-bottom: 1px solid var(--line-2);
-  background: var(--paper-2);
+  border-bottom: 1px solid #cdd7e7;
+  background: var(--accent-soft);
 }
-.ticket-k { font-size: 9px; letter-spacing: 0.16em; color: var(--muted); }
-.ticket-d { font-size: 9px; letter-spacing: 0.1em; color: var(--muted); }
+.ticket-k { font-size: 9px; letter-spacing: 0.16em; color: var(--accent-deep); }
+.ticket-d { font-size: 9px; letter-spacing: 0.1em; color: var(--accent); }
 .stat-row {
   flex: 1;
   display: flex;
@@ -485,7 +505,11 @@ onMounted(load)
   border-bottom: 1px solid var(--line);
 }
 .stat-k { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
-.stat-k i { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); display: inline-block; }
+.stat-k i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); display: inline-block; }
+.stat-row:nth-of-type(2) .stat-k i { background: var(--ochre); }
+.stat-row:nth-of-type(3) .stat-k i { background: var(--sage); }
+.stat-row:nth-of-type(4) .stat-k i { background: var(--plum); }
+.stat-row:nth-of-type(5) .stat-k i { background: var(--clay); }
 .stat-v { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
 .stat-v small { font-size: 10.5px; color: var(--muted); font-weight: 400; margin-left: 4px; }
 .stat-foot {
@@ -514,7 +538,7 @@ onMounted(load)
   transition: background 0.18s, color 0.18s;
 }
 .seg button + button { border-left: 1px solid var(--line-2); }
-.seg button.on { background: var(--ink); color: var(--paper); }
+.seg button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 
 .chart-card {
   border: 1px solid var(--line);
@@ -577,11 +601,16 @@ onMounted(load)
   display: flex;
   flex-direction: column;
   gap: 3px;
-  transition: border-color 0.18s, transform 0.18s;
+  transition: border-color 0.18s, transform 0.18s, background 0.18s;
   font-family: var(--sans);
+  border-left: 3px solid var(--tone, var(--accent));
 }
-.quick-item:hover { border-color: var(--ink); transform: translateY(-1px); }
-.quick-k { font-size: 9.5px; letter-spacing: 0.14em; color: var(--accent); }
+.quick-item:nth-child(1) { --tone: var(--accent); --tone-soft: var(--accent-soft); --tone-deep: var(--accent-deep); }
+.quick-item:nth-child(2) { --tone: var(--teal); --tone-soft: var(--teal-soft); --tone-deep: var(--teal-deep); }
+.quick-item:nth-child(3) { --tone: var(--ochre); --tone-soft: var(--ochre-soft); --tone-deep: var(--ochre-deep); }
+.quick-item:nth-child(4) { --tone: var(--plum); --tone-soft: var(--plum-soft); --tone-deep: var(--plum-deep); }
+.quick-item:hover { border-color: var(--tone); background: var(--tone-soft); transform: translateY(-1px); }
+.quick-k { font-size: 9.5px; letter-spacing: 0.14em; color: var(--tone, var(--accent)); }
 .quick-t { font-size: 13px; font-weight: 600; color: var(--ink); }
 .quick-s { font-size: 10.5px; color: var(--muted); line-height: 1.5; }
 

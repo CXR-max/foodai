@@ -169,7 +169,7 @@ onMounted(load)
       </el-col>
 
       <el-col :span="8">
-        <div class="page-card" style="text-align:center">
+        <div class="page-card bmi-card" style="text-align:center">
           <h3 class="page-title" style="justify-content:center">BMI 指数</h3>
           <div class="bmi" :style="{ color: bmiColor }">{{ bmiPreview ?? '--' }}</div>
           <el-tag :color="bmiColor" style="color:#fff;border:none">
@@ -177,7 +177,7 @@ onMounted(load)
           </el-tag>
         </div>
 
-        <div class="page-card">
+        <div class="page-card weight-card">
           <h3 class="page-title">记录今日体重</h3>
           <div style="display:flex;gap:8px">
             <el-input-number v-model="newWeight" :min="20" :max="300" :precision="1" style="flex:1" placeholder="kg" />
@@ -195,6 +195,8 @@ onMounted(load)
 
 <style scoped>
 .bmi { font-size: 42px; font-weight: 800; margin: 4px 0 8px; }
+.bmi-card { border-top: 3px solid var(--accent); background: #f7f9fd; }
+.weight-card { border-top: 3px solid var(--teal); }
 .page-title { margin-top: 18px; }
-.bf-tip { margin: 0; font-size: 12px; color: #7c7669; line-height: 1.5; padding-top: 8px; }
+.bf-tip { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.5; padding-top: 8px; }
 </style>

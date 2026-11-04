@@ -450,17 +450,17 @@ onMounted(() => {
                 <span class="lv">{{ Math.round(current.calories) }}</span>
                 <span class="lp">kcal</span>
               </div>
-              <div class="lrow">
+              <div class="lrow p">
                 <span class="lk">蛋白质<small>PROTEIN</small></span>
                 <span class="lv">{{ current.result.nutrition.protein_g }} g</span>
                 <span class="lp">{{ pctOf(current.result.nutrition.protein_g, DAILY_REF.protein_g) }}</span>
               </div>
-              <div class="lrow">
+              <div class="lrow f">
                 <span class="lk">脂肪<small>FAT</small></span>
                 <span class="lv">{{ current.result.nutrition.fat_g }} g</span>
                 <span class="lp">{{ pctOf(current.result.nutrition.fat_g, DAILY_REF.fat_g) }}</span>
               </div>
-              <div class="lrow">
+              <div class="lrow c">
                 <span class="lk">碳水化合物<small>CARBS</small></span>
                 <span class="lv">{{ current.result.nutrition.carb_g }} g</span>
                 <span class="lp">{{ pctOf(current.result.nutrition.carb_g, DAILY_REF.carb_g) }}</span>
@@ -846,7 +846,7 @@ onMounted(() => {
   gap: 8px;
   border: 1px solid #e8cdc4;
   background: var(--clay-soft);
-  color: #8f452f;
+  color: var(--clay-deep);
   font-size: 12px;
   padding: 8px 12px;
   border-radius: 4px;
@@ -900,6 +900,11 @@ onMounted(() => {
 .lrow.big .lk { font-size: 15px; font-weight: 700; }
 .lrow.big .lv { font-size: 21px; font-weight: 700; }
 .lk { font-size: 12.5px; color: var(--ink-2); }
+.lrow.p { --m: var(--accent); }
+.lrow.f { --m: var(--ochre); }
+.lrow.c { --m: var(--sage); }
+.lrow.p .lk, .lrow.f .lk, .lrow.c .lk { color: var(--m); }
+.lrow.p .lv, .lrow.f .lv, .lrow.c .lv { color: var(--m); }
 .lk small {
   display: block;
   font-family: var(--mono);
@@ -944,8 +949,8 @@ onMounted(() => {
   background: var(--surface);
 }
 .tag-pill.ok { border-color: #d6dccd; background: #eef0e9; color: #4c5c45; }
-.tag-pill.warn-pill { border-color: #e7d5bb; background: #f7efe3; color: #7d5626; }
-.tag-pill.mock { border-color: #e8cdc4; background: var(--clay-soft); color: #8f452f; }
+.tag-pill.warn-pill { border-color: #f3d9b7; background: var(--ochre-soft); color: var(--ochre-deep); }
+.tag-pill.mock { border-color: #e8cdc4; background: var(--clay-soft); color: var(--clay-deep); }
 .conf {
   margin-left: auto;
   font-family: var(--mono);
@@ -967,8 +972,8 @@ onMounted(() => {
 .note-line {
   margin-top: 8px;
   border-left: 2px solid var(--ochre);
-  background: #f7efe3;
-  color: #7d5626;
+  background: var(--ochre-soft);
+  color: var(--ochre-deep);
   font-size: 11.5px;
   line-height: 1.7;
   padding: 7px 11px;
@@ -995,7 +1000,7 @@ onMounted(() => {
 }
 .dish-card:hover { border-color: var(--ink); }
 .dn { font-size: 12.5px; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 6px; }
-.need { font-size: 9px; color: #8f452f; border: 1px solid #e8cdc4; border-radius: 999px; padding: 0 5px; font-weight: 400; }
+.need { font-size: 9px; color: var(--clay-deep); border: 1px solid #e8cdc4; border-radius: 999px; padding: 0 5px; font-weight: 400; }
 .dv { font-size: 9.5px; color: var(--muted); }
 .dc { font-size: 9px; color: var(--accent); letter-spacing: 0.06em; }
 
@@ -1013,10 +1018,10 @@ onMounted(() => {
 .ing b { font-weight: 600; color: var(--ink); font-size: 9.5px; }
 
 /* 候选确认 */
-.confirm-box { margin-top: 16px; border: 1px solid #e7d5bb; background: #fdf8ef; border-radius: 4px; padding: 13px 15px; }
+.confirm-box { margin-top: 16px; border: 1px solid #f3d9b7; background: var(--surface); border-radius: 4px; padding: 13px 15px; }
 .confirm-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .confirm-k { font-size: 9px; letter-spacing: 0.16em; color: var(--ochre); }
-.confirm-t { font-size: 11.5px; color: #7d5626; }
+.confirm-t { font-size: 11.5px; color: var(--ochre-deep); }
 .cand-list { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
 .cand {
   border: 1px solid var(--line);
@@ -1029,7 +1034,7 @@ onMounted(() => {
   transition: border-color 0.16s, background 0.16s;
 }
 .cand:hover { border-color: var(--ochre); }
-.cand.active { border-color: var(--ochre); background: #fdf8ef; box-shadow: 0 0 0 1px var(--ochre) inset; }
+.cand.active { border-color: var(--ochre); background: var(--surface); box-shadow: 0 0 0 1px var(--ochre) inset; }
 .cand-name { font-size: 12.5px; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 8px; }
 .cand-score { font-size: 9.5px; color: var(--muted); font-weight: 400; }
 .cand-meta { display: block; font-size: 10.5px; color: var(--muted); margin-top: 3px; }
