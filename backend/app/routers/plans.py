@@ -17,12 +17,27 @@ from app.models.health_profile import HealthProfile
 from app.models.plan_chat import PlanChatMessage
 from app.models.user import User
 from app.schemas.plan import ChatMessageIn, GeneratePlanIn, PlanChatIn, PlanDayUpdateIn
-from app.services import nutrition, points
+from app.services import nutrition, points, planner
 from app.services.achievements import unlock_all
+from app.services.constraint_state import (
+    apply_state_to_ctx,
+    ensure_state,
+    reset_state,
+    state_for_user,
+    state_prompt,
+    update_state,
+    update_state_from_text,
+)
+from app.services.food_synonyms import expand_food_terms
 from app.services.llm import foods_data
 from app.services.llm.prompts import PLAN_CHAT_SYSTEM
 from app.services.llm.provider import get_llm_provider
-from app.services.plan_intent import extract_plan_intent, merge_plan_intent
+from app.services.plan_intent import (
+    HARD_RESTRICTIONS,
+    _user_segments,
+    extract_plan_intent,
+    merge_plan_intent,
+)
 
 logger = logging.getLogger("plans")
 
@@ -33,11 +48,154 @@ MEAL_ORDER = {"breakfast": 0, "lunch": 1, "dinner": 2, "snack": 3}
 MAX_CHAT_HISTORY = 20  # 聊天模型带最近 20 条；方案约束抽取另读持久化全量/最近 60 条
 
 
-def build_chat_messages(history) -> list[dict]:
+def build_chat_messages(history, system_prompt: str | None = None) -> list[dict]:
     """system + 最近若干条历史（裁剪旧消息，保证首字延迟稳定）"""
     recent = history[-MAX_CHAT_HISTORY:]
-    return ([{"role": "system", "content": PLAN_CHAT_SYSTEM}]
+    return ([{"role": "system", "content": system_prompt or PLAN_CHAT_SYSTEM}]
             + [{"role": m.role, "content": m.content} for m in recent])
+
+
+def build_chat_system(profile, data: PlanChatIn, state: dict,
+                      taste: list[str], hard: list[str], soft: list[str],
+                      allowed: list[str], plan_text: str) -> str:
+    """把档案、长期状态、当前方案和可用菜品拼进聊天系统提示词。"""
+    target = None
+    goal = None
+    if profile:
+        target = profile.daily_calorie_target
+        goal = profile.goal or "maintain"
+    lines = [
+        PLAN_CHAT_SYSTEM,
+        "",
+        "【本次用户上下文】",
+        f"目标：{goal or '未知'}，每日热量目标：{target or '未知'} kcal",
+        f"口味：{'、'.join(taste) if taste else '无'}",
+        f"硬禁忌：{'、'.join(hard) if hard else '无'}",
+        f"软偏好：{'、'.join(soft) if soft else '无'}",
+        f"长期状态：{state_prompt(state)}",
+        f"可用菜品（只能从这些里推荐）：{'、'.join(allowed[:30]) if allowed else '暂无'}",
+        f"当前方案：{plan_text or '暂无'}",
+        "",
+        "回复要求：不得推荐硬禁忌食材/菜品；只从“可用菜品”中推荐；"
+        "如果用户要求禁忌食物，先说明不适合，再给 1~2 个清单内替代；保持简短。",
+    ]
+    return "\n".join(lines)
+
+
+def build_chat_context(db: Session, user: User, data: PlanChatIn):
+    """返回 system prompt、硬禁忌、可用菜品、档案、长期状态。"""
+    from app.services.plan_intent import HARD_RESTRICTIONS, SOFT_RESTRICTIONS
+
+    profile = db.query(HealthProfile).filter(HealthProfile.user_id == user.id).first()
+    state = ensure_state(user.id, profile)
+    user_text = "\n".join(
+        getattr(message, "content", "") for message in data.messages
+        if getattr(message, "role", "") == "user"
+    )
+    state = state_for_user(state, user_text)
+
+    if data.dietary_restrictions is not None:
+        panel = list(data.dietary_restrictions)
+    else:
+        panel = list(profile.dietary_restrictions or []) if profile else []
+    panel_hard = [x for x in panel if x in HARD_RESTRICTIONS]
+    panel_soft = [x for x in panel if x in SOFT_RESTRICTIONS]
+
+    state_data = state.get("data") or {}
+    hard = []
+    for item in panel_hard + list(state_data.get("hard_restrictions") or []):
+        if item not in hard:
+            hard.append(item)
+    if data.dietary_restrictions is not None:
+        soft = panel_soft
+    else:
+        soft = []
+        for item in panel_soft + list(state_data.get("soft_preferences") or []):
+            if item not in soft:
+                soft.append(item)
+
+    if data.taste_preferences is not None:
+        taste = list(data.taste_preferences)
+    else:
+        taste = list(state_data.get("taste_preferences") or [])
+        if not taste and profile:
+            taste = list(profile.taste_preferences or [])
+
+    allowed = planner.allowed_food_names(
+        hard, 40, exclude_foods=list(state_data.get("exclude_foods") or [])
+    )
+
+    plan_text = ""
+    if data.plan_id:
+        plan = db.get(DietPlan, data.plan_id)
+        if plan and plan.user_id == user.id:
+            day_index = data.day_index or 1
+            day = (db.query(PlanDay)
+                   .filter(PlanDay.plan_id == plan.id, PlanDay.day_index == day_index)
+                   .first())
+            plan_text = f"{plan.title}，第 {day_index} 天"
+            if day and day.meals:
+                names = [item.get("name") for meal in day.meals
+                         for item in (meal.get("items") or []) if item.get("name")]
+                plan_text += "，已选：" + "、".join(names[:8])
+
+    system = build_chat_system(profile, data, state, taste, hard, soft, allowed, plan_text)
+    return system, hard, allowed, profile, list(state_data.get("exclude_foods") or [])
+
+
+def last_user_message_id(user_id: int) -> int | None:
+    db = SessionLocal()
+    try:
+        row = (db.query(PlanChatMessage)
+               .filter(PlanChatMessage.user_id == user_id,
+                       PlanChatMessage.role == "user")
+               .order_by(PlanChatMessage.id.desc()).first())
+        return row.id if row else None
+    finally:
+        db.close()
+
+
+def guard_chat_reply(reply: str, hard: list[str],
+                     exclude_foods: list[str] | None = None) -> tuple[str, bool]:
+    """回复后置检查：只拦截“正向推荐”的禁忌词，放过“不建议/过敏/换成”等否定语境。"""
+    terms = list(planner.hard_chat_terms(hard))
+    exclude_terms = expand_food_terms(exclude_foods or [])
+    for item in exclude_terms:
+        if item and item not in terms:
+            terms.append(item)
+    negative_context = ("不建议", "不能", "不要", "避免", "禁忌", "不适合",
+                        "过敏", "换成", "替代", "不可以", "少吃", "别吃")
+
+    def _positive_mention(term: str) -> bool:
+        start = 0
+        while True:
+            pos = (reply or "").find(term, start)
+            if pos < 0:
+                return False
+            window = reply[max(0, pos - 14):pos + len(term) + 14]
+            if not any(word in window for word in negative_context):
+                return True
+            start = pos + len(term)
+
+    bad = [term for term in terms if term and _positive_mention(term)]
+    if not bad:
+        return reply, False
+    allowed = planner.allowed_food_names(hard, 30, exclude_foods=exclude_terms)
+    blocked_labels = []
+    for label in list(hard) + list(exclude_foods or []):
+        if label and label not in blocked_labels:
+            blocked_labels.append(label)
+    labels = "、".join(blocked_labels) or "饮食禁忌"
+    preferred = ["清蒸鲈鱼", "蒜蓉空心菜", "白灼虾", "西兰花炒虾仁",
+                 "冬瓜排骨汤", "青椒肉丝", "土豆炖牛肉"]
+    alternatives = [name for name in preferred if name in allowed][:3]
+    if not alternatives:
+        alternatives = allowed[:3]
+    alternative_text = "、".join(alternatives) or "清单内的其他菜品"
+    return (
+        f"你提到不吃/禁忌：{labels}。这些食材不会推荐。"
+        f"可以换成：{alternative_text}。"
+    ), True
 
 
 def _last_user_content(messages) -> str:
@@ -298,12 +456,27 @@ def generate_plan(
     # 组装档案上下文 + 合并偏好面板与聊天文本
     profile_ctx = build_profile_ctx(profile, data)
     combined_note = combine_note(data)
+    state = ensure_state(user.id, profile)
+    history_text = get_history_text(user.id, data.chat_text)
+    state = state_for_user(state, "\n".join(_user_segments(history_text)))
+    profile_ctx = apply_state_to_ctx(profile_ctx, state)
 
     provider = get_llm_provider()
     # 先把持久化对话翻译成"当前有效"的结构化约束，再交给求解器
-    history_text = get_history_text(user.id, data.chat_text)
-    intent = extract_plan_intent(provider, profile_ctx, data.note, history_text)
+    intent = extract_plan_intent(
+        provider, profile_ctx, data.note, history_text,
+        user_id=user.id, state_version=state["version"],
+        state_summary=state_prompt(state),
+    )
     profile_ctx = merge_plan_intent(profile_ctx, intent)
+    update_state(
+        user.id, intent,
+        source_message_id=last_user_message_id(user.id), profile=profile,
+        hard_restrictions=[
+            item for item in (profile_ctx.get("dietary_restrictions") or [])
+            if item in HARD_RESTRICTIONS
+        ],
+    )
     plan_result = provider.generate_plan(profile_ctx, data.days, combined_note)
 
     # 落库：主表 + 每日明细（餐次热量按营养库重算）
@@ -353,11 +526,26 @@ def generate_plan_stream(
 
     profile_ctx = build_profile_ctx(profile, data)
     combined_note = combine_note(data)
+    state = ensure_state(user.id, profile)
+    history_text = get_history_text(user.id, data.chat_text)
+    state = state_for_user(state, "\n".join(_user_segments(history_text)))
+    profile_ctx = apply_state_to_ctx(profile_ctx, state)
     provider = get_llm_provider()
     # 对话 → 当前有效约束（最新表态覆盖旧表态）→ 与勾选偏好合并
-    history_text = get_history_text(user.id, data.chat_text)
-    intent = extract_plan_intent(provider, profile_ctx, data.note, history_text)
+    intent = extract_plan_intent(
+        provider, profile_ctx, data.note, history_text,
+        user_id=user.id, state_version=state["version"],
+        state_summary=state_prompt(state),
+    )
     profile_ctx = merge_plan_intent(profile_ctx, intent)
+    update_state(
+        user.id, intent,
+        source_message_id=last_user_message_id(user.id), profile=profile,
+        hard_restrictions=[
+            item for item in (profile_ctx.get("dietary_restrictions") or [])
+            if item in HARD_RESTRICTIONS
+        ],
+    )
     user_id = user.id
 
     def sse(event: str, payload: dict) -> str:
@@ -478,6 +666,7 @@ def delete_chat_history(user: User = Depends(get_current_user)):
             .delete(synchronize_session=False)
         )
         db.commit()
+        reset_state(user.id)
         return {"deleted": deleted}
     finally:
         db.close()
@@ -529,36 +718,74 @@ def update_plan_day(
 def chat_with_llm(
     data: PlanChatIn,
     user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    """生成方案前的纯文字沟通：前端携带历史消息，后端返回模型回复"""
+    """生成方案前的纯文字沟通：动态注入档案/禁忌/可用菜品/当前方案。"""
     provider = get_llm_provider()
-    messages = build_chat_messages(data.messages)
+    system, hard, allowed, profile, excluded = build_chat_context(db, user, data)
+    messages = build_chat_messages(data.messages, system)
     reply = provider.chat(messages)
-    save_chat_exchange(user.id, data.messages, reply)
-    return {"reply": reply}
+    safe, filtered = guard_chat_reply(reply, hard, excluded)
+
+    if filtered:
+        corrective = messages + [{
+            "role": "system",
+            "content": (
+                "你的上一条回复包含用户硬禁忌。请改写，不出现这些食材/菜品，"
+                f"只从可用菜品中给 1~2 个替代：{'、'.join(allowed[:8])}。"
+            ),
+        }]
+        try:
+            retry_reply = provider.chat(corrective)
+            retry_safe, retry_filtered = guard_chat_reply(retry_reply, hard, excluded)
+            if not retry_filtered:
+                safe = retry_safe
+        except Exception:  # noqa: BLE001
+            pass
+
+    save_chat_exchange(user.id, data.messages, safe)
+    source_id = last_user_message_id(user.id)
+    update_state_from_text(
+        user.id, _last_user_content(data.messages), source_id, profile,
+        hard_restrictions=hard,
+    )
+    labels = list(dict.fromkeys(list(hard) + list(excluded)))
+    return {"reply": safe, "filtered": bool(labels), "restrictions": labels}
 
 
 @router.post("/chat-stream")
 def chat_stream(
     data: PlanChatIn,
     user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    """流式对话（SSE）：逐块推送模型回复，前端边收边显示（体感更快）"""
+    """流式对话（SSE）：注入上下文；结束时做禁忌后置检查，必要时发 replace。"""
     provider = get_llm_provider()
-    messages = build_chat_messages(data.messages)
+    system, hard, allowed, profile, excluded = build_chat_context(db, user, data)
+    messages = build_chat_messages(data.messages, system)
     user_id = user.id
+    last_user = _last_user_content(data.messages)
 
     def sse(event: str, payload: dict) -> str:
         return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
     def stream():
         parts: list[str] = []
+        labels = list(dict.fromkeys(list(hard) + list(excluded)))
         try:
+            yield sse("meta", {"filtered": bool(labels), "restrictions": labels})
             for piece in provider.chat_stream(messages):
                 if piece:
                     parts.append(piece)
                     yield sse("delta", {"t": piece})
-            save_chat_exchange(user_id, data.messages, "".join(parts))
+            full = "".join(parts)
+            safe, filtered = guard_chat_reply(full, hard, excluded)
+            if filtered and safe != full:
+                yield sse("replace", {"t": safe})
+            save_chat_exchange(user_id, data.messages, safe)
+            source_id = last_user_message_id(user_id)
+            update_state_from_text(user_id, last_user, source_id, profile,
+                                   hard_restrictions=hard)
             yield sse("done", {})
         except Exception as e:  # noqa: BLE001
             save_chat_exchange(user_id, data.messages, "".join(parts))

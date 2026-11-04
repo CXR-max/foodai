@@ -19,8 +19,13 @@ class ChatMessageIn(BaseModel):
 
 
 class PlanChatIn(BaseModel):
-    """生成方案前的"纯文字"偏好交流（无状态，历史由前端携带）"""
+    """生成方案前的"纯文字"偏好交流（服务端持久化，前端同时带历史）"""
     messages: list[ChatMessageIn] = Field(default_factory=list)
+    # 聊天上下文：当前方案/选中天/面板勾选（后端会再与长期状态合并）
+    plan_id: int | None = None
+    day_index: int | None = None
+    taste_preferences: list[str] | None = None
+    dietary_restrictions: list[str] | None = None
 
 
 class PlanMealItemIn(BaseModel):

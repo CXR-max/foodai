@@ -98,7 +98,8 @@ ollama pull qwen2.5:7b
 | `LLM_MODE=cloud` | 文字 + 视觉都走云端（智谱，https://open.bigmodel.cn 免费申请 key） |
 | `LLM_MODE=local` | 文字走本地 Ollama，**视觉仍走云端**（图片识别不占本机显存） |
 | `CLOUD_API_KEY` / `CLOUD_TEXT_MODEL` / `CLOUD_VISION_MODEL` | 云端 key 与模型名 |
-| `LOCAL_TEXT_BASE_URL` / `LOCAL_TEXT_MODEL` | 本地 Ollama 地址与模型 |
+| `LOCAL_TEXT_BASE_URL` / `LOCAL_TEXT_MODEL` | 本地 Ollama 地址与聊天模型 |
+| `LOCAL_INTENT_MODEL` | 约束抽取专用模型（默认 qwen2.5:3b，失败自动回退聊天模型） |
 | `LLM_TIMEOUT` | 单次调用超时（秒），超限立即降级 mock |
 | `LLM_MAX_RETRIES` | JSON 校验失败重试次数（0 = 失败即兜底，先保响应速度） |
 | `LLM_DAY_MAX_TOKENS` / `LLM_CHAT_MAX_TOKENS` / `LLM_VISION_MAX_TOKENS` | 各任务输出上限（防截断、防跑飞） |
@@ -146,7 +147,7 @@ foodai/
 │       ├── main.py          # 入口：挂路由 / 种子数据 / LLM 状态接口
 │       ├── core/            # 配置 / JWT / 依赖
 │       ├── db/              # 数据库连接
-│       ├── models/          # 12 张表
+│       ├── models/          # 13 张表
 │       ├── schemas/         # 请求参数校验
 │       ├── routers/         # API 路由（识别/方案/打卡/统计/积分/商城…）
 │       ├── services/        # 营养计算 / 积分规则 / 图片压缩 / llm 抽象层

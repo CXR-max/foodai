@@ -5,6 +5,9 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import * as planApi from '@/api/plan'
 import type { Plan, PlanDay, PlanMeal } from '@/api/plan'
 import * as checkinApi from '@/api/checkin'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
 
 const plans = ref<Plan[]>([])
 const current = ref<Plan | null>(null)          // 当前展示的方案（含 days）
@@ -28,9 +31,11 @@ const note = ref('')
 const chatMsgs = ref<planApi.ChatMsg[]>([])
 const chatInput = ref('')
 const chatting = ref(false)
+const chatGuardText = ref('')                    // 最近一次对话的禁忌过滤提示
 const chatDrawer = ref(false)                    // 历史对话抽屉
 const CHAT_HISTORY_KEY = 'plan_chat_history'
 const CHAT_CURRENT_KEY = 'plan_chat_current'
+const CHAT_OWNER_KEY = 'plan_chat_owner'
 interface ChatSession { time: string; msgs: planApi.ChatMsg[] }
 const chatSessions = ref<ChatSession[]>(loadChatHistory())
 
@@ -58,10 +63,15 @@ function loadChatHistory(): ChatSession[] {
     return []
   }
 }
-function saveChatHistory() {
+function wipeLocalChat(removeOwner = false) {
+  chatMsgs.value = []
+  chatSessions.value = []
+  chatGuardText.value = ''
   try {
-    localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatSessions.value))
-  } catch { /* 隐私模式等写入失败则忽略 */ }
+    localStorage.removeItem(CHAT_CURRENT_KEY)
+    localStorage.removeItem(CHAT_HISTORY_KEY)
+    if (removeOwner) localStorage.removeItem(CHAT_OWNER_KEY)
+  } catch { /* ignore */ }
 }
 // 生成方案时把最近几轮对话（含 AI 建议）交给后端做意图翻译；
 // 只传用户消息会丢掉“可以/就这个”这类上下文。
@@ -82,6 +92,7 @@ async function sendChat() {
   const aiMsg: planApi.ChatMsg = { role: 'assistant', content: '…' }
   chatMsgs.value.push(aiMsg)
   let started = false
+  chatGuardText.value = ''
   try {
     await planApi.chatPlanStream(chatMsgs.value.slice(0, -1), {
       onDelta: (t) => {
@@ -89,11 +100,25 @@ async function sendChat() {
         aiMsg.content += t
         chatMsgs.value = [...chatMsgs.value]
       },
+      onMeta: (m) => {
+        chatGuardText.value = m.filtered && m.restrictions.length
+          ? `已按你的禁忌过滤：${m.restrictions.join('、')}`
+          : ''
+      },
+      onReplace: (t) => {
+        aiMsg.content = t
+        chatMsgs.value = [...chatMsgs.value]
+      },
       onDone: () => {},
       onError: (msg) => {
         if (!started) aiMsg.content = `（对话失败：${msg}）`
         chatMsgs.value = [...chatMsgs.value]
       },
+    }, {
+      plan_id: current.value && current.value.id > 0 ? current.value.id : undefined,
+      day_index: Number(activeDay.value) || undefined,
+      taste_preferences: prefs.value.taste_preferences.length ? prefs.value.taste_preferences : undefined,
+      dietary_restrictions: prefs.value.dietary_restrictions.length ? prefs.value.dietary_restrictions : undefined,
     })
   } finally {
     chatting.value = false
@@ -107,19 +132,33 @@ async function loadPlans() {
   if (plans.value.length && !current.value) await openPlan(plans.value[0].id)
 }
 
-// 从后端恢复持久化对话（刷新/换设备都不丢）；后端没有时才保留当前内存里的
+// 从后端恢复持久化对话；本地镜像必须属于当前登录账号
 async function loadServerChat() {
+  if (!auth.user) {
+    try { await auth.fetchMe() } catch { /* 401 由 http 拦截器处理 */ }
+  }
+  const owner = auth.user?.id ? String(auth.user.id) : null
+  let savedOwner: string | null = null
+  try { savedOwner = localStorage.getItem(CHAT_OWNER_KEY) } catch { /* ignore */ }
+
+  // 账号切换或首次启用 owner：先清掉上一个账号的本地缓存
+  if (owner && savedOwner !== owner) {
+    wipeLocalChat(true)
+  }
+
   try {
     const rows = await planApi.getChatHistory(60)
     if (rows.length) {
       chatMsgs.value = rows.map((m) => ({ role: m.role, content: m.content }))
-    } else if (!chatMsgs.value.length) {
-      chatMsgs.value = loadCurrentChat()
+    } else {
+      chatMsgs.value = owner ? loadCurrentChat() : []
     }
+    if (owner) localStorage.setItem(CHAT_OWNER_KEY, owner)
   } catch {
-    // 历史接口失败时至少恢复本地镜像
-    if (!chatMsgs.value.length) chatMsgs.value = loadCurrentChat()
+    chatMsgs.value = owner ? loadCurrentChat() : []
+    if (owner) localStorage.setItem(CHAT_OWNER_KEY, owner)
   }
+  if (!owner) chatSessions.value = []
 }
 
 async function openPlan(id: number) {
@@ -242,10 +281,7 @@ function clearChatHistory() {
     } catch {
       // 接口失败也清掉本地，避免界面残留
     }
-    chatMsgs.value = []
-    chatSessions.value = []
-    try { localStorage.removeItem(CHAT_CURRENT_KEY) } catch { /* ignore */ }
-    saveChatHistory()
+    wipeLocalChat(false)
   }).catch(() => {})
 }
 
@@ -322,6 +358,7 @@ onMounted(async () => {
                 历史对话（{{ chatSessions.length }}）
               </el-button>
             </div>
+            <div v-if="chatGuardText" class="chat-guard">🛡️ {{ chatGuardText }}</div>
             <div class="chat-list">
               <div v-if="!chatMsgs.length" class="chat-empty">
                 例如：我下周要加班，晚饭想简单点；我爱吃辣但胃不好；不想吃外卖…
@@ -455,6 +492,7 @@ onMounted(async () => {
 .wizard-box { border: 1px solid #ebeef5; border-radius: 8px; padding: 12px 14px; height: 100%; background: #fafcff; }
 .wizard-title { font-weight: 600; color: #409eff; margin-bottom: 8px; }
 .chat-title { display: flex; justify-content: space-between; align-items: center; }
+.chat-guard { font-size: 12px; color: #67c23a; background: #f0f9eb; border-radius: 6px; padding: 4px 8px; margin: 4px 0 6px; }
 .pref-label { font-size: 13px; color: #606266; margin: 10px 0 4px; }
 
 .session { border: 1px solid #ebeef5; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }

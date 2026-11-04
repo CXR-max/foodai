@@ -14,6 +14,7 @@ from app.models.recognition import Recognition
 from app.models.food_record import FoodRecord
 from app.models.diet_plan import DietPlan, PlanDay
 from app.models.plan_chat import PlanChatMessage
+from app.models.plan_constraint_state import PlanConstraintState
 from app.models.check_in import CheckIn
 from app.models.points_log import PointsLog
 from app.models.weight_log import WeightLog
@@ -25,5 +26,5 @@ __all__ = [
     "User", "HealthProfile", "Recognition", "FoodRecord",
     "DietPlan", "PlanDay", "CheckIn", "PointsLog",
     "WeightLog", "Reward", "Redemption", "PlanChatMessage",
-    "Achievement", "UserAchievement",
+    "PlanConstraintState", "Achievement", "UserAchievement",
 ]

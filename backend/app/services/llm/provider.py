@@ -87,6 +87,15 @@ class FallbackProvider(LLMProvider):
             logger.warning("真模型对话失败，降级 mock：%s", e)
             return self.mock.chat(messages)
 
+    def chat_json(self, messages: list[dict], model: str | None = None,
+                  max_tokens: int | None = None, timeout: float | None = None) -> str:
+        try:
+            return self.real.chat_json(messages, model=model, max_tokens=max_tokens, timeout=timeout)
+        except FALLBACK_ERRORS as e:
+            self._used = "mock"
+            logger.warning("真模型结构化抽取失败，降级 mock：%s", e)
+            return self.mock.chat_json(messages, model=model, max_tokens=max_tokens, timeout=timeout)
+
     def chat_stream(self, messages: list[dict]):
         started = False
         try:
@@ -171,6 +180,12 @@ class SolverProvider(MockProvider):
 
     def chat(self, messages: list[dict]) -> str:
         reply = self.base.chat(messages)
+        self._used = self.base.active_name
+        return reply
+
+    def chat_json(self, messages: list[dict], model: str | None = None,
+                  max_tokens: int | None = None, timeout: float | None = None) -> str:
+        reply = self.base.chat_json(messages, model=model, max_tokens=max_tokens, timeout=timeout)
         self._used = self.base.active_name
         return reply
 

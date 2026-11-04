@@ -42,6 +42,9 @@ $Url = 'http://127.0.0.1:5173/'
 
 $env:PYTHONUTF8 = '1'
 $env:PYTHONIOENCODING = 'utf-8'
+# 本地模型常驻 + 更长上下文（仅对本脚本拉起的 ollama serve 生效）
+$env:OLLAMA_KEEP_ALIVE = '-1'
+$env:OLLAMA_CONTEXT_LENGTH = '8192'
 
 function Test-Port {
     param([int]$Port)

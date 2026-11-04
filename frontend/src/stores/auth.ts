@@ -37,6 +37,10 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     user.value = null
     localStorage.removeItem('token')
+    // 避免下一个账号看到上一个账号的本地对话缓存
+    for (const key of ['plan_chat_current', 'plan_chat_history', 'plan_chat_owner']) {
+      localStorage.removeItem(key)
+    }
     router.push('/login')
   }
 

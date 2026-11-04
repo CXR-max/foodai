@@ -41,19 +41,24 @@ class OpenAICompatProvider(LLMProvider):
 
     # ---------------- 内部：真正发起调用的两个小函数 ----------------
 
-    def _chat(self, messages: list[dict], json_mode: bool = False, max_tokens: int | None = None) -> str:
-        """文本调用；json_mode=True 时强制 JSON 输出并降低温度（结构更稳、少触发校验重试）"""
+    def _chat(self, messages: list[dict], json_mode: bool = False,
+              max_tokens: int | None = None, model: str | None = None,
+              timeout: float | None = None) -> str:
+        """文本调用；json_mode=True 时强制 JSON 输出并使用 temperature=0。"""
+        model = model or settings.text_model
         kwargs = {
-            "model": settings.text_model,
+            "model": model,
             "messages": messages,
-            "temperature": 0.3 if json_mode else 0.8,
+            "temperature": 0.0 if json_mode else 0.8,
             "max_tokens": max_tokens or settings.LLM_MAX_TOKENS,
         }
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
+        if timeout:
+            kwargs["timeout"] = timeout
         t0 = time.perf_counter()
         resp = self.text_client.chat.completions.create(**kwargs)
-        logger.info("文本模型=%s 耗时=%.1fs 输出tokens=%s", settings.text_model,
+        logger.info("文本模型=%s 耗时=%.1fs 输出tokens=%s", model,
                     time.perf_counter() - t0, getattr(resp.usage, "completion_tokens", "?"))
         return resp.choices[0].message.content or ""
 
@@ -189,6 +194,15 @@ class OpenAICompatProvider(LLMProvider):
     def chat(self, messages: list[dict]) -> str:
         # 纯文字沟通：不强制 JSON，限制长度让它更短更快
         return self._chat(messages, max_tokens=settings.LLM_CHAT_MAX_TOKENS)
+
+    def chat_json(self, messages: list[dict], model: str | None = None,
+                  max_tokens: int | None = None, timeout: float | None = None) -> str:
+        """约束抽取专用：temperature=0 + JSON mode。"""
+        return self._chat(
+            messages, json_mode=True,
+            max_tokens=max_tokens or settings.LLM_INTENT_MAX_TOKENS,
+            model=model, timeout=timeout,
+        )
 
     def chat_stream(self, messages: list[dict]):
         # 流式对话：逐块产出文本，前端可边收边显示；日志记录首字与总时长

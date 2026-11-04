@@ -112,13 +112,29 @@ export async function generatePlanStream(
 }
 
 /** 生成方案前的纯文字沟通（历史消息由前端携带） */
-export const chatPlan = (messages: ChatMsg[]) =>
-  post<{ reply: string }>('/plans/chat', { messages }, { timeout: 60000 })
+export interface ChatContext {
+  plan_id?: number
+  day_index?: number
+  taste_preferences?: string[]
+  dietary_restrictions?: string[]
+}
+
+export const chatPlan = (messages: ChatMsg[], context?: ChatContext) =>
+  post<{ reply: string; filtered: boolean; restrictions: string[] }>(
+    '/plans/chat', { messages, ...(context || {}) }, { timeout: 60000 },
+  )
 
 /** 流式对话（SSE）：逐块回调文本，体感更快 */
 export async function chatPlanStream(
   messages: ChatMsg[],
-  handlers: { onDelta: (t: string) => void; onDone: () => void; onError: (m: string) => void },
+  handlers: {
+    onDelta: (t: string) => void
+    onDone: () => void
+    onError: (m: string) => void
+    onMeta?: (m: { filtered: boolean; restrictions: string[] }) => void
+    onReplace?: (t: string) => void
+  },
+  context?: ChatContext,
 ): Promise<void> {
   const token = localStorage.getItem('token')
   const resp = await fetch('/api/plans/chat-stream', {
@@ -127,7 +143,7 @@ export async function chatPlanStream(
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, ...(context || {}) }),
   })
   if (!resp.ok || !resp.body) {
     handlers.onError('对话失败，请稍后再试')
@@ -154,6 +170,8 @@ export async function chatPlanStream(
       let payload: any
       try { payload = JSON.parse(dataStr) } catch { continue }
       if (ev === 'delta') handlers.onDelta(payload.t || '')
+      else if (ev === 'meta') handlers.onMeta?.(payload)
+      else if (ev === 'replace') handlers.onReplace?.(payload.t || '')
       else if (ev === 'done') handlers.onDone()
       else if (ev === 'error') handlers.onError(payload.message || '对话失败')
     }

@@ -85,6 +85,11 @@ class LLMProvider(ABC):
     def chat_stream(self, messages: list[dict]):
         """流式对话：逐块 yield 文本片段（生成器）"""
 
+    def chat_json(self, messages: list[dict], model: str | None = None,
+                  max_tokens: int | None = None, timeout: float | None = None) -> str:
+        """结构化 JSON 调用；默认退回普通 chat（Mock/未知 Provider 也能工作）。"""
+        return self.chat(messages)
+
     # ---- 公共：结构化输出 + 校验重试 ----
 
     def _call_with_retry(

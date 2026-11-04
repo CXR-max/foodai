@@ -20,6 +20,7 @@ from typing import Any
 from ortools.sat.python import cp_model
 
 from app.services import nutrition
+from app.services.food_synonyms import expand_food_terms
 from app.services.llm import foods_data
 from app.services.llm.prompts import EXERCISE_METABOLIC
 from app.services.llm.schemas import (
@@ -232,13 +233,66 @@ def _is_blocked(food: dict, restrictions: list[str]) -> bool:
     return False
 
 
+def allowed_food_names(restrictions: list[str], limit: int = 40,
+                       exclude_foods: list[str] | None = None) -> list[str]:
+    """聊天推荐用：按硬禁忌 + 用户明确不吃的关键词过滤后的菜品名清单。"""
+    excluded = expand_food_terms(
+        [str(item).strip() for item in (exclude_foods or []) if str(item).strip()]
+    )
+    names: list[str] = []
+    for food in foods_data.load_foods():
+        name = str(food.get("name") or "")
+        if not name or name in names:
+            continue
+        if excluded:
+            text = f"{name} {_food_text(food)}"
+            if any(term in text for term in excluded):
+                continue
+        if not _is_blocked(food, restrictions):
+            names.append(name)
+    return names[:limit]
+
+
+def hard_chat_terms(restrictions: list[str]) -> list[str]:
+    """聊天回复后置检查用的硬禁忌关键词（只收硬项，不含低糖/低盐等软目标）。"""
+    terms: set[str] = set()
+    for restriction in restrictions:
+        if restriction in ("素食", "蛋奶素", "奶蛋素"):
+            terms.update(MEAT_KEYWORDS)
+            terms.update(SEAFOOD_KEYWORDS)
+        elif restriction == "海鲜过敏":
+            terms.update(SEAFOOD_KEYWORDS)
+        elif restriction == "花生过敏":
+            terms.update(PEANUT_KEYWORDS)
+        elif restriction == "坚果过敏":
+            terms.update(NUT_KEYWORDS)
+        elif restriction == "乳糖不耐":
+            terms.update(DAIRY_KEYWORDS)
+        elif restriction == "麸质过敏":
+            terms.update(GLUTEN_KEYWORDS)
+        elif restriction == "大豆过敏":
+            terms.update(SOY_KEYWORDS)
+        elif restriction == "不吃猪肉":
+            terms.update(PORK_KEYWORDS)
+        elif restriction == "清真":
+            terms.update(PORK_KEYWORDS)
+            terms.update(ALCOHOL_KEYWORDS)
+        elif restriction == "不吃牛肉":
+            terms.update(BEEF_KEYWORDS)
+        elif restriction == "忌辣":
+            terms.update(SPICY_KEYWORDS)
+    return sorted((term for term in terms if len(term) >= 2), key=len, reverse=True)
+
+
 def _meal_pool(
     meal_type: str,
     restrictions: list[str],
     exclude_foods: list[str] | None = None,
 ) -> list[dict]:
     """按餐次 + 禁忌 + 对话里明确不吃的关键词过滤候选菜。"""
-    exclude = [str(item).strip() for item in (exclude_foods or []) if str(item).strip()]
+    exclude = expand_food_terms(
+        [str(item).strip() for item in (exclude_foods or []) if str(item).strip()]
+    )
     pool: list[dict] = []
     for food in foods_data.load_foods():
         if meal_type not in (food.get("suitable_meals") or []):

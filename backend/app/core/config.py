@@ -55,11 +55,13 @@ class Settings(BaseSettings):
     LOCAL_TEXT_BASE_URL: str = "http://localhost:11434/v1"
     LOCAL_TEXT_API_KEY: str = "ollama"        # Ollama 不校验，占位即可
     LOCAL_TEXT_MODEL: str = "qwen2.5:7b"
+    LOCAL_INTENT_MODEL: str = "qwen2.5:3b"    # 约束抽取专用；失败自动回退 LOCAL_TEXT_MODEL
 
     # 通义千问（云端文字，阿里云 DashScope OpenAI 兼容端点，有免费额度）
     QWEN_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     QWEN_API_KEY: str = ""
     QWEN_TEXT_MODEL: str = "qwen-plus"
+    QWEN_INTENT_MODEL: str = ""               # 空 = 复用 QWEN_TEXT_MODEL
 
     # 文字模型提供商：glm=智谱云端 | qwen=通义千问云端 | local=本地 Ollama
     TEXT_PROVIDER: str = "glm"
@@ -70,6 +72,8 @@ class Settings(BaseSettings):
     LLM_MAX_TOKENS: int = 2048        # 通用/整份方案最大输出 tokens
     LLM_DAY_MAX_TOKENS: int = 700     # 逐天生成方案时单天上限（约 400 字 JSON，够用且防截断）
     LLM_CHAT_MAX_TOKENS: int = 128    # 聊天回复最大输出（提示词要求 ≤80 字）
+    LLM_INTENT_MAX_TOKENS: int = 512  # 约束抽取 JSON 输出上限
+    LLM_INTENT_TIMEOUT: int = 45      # 约束抽取独立超时（秒）
     LLM_VISION_MAX_TOKENS: int = 1500 # 食物识别输出上限（思考 token 与 JSON 共用预算，留足余量）
     LLM_VISION_THINKING: bool = False # glm-4v-flash 不支持思考模式，关闭避免报错
     LLM_VISION_MAX_RETRIES: int = 2   # 识别 JSON 校验失败重试次数（比文字宽松，防误降级 mock）
@@ -83,6 +87,8 @@ class Settings(BaseSettings):
 
     @property
     def text_base_url(self) -> str:
+        if self.is_local:
+            return self.LOCAL_TEXT_BASE_URL
         if self.TEXT_PROVIDER.strip().lower() == "qwen":
             return self.QWEN_BASE_URL
         if self.TEXT_PROVIDER.strip().lower() == "local":
@@ -91,6 +97,8 @@ class Settings(BaseSettings):
 
     @property
     def text_api_key(self) -> str:
+        if self.is_local:
+            return self.LOCAL_TEXT_API_KEY
         if self.TEXT_PROVIDER.strip().lower() == "qwen":
             return self.QWEN_API_KEY
         if self.TEXT_PROVIDER.strip().lower() == "local":
@@ -99,11 +107,22 @@ class Settings(BaseSettings):
 
     @property
     def text_model(self) -> str:
+        if self.is_local:
+            return self.LOCAL_TEXT_MODEL
         if self.TEXT_PROVIDER.strip().lower() == "qwen":
             return self.QWEN_TEXT_MODEL
         if self.TEXT_PROVIDER.strip().lower() == "local":
             return self.LOCAL_TEXT_MODEL
         return self.CLOUD_TEXT_MODEL
+
+    @property
+    def intent_model(self) -> str:
+        """约束抽取专用模型；空/不可用时由调用方回退 text_model。"""
+        if self.is_local:
+            return self.LOCAL_INTENT_MODEL or self.text_model
+        if self.TEXT_PROVIDER.strip().lower() == "qwen":
+            return self.QWEN_INTENT_MODEL or self.text_model
+        return self.text_model
 
     # 视觉：暂时始终走云端
     @property
