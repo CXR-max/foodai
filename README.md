@@ -129,13 +129,19 @@ python scripts/check_secrets.py
 | 口径 | 数量 |
 |---|---|
 | 活跃池（识别可命中） | **1,847** |
-| staging（未激活，含四个外部源） | 11,616 |
-| 总条目 | 13,463 |
+| staging（未激活，含四个外部源） | 11,576 |
+| 总条目 | 13,423 |
 | 同义/易混淆关系 | 34 组 / 58 条 |
 | 别名 | 5,276 条 |
 
 - 数据来源与许可、导入命令、扩容流程：[backend/app/data/SOURCES.md](backend/app/data/SOURCES.md)
 - 200 道菜谱的营养预览：[docs/recipes-preview-200.md](docs/recipes-preview-200.md)
+
+![营养库分层结构与关系](docs/figures/nutrition-library-architecture.png)
+
+![13,423 条数据的审查流程](docs/figures/data-review-pipeline.png)
+
+两张图由 `scripts/make_nutrition_figures.py` 生成（改数据后重跑即可刷新），版式自检用 `scripts/check_figure_layout.py`。
 
 ## 目录结构
 

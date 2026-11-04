@@ -2,12 +2,34 @@
 // - 自动带上登录 token
 // - 401 自动清 token 跳登录页
 // - 错误统一弹 ElMessage 提示
+// - baseURL 可配置：浏览器走 Vite 代理（/api），打包成 App 时用 VITE_API_BASE 指向后端
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
 
+/**
+ * 接口前缀。
+ * - Web / 开发：默认 '/api'，由 Vite 代理转发到后端
+ * - 手机 App（Capacitor）：构建时注入 VITE_API_BASE=http://192.168.x.x:8000/api
+ */
+const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) || '/api'
+
+/**
+ * 后端根地址（去掉 /api 后缀）。
+ * 后端返回的图片是 '/uploads/xxx.jpg' 这种相对路径，在 App 里必须拼上后端地址，
+ * 否则会去请求 https://localhost/uploads/... 导致图片全部裂掉。
+ */
+export const API_ORIGIN = API_BASE.replace(/\/api\/?$/, '')
+
+/** 把后端返回的相对资源路径转成可直接访问的完整地址 */
+export function assetUrl(p?: string | null): string {
+  if (!p) return ''
+  if (/^(https?:|data:|blob:)/i.test(p)) return p
+  return `${API_ORIGIN}${p.startsWith('/') ? '' : '/'}${p}`
+}
+
 const http = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE,
   timeout: 30000,
 })
 

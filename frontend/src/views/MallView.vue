@@ -5,6 +5,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import * as rewardsApi from '@/api/rewards'
 import type { Reward } from '@/api/rewards'
 import { useAuthStore } from '@/stores/auth'
+import { isMobile } from '@/composables/useIsMobile'
 
 const auth = useAuthStore()
 const rewards = ref<Reward[]>([])
@@ -96,7 +97,7 @@ onMounted(load)
       </div>
 
       <el-row :gutter="14">
-        <el-col v-for="r in filtered" :key="r.id" :span="6">
+        <el-col v-for="r in filtered" :key="r.id" :span="6" :xs="12">
           <el-card shadow="hover" class="reward">
             <div class="icon">{{ r.icon }}</div>
             <div class="name">{{ r.name }}</div>
@@ -119,7 +120,7 @@ onMounted(load)
     </div>
 
     <!-- 我的兑换抽屉 -->
-    <el-drawer v-model="drawer" title="我的兑换（凭核销码领取）" size="380px">
+    <el-drawer v-model="drawer" title="我的兑换（凭核销码领取）" :size="isMobile ? '88%' : '380px'">
       <el-empty v-if="!redemptions.length" description="还没有兑换记录" />
       <div v-for="r in redemptions" :key="r.id" class="redeem-item">
         <div class="row1">
@@ -139,7 +140,7 @@ onMounted(load)
     </el-drawer>
 
     <!-- 使用补签卡弹窗 -->
-    <el-dialog v-model="makeupDialog" title="使用补签卡" width="360px">
+    <el-dialog v-model="makeupDialog" title="使用补签卡" :width="isMobile ? '100%' : '360px'" :fullscreen="isMobile">
       <p style="margin-top:0;color:#909399">选择要补签的日期（补签后该天记为已打卡，并奖励积分）</p>
       <el-date-picker
         v-model="makeupDate"
@@ -174,4 +175,16 @@ onMounted(load)
 .redeem-item .code { margin-top: 6px; color: #67c23a; letter-spacing: 1px; }
 .redeem-item .time { color: #c0c4cc; font-size: 12px; margin-top: 4px; }
 .use-row { margin-top: 8px; display: flex; justify-content: flex-end; }
+
+/* ============ 手机端 ============ */
+@media (max-width: 768px) {
+  .head { flex-direction: column; align-items: stretch; gap: 8px; }
+  .right { flex-wrap: wrap; padding-bottom: 0; gap: 8px; }
+  .right .el-tag { flex: 1; text-align: center; }
+  .reward { margin-bottom: 10px; }
+  .reward .icon { font-size: 30px; margin: 2px 0; }
+  .reward .name { font-size: 13px; }
+  .reward .desc { font-size: 11px; height: 30px; margin: 4px 0; }
+  .cost { font-size: 15px; }
+}
 </style>

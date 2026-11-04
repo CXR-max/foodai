@@ -63,3 +63,23 @@ frontend/vite.err.log
 .env.bak
 .env.*.bak
 *.env.bak
+
+# ---- Capacitor / Android 手机端 ----
+# android/ 目录本身要提交（原生工程配置：Manifest、build.gradle、图标），
+# 下面这些是构建产物和本机路径，不提交
+frontend/android/.gradle/
+frontend/android/build/
+frontend/android/app/build/
+frontend/android/local.properties
+frontend/android/.idea/
+frontend/android/.cxx/
+frontend/android/capacitor-cordova-android-plugins/
+frontend/android/app/src/main/assets/public/
+frontend/android/app/src/main/res/xml/config.xml
+# APK / AAB 构建产物
+*.apk
+*.aab
+# 签名文件：泄露等于别人能冒充你发布应用，绝不入库
+*.jks
+*.keystore
+frontend/android/app/release/

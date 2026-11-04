@@ -74,7 +74,7 @@ onMounted(load)
       />
 
       <el-row :gutter="14" v-loading="loading">
-        <el-col v-for="a in items" :key="a.id" :span="6">
+        <el-col v-for="a in items" :key="a.id" :span="6" :xs="12">
           <el-card shadow="hover" class="ach" :class="{ locked: !a.unlocked }">
             <div class="icon">{{ a.icon }}</div>
             <div class="name">{{ a.name }}</div>
@@ -116,4 +116,15 @@ onMounted(load)
 .ach .desc { color: #606266; font-size: 13px; min-height: 36px; }
 .ach .cond { color: #c0c4cc; font-size: 12px; margin: 6px 0; }
 .ach .foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+
+/* ============ 手机端 ============ */
+@media (max-width: 768px) {
+  .head { flex-direction: column; align-items: stretch; gap: 8px; }
+  .head .el-tag { align-self: flex-start; }
+  .ach { margin-bottom: 10px; }
+  .ach .icon { font-size: 30px; margin: 2px 0; }
+  .ach .name { font-size: 13px; }
+  .ach .desc { font-size: 11px; min-height: 30px; }
+  .ach .cond { font-size: 11px; }
+}
 </style>

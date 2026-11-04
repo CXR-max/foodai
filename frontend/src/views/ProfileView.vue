@@ -1,14 +1,25 @@
 <script setup lang="ts">
 // 健康档案页：基础信息 + 三组偏好 + BMI 实时展示 + 体重记录曲线
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as profileApi from '@/api/profile'
 import TrendChart from '@/components/TrendChart.vue'
 import { useAuthStore } from '@/stores/auth'
+import { isMobile } from '@/composables/useIsMobile'
 
 const auth = useAuthStore()
+const router = useRouter()
 const loading = ref(false)
 const weights = ref<{ weight_kg: number; recorded_date: string }[]>([])
+
+// 手机端底部只有 5 个 tab，其余功能从这里进（桌面端由左侧菜单承担，不显示这块）
+const moreEntries = [
+  { path: '/stats', title: '数据追踪', icon: '📈', desc: '热量趋势、营养结构、体重变化' },
+  { path: '/mall', title: '积分商城', icon: '🪙', desc: '用积分兑换奖励' },
+  { path: '/achievements', title: '成就徽章', icon: '🏆', desc: '查看已解锁的成就' },
+  { path: '/leaderboard', title: '排行榜', icon: '🥇', desc: '和好友比一比积分' },
+]
 
 const form = reactive({
   height_cm: null as number | null,
@@ -97,27 +108,27 @@ onMounted(load)
 <template>
   <div class="page">
     <el-row :gutter="16">
-      <el-col :span="16">
+      <el-col :span="16" :xs="24">
         <div class="page-card">
           <h3 class="page-title">📋 基础信息</h3>
-          <el-form label-width="90px">
+          <el-form label-width="90px" :label-position="isMobile ? 'top' : 'right'">
             <el-row :gutter="12">
-              <el-col :span="8"><el-form-item label="身高(cm)"><el-input-number v-model="form.height_cm" :min="50" :max="250" style="width:100%" /></el-form-item></el-col>
-              <el-col :span="8"><el-form-item label="体重(kg)"><el-input-number v-model="form.weight_kg" :min="20" :max="300" style="width:100%" /></el-form-item></el-col>
-              <el-col :span="8"><el-form-item label="年龄"><el-input-number v-model="form.age" :min="5" :max="110" style="width:100%" /></el-form-item></el-col>
+              <el-col :span="8" :xs="24"><el-form-item label="身高(cm)"><el-input-number v-model="form.height_cm" :min="50" :max="250" style="width:100%" /></el-form-item></el-col>
+              <el-col :span="8" :xs="12"><el-form-item label="体重(kg)"><el-input-number v-model="form.weight_kg" :min="20" :max="300" style="width:100%" /></el-form-item></el-col>
+              <el-col :span="8" :xs="12"><el-form-item label="年龄"><el-input-number v-model="form.age" :min="5" :max="110" style="width:100%" /></el-form-item></el-col>
             </el-row>
             <el-row :gutter="12">
-              <el-col :span="8">
+              <el-col :span="8" :xs="24">
                 <el-form-item label="体脂率(%)">
                   <el-input-number v-model="form.body_fat_pct" :min="3" :max="70" :precision="1" style="width:100%" placeholder="选填" />
                 </el-form-item>
               </el-col>
-              <el-col :span="16">
+              <el-col :span="16" :xs="24">
                 <p class="bf-tip">选填 · 肌肉占比越高同运动消耗越多，不填按 BMI 估算</p>
               </el-col>
             </el-row>
             <el-row :gutter="12">
-              <el-col :span="8">
+              <el-col :span="8" :xs="24">
                 <el-form-item label="性别">
                   <el-radio-group v-model="form.gender">
                     <el-radio value="male">男</el-radio>
@@ -125,9 +136,9 @@ onMounted(load)
                   </el-radio-group>
                 </el-form-item>
               </el-col>
-              <el-col :span="8">
+              <el-col :span="8" :xs="24">
                 <el-form-item label="活动水平">
-                  <el-select v-model="form.activity_level">
+                  <el-select v-model="form.activity_level" style="width:100%">
                     <el-option label="久坐少动" value="sedentary" />
                     <el-option label="轻度活动" value="light" />
                     <el-option label="中度活动" value="moderate" />
@@ -136,7 +147,7 @@ onMounted(load)
                   </el-select>
                 </el-form-item>
               </el-col>
-              <el-col :span="8">
+              <el-col :span="8" :xs="24">
                 <el-form-item label="目标">
                   <el-radio-group v-model="form.goal">
                     <el-radio value="lose">减脂</el-radio>
@@ -164,11 +175,11 @@ onMounted(load)
             <el-checkbox v-for="t in EXERCISES" :key="t" :value="t">{{ t }}</el-checkbox>
           </el-checkbox-group>
 
-          <el-button type="success" :loading="loading" @click="save">保存档案</el-button>
+          <el-button type="success" :loading="loading" :style="isMobile ? 'width:100%' : ''" @click="save">保存档案</el-button>
         </div>
       </el-col>
 
-      <el-col :span="8">
+      <el-col :span="8" :xs="24">
         <div class="page-card" style="text-align:center">
           <h3 class="page-title" style="justify-content:center">BMI 指数</h3>
           <div class="bmi" :style="{ color: bmiColor }">{{ bmiPreview ?? '--' }}</div>
@@ -190,6 +201,24 @@ onMounted(load)
         </div>
       </el-col>
     </el-row>
+
+    <!-- 手机端：底部 tab 之外的入口聚合在这里（桌面端左侧菜单已有，不重复显示） -->
+    <div v-if="isMobile" class="page-card more-card">
+      <h3 class="page-title">更多功能</h3>
+      <div
+        v-for="e in moreEntries"
+        :key="e.path"
+        class="more-item"
+        @click="router.push(e.path)"
+      >
+        <span class="more-icon">{{ e.icon }}</span>
+        <span class="more-body">
+          <span class="more-title">{{ e.title }}</span>
+          <span class="more-desc">{{ e.desc }}</span>
+        </span>
+        <span class="more-arrow">›</span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -197,4 +226,22 @@ onMounted(load)
 .bmi { font-size: 42px; font-weight: 800; margin: 4px 0 8px; }
 .page-title { margin-top: 18px; }
 .bf-tip { margin: 0; font-size: 12px; color: #909399; line-height: 1.5; padding-top: 8px; }
+
+/* 手机端「更多功能」入口列表 */
+.more-card { padding-bottom: 6px; }
+.more-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 2px;
+  border-bottom: 1px solid #f2f3f5;
+  cursor: pointer;
+}
+.more-item:last-child { border-bottom: none; }
+.more-item:active { background: #f7f8fa; }
+.more-icon { font-size: 20px; width: 26px; text-align: center; }
+.more-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.more-title { font-size: 14px; color: #303133; font-weight: 500; }
+.more-desc { font-size: 11px; color: #a8abb2; }
+.more-arrow { color: #c0c4cc; font-size: 18px; }
 </style>

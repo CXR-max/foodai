@@ -3,7 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover：让页面延伸到刘海屏区域，配合 env(safe-area-inset-*) 处理安全区 -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <!-- 手机端：禁止系统自动识别电话号码/邮箱为链接，避免误触 -->
+    <meta name="format-detection" content="telephone=no,email=no" />
     <meta name="theme-color" content="#07120e" />
     <title>识膳智行 · AI 健康管理</title>
   </head>

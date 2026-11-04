@@ -5,6 +5,7 @@ import { ElMessage } from 'element-plus'
 import * as statsApi from '@/api/stats'
 import type { TrendsResult, WeeklyReport } from '@/api/stats'
 import TrendChart from '@/components/TrendChart.vue'
+import { isMobile } from '@/composables/useIsMobile'
 
 type BarLine = 'bar' | 'line'
 type NutKind = 'bar' | 'line' | 'pie'
@@ -305,7 +306,7 @@ onMounted(() => { loadCharts() })
     </div>
 
     <el-row :gutter="14" style="margin-top:14px">
-      <el-col :span="12">
+      <el-col :span="12" :xs="24">
         <div class="page-card">
           <div class="card-head">
             <h3 class="page-title">🏃 运动消耗</h3>
@@ -317,7 +318,7 @@ onMounted(() => { loadCharts() })
           <TrendChart v-if="trends" :option="burnOption" height="280px" />
         </div>
       </el-col>
-      <el-col :span="12">
+      <el-col :span="12" :xs="24">
         <div class="page-card">
           <div class="card-head">
             <h3 class="page-title">🥗 营养素摄入</h3>
@@ -334,14 +335,14 @@ onMounted(() => { loadCharts() })
     </el-row>
 
     <el-row :gutter="14" style="margin-top:14px">
-      <el-col :span="12">
+      <el-col :span="12" :xs="24">
         <div class="page-card">
           <h3 class="page-title">⚖️ 体重变化（{{ range === 'week' ? '近7天' : '近30天' }}）</h3>
           <TrendChart v-if="hasWeight" :option="weightOption" height="270px" />
           <el-empty v-else description="到「健康档案」页记录体重后显示曲线" :image-size="70" />
         </div>
       </el-col>
-      <el-col :span="12">
+      <el-col :span="12" :xs="24">
         <div class="page-card">
           <h3 class="page-title">🧮 营养结构均值</h3>
           <div v-if="nutrition.days_with_data" class="nut-rows">
@@ -359,7 +360,7 @@ onMounted(() => { loadCharts() })
     </el-row>
 
     <!-- AI 周报弹窗 -->
-    <el-dialog v-model="reportVisible" title="🤖 AI 健康周报" width="560px">
+    <el-dialog v-model="reportVisible" title="🤖 AI 健康周报" :width="isMobile ? '100%' : '560px'" :fullscreen="isMobile">
       <div v-loading="reportLoading" style="min-height:200px">
         <template v-if="report">
           <div class="report-head">
