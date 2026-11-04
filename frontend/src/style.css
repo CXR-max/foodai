@@ -33,3 +33,62 @@ body {
   align-items: center;
   gap: 8px;
 }
+
+/* ============ 手机端全局适配（≤768px） ============ */
+/* 桌面端不受影响：所有规则都在媒体查询内 */
+@media (max-width: 768px) {
+  body {
+    /* 去掉移动端点击时的灰色高亮块 */
+    -webkit-tap-highlight-color: transparent;
+    /* 防止 iOS 整页回弹滚动 */
+    overscroll-behavior-y: contain;
+    /* 允许长按选择文字，但禁止整页文本被拖拽 */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* iOS 上输入框字号 < 16px 时聚焦会自动放大页面，强制 16px 避免 */
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  /* 触屏最小点击区：Element Plus 默认按钮偏小，手机上容易点不中 */
+  .el-button {
+    min-height: 40px;
+  }
+  .el-button--small {
+    min-height: 34px;
+  }
+
+  /* 卡片收紧一点，小屏能多显示些内容 */
+  .page {
+    padding: 0;
+  }
+  .page-card {
+    padding: 14px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+  }
+  .page-title {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+
+  /* 表格横向滚动兜底：万一有没改到的表格，至少能左右滑 */
+  .el-table {
+    font-size: 13px;
+  }
+
+  /* 弹窗在手机上留点边距，避免贴边 */
+  .el-dialog {
+    margin-top: 8vh !important;
+  }
+
+  /* 消息提示在手机上别太宽 */
+  .el-message {
+    min-width: auto;
+    max-width: 90vw;
+  }
+}
+

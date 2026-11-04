@@ -103,14 +103,14 @@ onMounted(load)
     <el-alert v-else title="🎉 今天饮食和运动都打卡了，保持住！" type="success" :closable="false" class="banner" />
 
     <el-row :gutter="14" style="margin-top:14px">
-      <el-col :span="6"><StatTile title="今日摄入" :value="ov.today_calories" :sub="ov.daily_target ? `/ ${ov.daily_target} kcal` : ''" icon="🔥" color="#f56c6c" /></el-col>
-      <el-col :span="6"><StatTile title="今日消耗" :value="ov.today_burn" sub="kcal" icon="🏃" color="#e6a23c" /></el-col>
-      <el-col :span="6"><StatTile title="连续打卡" :value="ov.streak_days" sub="天" icon="📅" color="#67c23a" /></el-col>
-      <el-col :span="6"><StatTile title="当前排名" :value="`No.${ov.rank}`" :sub="`积分 ${ov.points_total}`" icon="🏆" color="#409eff" /></el-col>
+      <el-col :span="6" :xs="12"><StatTile title="今日摄入" :value="ov.today_calories" :sub="ov.daily_target ? `/ ${ov.daily_target} kcal` : ''" icon="🔥" color="#f56c6c" /></el-col>
+      <el-col :span="6" :xs="12"><StatTile title="今日消耗" :value="ov.today_burn" sub="kcal" icon="🏃" color="#e6a23c" /></el-col>
+      <el-col :span="6" :xs="12"><StatTile title="连续打卡" :value="ov.streak_days" sub="天" icon="📅" color="#67c23a" /></el-col>
+      <el-col :span="6" :xs="12"><StatTile title="当前排名" :value="`No.${ov.rank}`" :sub="`积分 ${ov.points_total}`" icon="🏆" color="#409eff" /></el-col>
     </el-row>
 
     <el-row :gutter="14" style="margin-top:14px">
-      <el-col :span="14">
+      <el-col :span="14" :xs="24">
         <div class="page-card">
           <h3 class="page-title">
             📈 热量趋势
@@ -123,7 +123,7 @@ onMounted(load)
           <p v-if="calRange === 30" class="chart-note">近 30 天按柱状展示，更易看出每日波动</p>
         </div>
       </el-col>
-      <el-col :span="10">
+      <el-col :span="10" :xs="24">
         <div class="page-card">
           <h3 class="page-title">
             ✅ 今日任务

@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 // 食物识别页：拖拽上传 → AI 识别 → 结果卡片 → 手动校准 → 保存为饮食记录
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -9,6 +9,8 @@ import type { FoodOption, MatchCandidate, Recognition } from '@/api/food'
 import { getOverview } from '@/api/stats'
 import { getProfile } from '@/api/profile'
 import { useAuthStore } from '@/stores/auth'
+import { isMobile } from '@/composables/useIsMobile'
+import { assetUrl } from '@/api/http'
 
 const auth = useAuthStore()
 const current = ref<Recognition | null>(null)   // 当前识别结果
@@ -68,6 +70,20 @@ const METHOD_LABELS: Record<string, string> = {
 
 function methodLabel(method: string) {
   return METHOD_LABELS[method] || method
+}
+
+// 匹配标签颜色：需确认=橙，否则=绿
+function matchTagType(match: { needs_confirm?: boolean } | null | undefined) {
+  return match?.needs_confirm ? 'warning' : 'success'
+}
+
+// 时间显示：手机上省掉年份，节省一行空间
+function fmtTime(s: string) {
+  const d = new Date(s)
+  if (Number.isNaN(d.getTime())) return s
+  return isMobile.value
+    ? d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleString('zh-CN')
 }
 
 // 用后端候选初始化确认表单：默认选第一个（通常是模型原判）
@@ -347,7 +363,7 @@ onMounted(() => {
   <div class="page">
     <el-row :gutter="16">
       <!-- 左：上传 + 图片 -->
-      <el-col :span="10">
+      <el-col :span="10" :xs="24">
         <div class="page-card">
           <h3 class="page-title">📷 拍一拍，识别食物</h3>
           <el-upload
@@ -356,9 +372,9 @@ onMounted(() => {
             :show-file-list="false"
             :http-request="doUpload"
           >
-            <div class="upload-inner">
+            <div class="upload-inner" :class="{ 'upload-inner-mobile': isMobile }">
               <template v-if="current?.image_url">
-                <img :src="current.image_url" class="preview" />
+                <img :src="assetUrl(current.image_url)" class="preview" />
               </template>
               <template v-else-if="recognizing">
                 <el-icon class="is-loading" :size="40" color="#67c23a"><i class="el-icon-loading" /></el-icon>
@@ -366,7 +382,7 @@ onMounted(() => {
               </template>
               <template v-else>
                 <el-icon :size="48" color="#c0c4cc"><UploadFilled /></el-icon>
-                <p>拖一张食物照片到这里，或 <em>点击上传</em></p>
+                <p>{{ isMobile ? '点这里拍照或选图' : '拖一张食物照片到这里，或' }} <em>点击上传</em></p>
                 <p class="tip">支持 jpg / png / webp，最大 10MB</p>
               </template>
             </div>
@@ -376,7 +392,7 @@ onMounted(() => {
       </el-col>
 
       <!-- 右：识别结果 -->
-      <el-col :span="14">
+      <el-col :span="14" :xs="24">
         <div class="page-card">
           <h3 class="page-title">🔍 识别结果</h3>
           <el-empty v-if="!current && !recognizing" description="上传图片后这里显示识别结果" :image-size="80" />
@@ -418,7 +434,32 @@ onMounted(() => {
 
               <div v-if="dishCount > 1" class="dishes-box">
                 <div class="dishes-title">这张图里识别到 {{ dishCount }} 道菜，合计 {{ current.result.nutrition.calories }} kcal</div>
-                <el-table :data="current.result.dishes" size="small">
+
+                <!-- 手机：卡片列表 -->
+                <div v-if="isMobile" class="dish-cards">
+                  <div v-for="(row, idx) in current.result.dishes" :key="idx" class="dish-card">
+                    <div class="dc-row1">
+                      <b class="dc-name">{{ row.dish_name }}</b>
+                      <span class="dc-kcal">{{ Math.round(row.nutrition.calories) }} kcal</span>
+                    </div>
+                    <div class="dc-row2">
+                      <span class="dc-portion">{{ row.portion_g }}g</span>
+                      <el-tag v-if="row.match" size="small" :type="matchTagType(row.match)">
+                        {{ row.match.method_label }}
+                      </el-tag>
+                      <el-tag v-if="row.match?.needs_confirm" size="small" type="danger" effect="plain">需确认</el-tag>
+                      <el-tag v-if="row.warnings && row.warnings.length" size="small" type="danger" effect="plain">禁忌</el-tag>
+                    </div>
+                    <div v-if="row.warnings && row.warnings.length" class="dc-warn">{{ row.warnings.join('；') }}</div>
+                    <el-button
+                      size="small" type="warning" plain class="dc-btn"
+                      @click="openCorrect(idx)"
+                    >{{ row.match?.needs_confirm ? '确认' : '校准' }}</el-button>
+                  </div>
+                </div>
+
+                <!-- 桌面：原表格 -->
+                <el-table v-else :data="current.result.dishes" size="small">
                   <el-table-column prop="dish_name" label="菜品" min-width="110" />
                   <el-table-column prop="portion_g" label="克重(g)" width="90" />
                   <el-table-column prop="nutrition.calories" label="热量(kcal)" width="100" />
@@ -457,7 +498,7 @@ onMounted(() => {
                 type="error" :closable="false" style="margin-top:12px"
               />
 
-              <el-descriptions :column="4" border style="margin:12px 0">
+              <el-descriptions :column="isMobile ? 2 : 4" border style="margin:12px 0">
                 <el-descriptions-item label="热量" class="hl">{{ current.calories }} kcal</el-descriptions-item>
                 <el-descriptions-item label="蛋白质">{{ current.result.nutrition.protein_g }} g</el-descriptions-item>
                 <el-descriptions-item label="脂肪">{{ current.result.nutrition.fat_g }} g</el-descriptions-item>
@@ -466,10 +507,18 @@ onMounted(() => {
               <el-alert v-if="!current.result.nutrition.matched" :title="current.result.nutrition.note" type="warning" :closable="false" style="margin-bottom:12px" />
               <el-alert v-else title="营养值来自本地营养数据库，口径精确一致" type="success" :closable="false" style="margin-bottom:12px" />
 
+              <!-- 手机：食材用标签流；桌面：保留表格 -->
               <div v-if="current.result.vision.corrected" class="ing-tags">
                 <span class="ing-label">主要食材：</span>
                 <el-tag v-for="ing in current.result.vision.ingredients" :key="ing.name" size="small" type="info">{{ ing.name }}</el-tag>
                 <span v-if="!current.result.vision.ingredients.length" class="muted">营养库暂无食材明细</span>
+              </div>
+              <div v-else-if="isMobile" class="ing-list">
+                <div v-for="ing in current.result.vision.ingredients" :key="ing.name" class="ing-row">
+                  <span>{{ ing.name }}</span>
+                  <span class="muted">{{ ing.portion_g }} g</span>
+                </div>
+                <div v-if="!current.result.vision.ingredients.length" class="muted">暂无食材明细</div>
               </div>
               <el-table v-else :data="current.result.vision.ingredients" size="small" max-height="200">
                 <el-table-column prop="name" label="食材" />
@@ -533,10 +582,50 @@ onMounted(() => {
     <!-- 识别历史 -->
     <div class="page-card">
       <h3 class="page-title">🕘 识别历史</h3>
-      <el-table :data="history" size="small">
+
+      <!-- 手机：卡片列表 -->
+      <div v-if="isMobile" class="hist-cards">
+        <div v-for="row in history" :key="row.id" class="hist-card">
+          <el-image
+            v-if="row.image_url"
+            :src="assetUrl(row.image_url)" fit="cover" class="hist-thumb"
+            :preview-src-list="[assetUrl(row.image_url)]" preview-teleported
+          />
+          <div v-else class="hist-thumb hist-thumb-empty">无图</div>
+          <div class="hist-body">
+            <div class="hist-row1">
+              <b class="hist-name">{{ row.dish_name || '未识别' }}</b>
+              <span class="hist-kcal">{{ row.calories }} kcal</span>
+            </div>
+            <div class="hist-row2">
+              <el-tag v-if="row.food_record_id" type="success" size="small">已保存</el-tag>
+              <el-tag v-else-if="!row.is_food" type="info" size="small">非食物</el-tag>
+              <el-tag v-else type="warning" size="small">未保存</el-tag>
+              <el-tag v-if="row.provider === 'mock'" type="danger" size="small" effect="plain">模拟</el-tag>
+              <span class="hist-time">{{ fmtTime(row.created_at) }}</span>
+            </div>
+            <div class="hist-row3">
+              <el-button
+                size="small" type="primary" plain
+                :loading="rerunningId === row.id"
+                @click="rerunRec(row)"
+              >重新识别</el-button>
+              <el-button
+                size="small" type="danger" plain
+                :disabled="!!row.food_record_id"
+                @click="deleteRec(row)"
+              >删除</el-button>
+            </div>
+          </div>
+        </div>
+        <el-empty v-if="!history.length" description="还没有识别记录" :image-size="70" />
+      </div>
+
+      <!-- 桌面：原表格 -->
+      <el-table v-else :data="history" size="small">
         <el-table-column label="图片" width="90">
           <template #default="{ row }">
-            <el-image v-if="row.image_url" :src="row.image_url" fit="cover" style="width:56px;height:56px;border-radius:6px" :preview-src-list="[row.image_url]" preview-teleported />
+            <el-image v-if="row.image_url" :src="assetUrl(row.image_url)" fit="cover" style="width:56px;height:56px;border-radius:6px" :preview-src-list="[assetUrl(row.image_url)]" preview-teleported />
           </template>
         </el-table-column>
         <el-table-column prop="dish_name" label="菜品" min-width="120" />
@@ -577,17 +666,18 @@ onMounted(() => {
       <div class="pager">
         <el-pagination
           background
-          layout="total, prev, pager, next"
+          :layout="isMobile ? 'prev, pager, next' : 'total, prev, pager, next'"
           :total="total"
           :page-size="pageSize"
           :current-page="page"
+          :pager-count="isMobile ? 5 : 7"
           @current-change="onPageChange"
         />
       </div>
     </div>
 
     <!-- 保存餐次选择 -->
-    <el-dialog v-model="saveDialog" title="保存为饮食记录" width="360px">
+    <el-dialog v-model="saveDialog" title="保存为饮食记录" :width="isMobile ? '100%' : '360px'" :fullscreen="isMobile">
       <p style="margin-top:0">这是哪一餐？</p>
       <el-radio-group v-model="mealType">
         <el-radio-button v-for="(label, key) in MEAL_LABELS" :key="key" :value="key">{{ label }}</el-radio-button>
@@ -599,7 +689,7 @@ onMounted(() => {
     </el-dialog>
 
     <!-- 手动校准：只改菜名+克数，热量/营养由本地营养库自动重算 -->
-    <el-dialog v-model="correctDialog" title="手动校准识别结果" width="440px">
+    <el-dialog v-model="correctDialog" title="手动校准识别结果" :width="isMobile ? '100%' : '440px'" :fullscreen="isMobile">
       <p class="dlg-tip">热量与营养由本地营养库按「每100g × 克数」自动计算，不可手动修改</p>
       <div class="form-row">
         <span class="form-label">菜名</span>
@@ -675,5 +765,75 @@ onMounted(() => {
 .preview-box { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #f5f7fa; border-radius: 6px; font-size: 13px; }
 .opt-extra { float: right; margin-left: 16px; font-size: 12px; color: #909399; }
 .pager { margin-top: 12px; display: flex; justify-content: flex-end; }
+
+/* ============ 手机端样式 ============ */
+.upload-inner-mobile { padding: 16px 0; }
+.upload-inner-mobile .preview { max-height: 200px; width: 100%; object-fit: contain; }
+
+/* 多菜卡片 */
+.dish-cards { display: flex; flex-direction: column; gap: 10px; }
+.dish-card {
+  border: 1px solid #ebeef5;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fcfcfd;
+}
+.dc-row1 { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.dc-name { font-size: 15px; color: #303133; }
+.dc-kcal { font-size: 13px; color: #f56c6c; font-weight: 600; white-space: nowrap; }
+.dc-row2 { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.dc-portion { font-size: 12px; color: #909399; }
+.dc-warn { margin-top: 6px; font-size: 12px; color: #f56c6c; line-height: 1.5; }
+.dc-btn { margin-top: 9px; width: 100%; }
+
+/* 食材竖排 */
+.ing-list { display: flex; flex-direction: column; gap: 1px; background: #f5f7fa; border-radius: 8px; padding: 4px 10px; }
+.ing-row { display: flex; justify-content: space-between; padding: 7px 0; font-size: 13px; border-bottom: 1px solid #ebeef5; }
+.ing-row:last-child { border-bottom: none; }
+
+/* 历史卡片 */
+.hist-cards { display: flex; flex-direction: column; gap: 10px; }
+.hist-card {
+  display: flex;
+  gap: 10px;
+  border: 1px solid #ebeef5;
+  border-radius: 10px;
+  padding: 10px;
+  background: #fcfcfd;
+}
+.hist-thumb {
+  width: 64px; height: 64px; border-radius: 8px; flex-shrink: 0; display: block;
+}
+.hist-thumb-empty {
+  display: flex; align-items: center; justify-content: center;
+  background: #f5f7fa; color: #c0c4cc; font-size: 11px;
+}
+.hist-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.hist-row1 { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.hist-name {
+  font-size: 14px; color: #303133; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.hist-kcal { font-size: 12px; color: #f56c6c; font-weight: 600; white-space: nowrap; }
+.hist-row2 { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+.hist-time { font-size: 11px; color: #a8abb2; }
+.hist-row3 { display: flex; gap: 8px; margin-top: 2px; }
+
+/* 手机端：几处横排改成可换行，避免挤成一条 */
+@media (max-width: 768px) {
+  .result-head { flex-wrap: wrap; gap: 6px; }
+  .result-head .dish { font-size: 19px; }
+  .conf { font-size: 12px; }
+  .budget { flex-wrap: wrap; }
+  .budget-text { white-space: normal; font-size: 12px; }
+  .actions { flex-direction: column; }
+  .actions .el-button { width: 100%; margin-left: 0; }
+  .portion-quick { flex-wrap: wrap; }
+  .confirm-actions { flex-wrap: wrap; }
+  .confirm-actions .el-button { width: 100%; margin-left: 0; }
+  .form-row { flex-wrap: wrap; }
+  .pager { justify-content: center; }
+  .preview-box { flex-wrap: wrap; }
+}
 </style>
 

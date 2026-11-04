@@ -7,6 +7,7 @@ import type { BurnPreview, CheckInItem, DayStat } from '@/api/checkin'
 import { currentMonth, todayStr } from '@/utils/date'
 import { useAuthStore } from '@/stores/auth'
 import { refreshTodayCheckin } from '@/stores/todayCheckin'
+import { isMobile } from '@/composables/useIsMobile'
 
 const auth = useAuthStore()
 const selectedDate = ref(todayStr())
@@ -157,7 +158,7 @@ onMounted(reloadAll)
   <div class="page">
     <el-row :gutter="16">
       <!-- 左：月历 -->
-      <el-col :span="13">
+      <el-col :span="13" :xs="24">
         <div class="page-card">
           <h3 class="page-title">📅 打卡日历（显示每日完成度）</h3>
           <el-calendar v-model="selectedDate as any">
@@ -176,7 +177,7 @@ onMounted(reloadAll)
       </el-col>
 
       <!-- 右：当日任务 -->
-      <el-col :span="11">
+      <el-col :span="11" :xs="24">
         <div class="page-card">
           <h3 class="page-title">
             ✅ {{ selectedDateStr }} 的任务
@@ -243,7 +244,7 @@ onMounted(reloadAll)
     </el-row>
 
     <!-- 运动消耗确认弹窗 -->
-    <el-dialog v-model="burnDialog" title="🏃 运动消耗预估（个性化）" width="480px">
+    <el-dialog v-model="burnDialog" title="🏃 运动消耗预估（个性化）" :width="isMobile ? '100%' : '480px'" :fullscreen="isMobile">
       <div v-loading="burnLoading" style="min-height:160px">
         <template v-if="burnInfo">
           <!-- 强度切换（弹窗内也可改，实时重算） -->
@@ -254,7 +255,7 @@ onMounted(reloadAll)
             </el-radio-group>
           </div>
 
-          <el-descriptions :column="2" border size="small" style="margin-top:12px">
+          <el-descriptions :column="isMobile ? 1 : 2" border size="small" style="margin-top:12px">
             <el-descriptions-item label="运动">{{ exForm.exercise_type }}</el-descriptions-item>
             <el-descriptions-item label="时长">{{ exForm.duration_min }} 分钟</el-descriptions-item>
             <el-descriptions-item :label="`MET（${burnInfo.intensity_label}档）`">
@@ -327,4 +328,27 @@ onMounted(reloadAll)
 .result-row { display: flex; align-items: baseline; gap: 10px; margin-top: 12px; font-size: 14px; color: #606266; }
 .result-row b { color: #e6a23c; font-size: 22px; }
 .result-row .range { font-size: 12px; color: #909399; }
+
+/* ============ 手机端 ============ */
+@media (max-width: 768px) {
+  /* 日历格子收窄，日期数字和完成度不能挤出格子 */
+  :deep(.el-calendar-table .el-calendar-day) { height: 52px; padding: 2px; }
+  :deep(.el-calendar__body) { padding: 6px 4px 10px; }
+  .cell span:first-child { font-size: 13px; }
+  .mark { font-size: 9px; line-height: 1.2; }
+
+  .task { flex-wrap: wrap; gap: 8px; }
+  .task-title { flex-wrap: wrap; gap: 4px; }
+  .pts { margin-left: 0; }
+
+  .ex-form { flex-wrap: wrap; }
+  .ex-form .el-select,
+  .ex-form .el-input-number { flex: 1 1 100% !important; width: 100% !important; }
+  .ex-form .el-button { width: 100%; margin-left: 0; }
+
+  .intensity-row { flex-wrap: wrap; }
+  .dlg-row { flex-wrap: wrap; }
+  .result-row { flex-wrap: wrap; gap: 6px; }
+  .result-row b { font-size: 19px; }
+}
 </style>

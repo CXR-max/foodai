@@ -5,6 +5,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import * as planApi from '@/api/plan'
 import type { Plan, PlanDay, PlanMeal } from '@/api/plan'
 import * as checkinApi from '@/api/checkin'
+import { isMobile } from '@/composables/useIsMobile'
 
 const plans = ref<Plan[]>([])
 const current = ref<Plan | null>(null)          // 当前展示的方案（含 days）
@@ -296,7 +297,7 @@ onMounted(async () => {
       </div>
 
       <el-row :gutter="16" style="margin-top:14px">
-        <el-col :span="12">
+        <el-col :span="12" :xs="24">
           <div class="wizard-box">
             <div class="wizard-title">① 勾选偏好（帮你回忆，可跳过）</div>
             <div class="pref-label">😋 口味</div>
@@ -314,7 +315,7 @@ onMounted(async () => {
           </div>
         </el-col>
 
-        <el-col :span="12">
+        <el-col :span="12" :xs="24">
           <div class="wizard-box chat-box">
             <div class="wizard-title chat-title">
               <span>② 想说什么，直接和 AI 说（可选）</span>
@@ -368,13 +369,13 @@ onMounted(async () => {
 
       <el-tabs v-model="activeDay">
         <el-tab-pane v-for="day in days" :key="day.day_index" :name="String(day.day_index)" :label="`第${day.day_index}天`">
-          <div class="day-head">
-            <div>
+          <div class="day-head" :class="{ 'day-head-mobile': isMobile }">
+            <div class="day-head-info">
               <b style="font-size:16px">{{ day.theme || `第${day.day_index}天` }}</b>
               <el-tag size="small" type="info" style="margin-left:8px">{{ day.date }}</el-tag>
               <el-tag size="small" style="margin-left:8px" effect="plain">全日约 {{ day.estimated_calories }} kcal</el-tag>
             </div>
-            <div style="display:flex;gap:8px">
+            <div class="day-head-actions">
               <el-button size="small" :disabled="generating" @click="openEdit(day)">✏️ 编辑这一天</el-button>
               <el-button size="small" type="success" :disabled="generating || importedDays.has(day.id)" @click="importDay(day)">
                 {{ importedDays.has(day.id) ? '✓ 已导入日历' : '📥 导入日历' }}
@@ -382,7 +383,25 @@ onMounted(async () => {
             </div>
           </div>
 
-          <el-table :data="day.meals" size="default" style="margin-top:10px">
+          <!-- 手机：餐次卡片 -->
+          <div v-if="isMobile" class="meal-cards">
+            <div v-for="(row, mi) in day.meals" :key="mi" class="meal-card">
+              <div class="mc-head">
+                <span class="mc-type">{{ MEAL_LABELS[row.meal_type] || row.meal_type }}</span>
+                <span class="mc-kcal">{{ row.calories }} kcal</span>
+              </div>
+              <div class="mc-items">
+                <div v-for="item in row.items" :key="item.name" class="mc-item">
+                  <span class="mc-item-name">🍽 {{ item.name }}</span>
+                  <span class="mc-item-portion">约{{ item.portion_g }}g</span>
+                </div>
+                <div v-if="!row.items?.length" class="mc-empty">这一餐还没安排</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 桌面：原表格 -->
+          <el-table v-else :data="day.meals" size="default" style="margin-top:10px">
             <el-table-column label="餐次" width="110">
               <template #default="{ row }">{{ MEAL_LABELS[row.meal_type] || row.meal_type }}</template>
             </el-table-column>
@@ -414,7 +433,7 @@ onMounted(async () => {
     <el-empty v-else-if="!generating" description="还没有方案，勾选偏好或直接和 AI 聊几句，然后生成" />
 
     <!-- 可视化编辑弹窗 -->
-    <el-dialog v-model="editDialog" title="编辑这一天（热量按营养库自动重算）" width="640px">
+    <el-dialog v-model="editDialog" title="编辑这一天（热量按营养库自动重算）" :width="isMobile ? '100%' : '640px'" :fullscreen="isMobile">
       <div v-for="(meal, mi) in editForm?.meals || []" :key="mi" class="edit-meal">
         <div class="edit-meal-title">{{ MEAL_LABELS[meal.meal_type] }}</div>
         <div v-for="(item, ii) in meal.items" :key="ii" class="edit-item">
@@ -432,7 +451,7 @@ onMounted(async () => {
     </el-dialog>
 
     <!-- 历史对话抽屉：可查看 / 复制 -->
-    <el-drawer v-model="chatDrawer" title="历史对话（可查看 / 复制）" size="460px">
+    <el-drawer v-model="chatDrawer" title="历史对话（可查看 / 复制）" :size="isMobile ? '90%' : '460px'">
       <div v-if="!chatSessions.length" class="chat-empty">暂无历史对话</div>
       <div v-for="(s, si) in chatSessions" :key="si" class="session">
         <div class="session-head">
@@ -490,4 +509,44 @@ onMounted(async () => {
 .edit-meal { margin-bottom: 18px; }
 .edit-meal-title { font-weight: 600; margin-bottom: 8px; }
 .edit-item { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+
+/* ============ 手机端 ============ */
+.day-head-mobile {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.day-head-info { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.day-head-actions { display: flex; gap: 8px; width: 100%; }
+.day-head-actions .el-button { flex: 1; margin-left: 0; }
+
+/* 餐次卡片 */
+.meal-cards { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.meal-card {
+  border: 1px solid #ebeef5;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fcfcfd;
+}
+.mc-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding-bottom: 7px; border-bottom: 1px solid #f2f3f5;
+}
+.mc-type { font-size: 14px; font-weight: 600; color: #303133; }
+.mc-kcal { font-size: 12px; color: #f56c6c; font-weight: 600; }
+.mc-items { display: flex; flex-direction: column; gap: 5px; padding-top: 7px; }
+.mc-item { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.mc-item-name { color: #303133; overflow: hidden; text-overflow: ellipsis; }
+.mc-item-portion { color: #909399; font-size: 12px; white-space: nowrap; }
+.mc-empty { font-size: 12px; color: #c0c4cc; }
+
+@media (max-width: 768px) {
+  .plan-toolbar { flex-wrap: wrap; }
+  .summary-alert { flex: 1 1 100%; }
+  .gen-actions { flex-wrap: wrap; }
+  .gen-actions .el-button { flex: 1; margin-left: 0; }
+  .edit-item { flex-wrap: wrap; }
+  .edit-item .el-input { flex: 1 1 100% !important; }
+  .chat-list { max-height: 300px; }
+}
 </style>

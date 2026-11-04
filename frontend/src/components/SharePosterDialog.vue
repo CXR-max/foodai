@@ -5,6 +5,7 @@ import { ElMessage } from 'element-plus'
 import * as statsApi from '@/api/stats'
 import type { Overview } from '@/api/stats'
 import { useAuthStore } from '@/stores/auth'
+import { isMobile } from '@/composables/useIsMobile'
 
 const props = defineProps<{ visible: boolean }>()
 const emit = defineEmits<{ (e: 'update:visible', v: boolean): void }>()
@@ -144,9 +145,9 @@ function download() {
 </script>
 
 <template>
-  <el-dialog :model-value="visible" title="🖼 分享海报" width="460px" @update:model-value="(v: boolean) => emit('update:visible', v)">
+  <el-dialog :model-value="visible" title="🖼 分享海报" :width="isMobile ? '100%' : '460px'" :fullscreen="isMobile" @update:model-value="(v: boolean) => emit('update:visible', v)">
     <div v-loading="loading" style="min-height:420px;display:flex;justify-content:center">
-      <canvas v-show="canvasReady" ref="canvasEl" style="width:330px;height:454px;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.15)" />
+      <canvas v-show="canvasReady" ref="canvasEl" :style="{ width: isMobile ? 'min(88vw, 330px)' : '330px', height: isMobile ? 'auto' : '454px', borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,.15)' }" />
     </div>
     <template #footer>
       <el-button @click="emit('update:visible', false)">关闭</el-button>
