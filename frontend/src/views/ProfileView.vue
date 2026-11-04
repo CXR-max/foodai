@@ -36,11 +36,11 @@ const bmiPreview = computed(() => {
 })
 const bmiColor = computed(() => {
   const b = bmiPreview.value
-  if (b == null) return '#909399'
-  if (b < 18.5) return '#409eff'
-  if (b < 24) return '#67c23a'
-  if (b < 28) return '#e6a23c'
-  return '#f56c6c'
+  if (b == null) return '#7c7669'
+  if (b < 18.5) return '#5a5f8c'
+  if (b < 24) return '#5e7355'
+  if (b < 28) return '#a9722f'
+  return '#a9563c'
 })
 
 const newWeight = ref<number | null>(null)
@@ -62,7 +62,7 @@ async function save() {
   try {
     const p = await profileApi.saveProfile({ ...form })
     ElMessage.success('档案已保存')
-    if (p.profile_completed) ElMessage.success('档案完善奖励已到账 🎉')
+    if (p.profile_completed) ElMessage.success('档案完善奖励已到账 ')
     auth.fetchMe().catch(() => {})   // 顶栏积分实时刷新
     await load()
   } finally {
@@ -86,7 +86,7 @@ const weightOption = computed(() => ({
   yAxis: { type: 'value', scale: true, name: 'kg' },
   series: [{
     type: 'line', smooth: true, data: weights.value.map((w) => w.weight_kg),
-    lineStyle: { color: '#67c23a' }, itemStyle: { color: '#67c23a' },
+    lineStyle: { color: '#5e7355' }, itemStyle: { color: '#5e7355' },
     areaStyle: { color: 'rgba(103,194,58,0.12)' },
   }],
 }))
@@ -99,7 +99,7 @@ onMounted(load)
     <el-row :gutter="16">
       <el-col :span="16">
         <div class="page-card">
-          <h3 class="page-title">📋 基础信息</h3>
+          <h3 class="page-title">基础信息</h3>
           <el-form label-width="90px">
             <el-row :gutter="12">
               <el-col :span="8"><el-form-item label="身高(cm)"><el-input-number v-model="form.height_cm" :min="50" :max="250" style="width:100%" /></el-form-item></el-col>
@@ -149,17 +149,17 @@ onMounted(load)
             <el-form-item label="目标体重"><el-input-number v-model="form.target_weight_kg" :min="20" :max="300" /></el-form-item>
           </el-form>
 
-          <h3 class="page-title">😋 口味偏好（AI 会优先满足）</h3>
+          <h3 class="page-title">口味偏好（AI 会优先满足）</h3>
           <el-checkbox-group v-model="form.taste_preferences">
             <el-checkbox v-for="t in TASTES" :key="t" :value="t">{{ t }}</el-checkbox>
           </el-checkbox-group>
 
-          <h3 class="page-title">🚫 饮食禁忌（AI 绝对排除）</h3>
+          <h3 class="page-title">饮食禁忌（AI 绝对排除）</h3>
           <el-checkbox-group v-model="form.dietary_restrictions">
             <el-checkbox v-for="t in RESTRICTIONS" :key="t" :value="t">{{ t }}</el-checkbox>
           </el-checkbox-group>
 
-          <h3 class="page-title">🏃 运动兴趣（AI 优先安排）</h3>
+          <h3 class="page-title">运动兴趣（AI 优先安排）</h3>
           <el-checkbox-group v-model="form.exercise_preferences">
             <el-checkbox v-for="t in EXERCISES" :key="t" :value="t">{{ t }}</el-checkbox>
           </el-checkbox-group>
@@ -178,7 +178,7 @@ onMounted(load)
         </div>
 
         <div class="page-card">
-          <h3 class="page-title">⚖️ 记录今日体重</h3>
+          <h3 class="page-title">记录今日体重</h3>
           <div style="display:flex;gap:8px">
             <el-input-number v-model="newWeight" :min="20" :max="300" :precision="1" style="flex:1" placeholder="kg" />
             <el-button type="success" @click="addWeight">记录</el-button>
@@ -196,5 +196,5 @@ onMounted(load)
 <style scoped>
 .bmi { font-size: 42px; font-weight: 800; margin: 4px 0 8px; }
 .page-title { margin-top: 18px; }
-.bf-tip { margin: 0; font-size: 12px; color: #909399; line-height: 1.5; padding-top: 8px; }
+.bf-tip { margin: 0; font-size: 12px; color: #7c7669; line-height: 1.5; padding-top: 8px; }
 </style>

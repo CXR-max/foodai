@@ -1,9 +1,8 @@
-﻿<script setup lang="ts">
-// 食物识别页：拖拽上传 → AI 识别 → 结果卡片 → 手动校准 → 保存为饮食记录
+<script setup lang="ts">
+// 食物识别页：样本托盘上传 → AI 识别 → 营养成分表式结果 → 手动校准 → 保存为饮食记录
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadRequestOptions } from 'element-plus'
-import { UploadFilled } from '@element-plus/icons-vue'
 import * as foodApi from '@/api/food'
 import type { FoodOption, MatchCandidate, Recognition } from '@/api/food'
 import { getOverview } from '@/api/stats'
@@ -61,14 +60,6 @@ const confirmName = ref('')
 const confirmPortion = ref(200)
 const confirming = ref(false)
 const matchInfo = computed(() => current.value?.result?.match || null)
-const METHOD_LABELS: Record<string, string> = {
-  exact: '精确命中', synonym: '同义归一', alias: '别名命中',
-  contains: '包含匹配', fuzzy: '相似匹配', confusable: '易混淆',
-}
-
-function methodLabel(method: string) {
-  return METHOD_LABELS[method] || method
-}
 
 // 用后端候选初始化确认表单：默认选第一个（通常是模型原判）
 function initConfirm() {
@@ -134,7 +125,6 @@ const MEAT_WORDS = ['肉', '鸡', '鸭', '鱼', '虾', '蟹', '排骨', '火腿'
 
 // 命中档案里的禁忌/过敏项时给红条提示（数据来自营养库标准食材 + 标签）
 const dietWarnings = computed(() => {
-  // 后端已按档案算过一份（口径统一），有结果就直接用
   const fromServer = current.value?.result?.dietary_warnings
   if (fromServer && fromServer.length) return fromServer
   const info = matchInfo.value
@@ -239,13 +229,12 @@ async function deleteRec(row: Recognition) {
   await loadHistory()
 }
 
-// 重新识别：复用原图再跑一次模型（已保存/未保存的记录都允许；
-// 已保存的会由后端同步更新对应饮食记录，保证统计一致）
+// 重新识别：复用原图再跑一次模型
 async function rerunRec(row: Recognition) {
   rerunningId.value = row.id
   try {
     const r = await foodApi.rerunRecognition(row.id)
-    current.value = r        // ★ 右侧结果卡片直接展示重跑后的完整明细（克重/食材/营养）
+    current.value = r
     initConfirm()
     if (!r.is_food) {
       ElMessage.warning('重新识别完成：图片中未识别到食物')
@@ -284,9 +273,7 @@ async function confirmSave() {
 }
 
 // ---- 校准交互 ----
-async function openCorrect(index?: number | Event) {
-  // 模板里 @click="openCorrect" 会把 MouseEvent 传进来，这里只认数字下标
-  if (typeof index !== "number") index = undefined
+async function openCorrect(index?: number) {
   if (!current.value) return
   correctIndex.value = index ?? null
   const dish = index != null ? current.value.result?.dishes?.[index] : null
@@ -337,6 +324,22 @@ async function confirmCorrect() {
   }
 }
 
+// ---- 结果卡的展示派生 ----
+const servingG = computed(() => {
+  const r = current.value?.result
+  if (!r) return 0
+  if (r.dishes?.length) return Math.round(r.dishes.reduce((s, d) => s + (d.portion_g || 0), 0))
+  return Math.round(r.vision?.portion_g || 0)
+})
+
+const confidencePct = computed(() => Math.round((current.value?.confidence || 0) * 100))
+
+// 每日参考摄入（仅用于「营养成分表」右侧占比，标注在卡片底部）
+const DAILY_REF = { protein_g: 60, fat_g: 60, carb_g: 300 }
+function pctOf(value: number, ref: number) {
+  return `${Math.round((value / ref) * 100)}%`
+}
+
 onMounted(() => {
   loadHistory()
   loadMeta()
@@ -345,13 +348,20 @@ onMounted(() => {
 
 <template>
   <div class="page">
-    <el-row :gutter="16">
-      <!-- 左：上传 + 图片 -->
-      <el-col :span="10">
-        <div class="page-card">
-          <h3 class="page-title">📷 拍一拍，识别食物</h3>
+    <div class="recog">
+      <!-- 左：样本托盘 -->
+      <div>
+        <div class="sec" style="margin-top: 0">
+          <span class="sec-no">01</span>
+          <span class="sec-title">放入照片</span>
+          <span class="sec-line"></span>
+          <span class="sec-act mono">JPG / PNG / WEBP</span>
+        </div>
+
+        <div class="tray">
           <el-upload
             drag
+            class="tray-upload"
             accept="image/jpeg,image/png,image/webp"
             :show-file-list="false"
             :http-request="doUpload"
@@ -359,218 +369,258 @@ onMounted(() => {
             <div class="upload-inner">
               <template v-if="current?.image_url">
                 <img :src="current.image_url" class="preview" />
+                <div class="preview-cap mono">已上传 · 点击可换一张</div>
               </template>
               <template v-else-if="recognizing">
-                <el-icon class="is-loading" :size="40" color="#67c23a"><i class="el-icon-loading" /></el-icon>
-                <p>AI 正在识别，请稍候（约几秒到几十秒）…</p>
+                <div class="pulse"><span></span><span></span><span></span></div>
+                <p class="up-t">AI 正在识别…</p>
+                <p class="up-s">通常几秒到几十秒，请稍候</p>
               </template>
               <template v-else>
-                <el-icon :size="48" color="#c0c4cc"><UploadFilled /></el-icon>
-                <p>拖一张食物照片到这里，或 <em>点击上传</em></p>
-                <p class="tip">支持 jpg / png / webp，最大 10MB</p>
+                <div class="tray-ico">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M3.5 8.5h3l1.6-2.5h7.8l1.6 2.5h3v10h-17z" />
+                    <path d="M12 9.8a3.2 3.2 0 110 6.4 3.2 3.2 0 010-6.4" />
+                  </svg>
+                </div>
+                <p class="up-t">拖入或点击上传</p>
+                <p class="up-s mono">单张 ≤ 10MB · 自动去重</p>
+                <span class="up-btn">选择照片</span>
               </template>
             </div>
           </el-upload>
-          <div v-if="recognizing" class="loading-bar"><el-progress :percentage="90" :indeterminate="true" :duration="3" status="success" /></div>
         </div>
-      </el-col>
 
-      <!-- 右：识别结果 -->
-      <el-col :span="14">
-        <div class="page-card">
-          <h3 class="page-title">🔍 识别结果</h3>
-          <el-empty v-if="!current && !recognizing" description="上传图片后这里显示识别结果" :image-size="80" />
-          <template v-else-if="current">
-            <template v-if="current.is_food">
-              <div v-if="budget?.target" class="budget">
-                <span class="budget-text">
-                  今日 {{ Math.round(budget.today) }} / {{ budget.target }} kcal
-                  <b v-if="budget.today <= budget.target" class="muted">还可摄入 {{ Math.round(budget.target - budget.today) }}</b>
-                  <b v-else class="over">已超出 {{ Math.round(budget.today - budget.target) }}</b>
-                </span>
-                <el-progress
-                  :percentage="budgetPct" :stroke-width="8" :show-text="false"
-                  :status="budgetPct >= 100 ? 'exception' : 'success'" style="flex:1"
-                />
+        <div class="tray-foot mono">
+          <span>GLM-4V-FLASH · 视觉识别</span>
+          <span>{{ current ? '已生成结果' : '等待样本' }}</span>
+        </div>
+
+        <!-- 今日预算 -->
+        <div v-if="budget?.target" class="budget">
+          <div class="budget-top">
+            <span class="budget-k mono">TODAY BUDGET</span>
+            <span class="budget-v mono">{{ Math.round(budget.today) }} / {{ budget.target }} kcal</span>
+          </div>
+          <div class="budget-bar"><i :style="{ width: budgetPct + '%' }" :class="{ over: budgetPct >= 100 }"></i></div>
+          <div class="budget-note">
+            <span v-if="budget.today <= budget.target" class="muted mono">还可摄入 {{ Math.round(budget.target - budget.today) }} kcal</span>
+            <span v-else class="over mono">已超出 {{ Math.round(budget.today - budget.target) }} kcal</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右：结果卡 -->
+      <div>
+        <div class="sec" style="margin-top: 0">
+          <span class="sec-no">02</span>
+          <span class="sec-title">识别结果</span>
+          <span class="sec-line"></span>
+          <span v-if="current" class="sec-act" @click="openCorrect()">校准 →</span>
+        </div>
+
+        <div v-if="!current && !recognizing" class="placeholder">
+          <span class="ph-k mono">NUTRITION FACTS</span>
+          <span class="ph-t">上传图片后，这里会生成一张营养成分表</span>
+          <span class="ph-s">热量、蛋白质、脂肪、碳水全部来自本地营养库，可核对、可校准。</span>
+        </div>
+
+        <template v-else-if="current">
+          <template v-if="current.is_food">
+            <!-- 禁忌提示 -->
+            <div v-for="w in dietWarnings" :key="w" class="warn">
+              <span class="warn-dot"></span>{{ w }}
+            </div>
+
+            <!-- 营养成分表 -->
+            <div class="label">
+              <div class="label-top">
+                <div class="label-h">
+                  {{ current.dish_name }}
+                  <span>NUTRITION FACTS · 每份</span>
+                </div>
+                <div class="label-serv mono">
+                  每份 {{ servingG }} g<br />
+                  共 1 份
+                </div>
               </div>
-              <el-alert
-                v-for="w in dietWarnings" :key="w"
-                :title="w" type="error" :closable="false" show-icon
-                style="margin-bottom:8px"
-              />
-              <div class="result-head">
-                <span class="dish">{{ current.dish_name }}</span>
-                <el-tag v-if="current.result.vision.corrected" type="warning" size="small">已手动校准</el-tag>
-                <el-tag type="info" size="small">识别来源：{{ current.provider === 'mock' ? '本地模拟' : 'AI 视觉模型' }}</el-tag>
-                <el-tag
-                  v-if="matchInfo"
-                  size="small" effect="plain"
-                  :type="matchInfo.needs_confirm ? 'warning' : 'success'"
+
+              <div class="lrow big">
+                <span class="lk">热量 Energy</span>
+                <span class="lv">{{ Math.round(current.calories) }}</span>
+                <span class="lp">kcal</span>
+              </div>
+              <div class="lrow">
+                <span class="lk">蛋白质<small>PROTEIN</small></span>
+                <span class="lv">{{ current.result.nutrition.protein_g }} g</span>
+                <span class="lp">{{ pctOf(current.result.nutrition.protein_g, DAILY_REF.protein_g) }}</span>
+              </div>
+              <div class="lrow">
+                <span class="lk">脂肪<small>FAT</small></span>
+                <span class="lv">{{ current.result.nutrition.fat_g }} g</span>
+                <span class="lp">{{ pctOf(current.result.nutrition.fat_g, DAILY_REF.fat_g) }}</span>
+              </div>
+              <div class="lrow">
+                <span class="lk">碳水化合物<small>CARBS</small></span>
+                <span class="lv">{{ current.result.nutrition.carb_g }} g</span>
+                <span class="lp">{{ pctOf(current.result.nutrition.carb_g, DAILY_REF.carb_g) }}</span>
+              </div>
+
+              <div class="label-foot mono">
+                <span>% 为每日参考摄入占比</span>
+                <span>{{ current.result.nutrition.matched ? 'LOCAL NUTRITION DB' : '通用估算值' }}</span>
+              </div>
+            </div>
+
+            <!-- 来源 / 可信度 -->
+            <div class="meta-row">
+              <span class="tag-pill" :class="{ mock: current.provider === 'mock' }">
+                {{ current.provider === 'mock' ? '本地模拟' : 'AI 视觉模型' }}
+              </span>
+              <span v-if="current.result.vision.corrected" class="tag-pill">已手动校准</span>
+              <span v-if="matchInfo" class="tag-pill">
+                匹配 {{ matchInfo.method_label }} · {{ Math.round(matchInfo.score * 100) }}%
+              </span>
+              <span class="conf">
+                <i></i>可信度 {{ confidencePct }}%
+              </span>
+            </div>
+
+            <p v-if="current.result.vision.basis && !current.result.vision.corrected" class="basis">
+              {{ current.result.vision.basis }}
+            </p>
+
+            <div v-if="!current.result.nutrition.matched" class="note-line">
+              {{ current.result.nutrition.note }}
+            </div>
+            <div v-if="current.provider === 'mock' && !current.result.vision.corrected" class="note-line">
+              AI 视觉模型不可用，当前为本地模拟结果，建议手动校准或稍后重试。
+            </div>
+
+            <!-- 多菜 -->
+            <div v-if="dishCount > 1" class="dishes">
+              <div class="dishes-title">
+                这张图识别到 {{ dishCount }} 道菜，合计 {{ current.result.nutrition.calories }} kcal
+              </div>
+              <div class="dish-cards">
+                <button
+                  v-for="(d, i) in current.result.dishes" :key="i"
+                  class="dish-card" @click="openCorrect(i)"
                 >
-                  匹配：{{ matchInfo.method_label }} · {{ Math.round(matchInfo.score * 100) }}%
-                </el-tag>
+                  <span class="dn">
+                    {{ d.dish_name }}
+                    <span v-if="d.match?.needs_confirm" class="need">需确认</span>
+                  </span>
+                  <span class="dv mono">{{ Math.round(d.portion_g) }} g · {{ Math.round(d.nutrition.calories) }} kcal</span>
+                  <span class="dc mono">校准 →</span>
+                </button>
               </div>
-              <div v-if="!current.result.vision.corrected" class="conf">
-                置信度
-                <el-progress :percentage="Math.round(current.confidence * 100)" :stroke-width="12" status="success" style="flex:1" />
-              </div>
-              <p v-if="current.result.vision.basis && !current.result.vision.corrected" class="basis">📏 {{ current.result.vision.basis }}</p>
+            </div>
 
-              <div v-if="dishCount > 1" class="dishes-box">
-                <div class="dishes-title">这张图里识别到 {{ dishCount }} 道菜，合计 {{ current.result.nutrition.calories }} kcal</div>
-                <el-table :data="current.result.dishes" size="small">
-                  <el-table-column prop="dish_name" label="菜品" min-width="110" />
-                  <el-table-column prop="portion_g" label="克重(g)" width="90" />
-                  <el-table-column prop="nutrition.calories" label="热量(kcal)" width="100" />
-                  <el-table-column label="匹配" width="150">
-                    <template #default="{ row }">
-                      <template v-if="row.match">
-                        <el-tag size="small" :type="row.match.needs_confirm ? 'warning' : 'success'">
-                          {{ row.match.method_label }}
-                        </el-tag>
-                        <el-tag
-                          v-if="row.match.needs_confirm" size="small" type="danger" effect="plain"
-                          style="margin-left:4px"
-                        >需确认</el-tag>
-                      </template>
-                    </template>
-                  </el-table-column>
-                  <el-table-column label="提示" width="80">
-                    <template #default="{ row }">
-                      <el-tooltip v-if="row.warnings && row.warnings.length" :content="row.warnings.join('；')">
-                        <el-tag size="small" type="danger" effect="plain">禁忌</el-tag>
-                      </el-tooltip>
-                    </template>
-                  </el-table-column>
-                  <el-table-column label="操作" width="90">
-                    <template #default="{ row, $index }">
-                      <el-button link type="warning" size="small" @click="openCorrect($index)">
-                        {{ row.match?.needs_confirm ? '确认' : '校准' }}
-                      </el-button>
-                    </template>
-                  </el-table-column>
-                </el-table>
-              </div>
-              <el-alert
-                v-if="current.provider === 'mock' && !current.result.vision.corrected"
-                title="AI 视觉模型不可用，当前为本地模拟结果，请手动校准或稍后重试"
-                type="error" :closable="false" style="margin-top:12px"
-              />
+            <!-- 食材 -->
+            <div v-if="current.result.vision.ingredients?.length" class="ings">
+              <span class="ings-k mono">INGREDIENTS</span>
+              <span v-for="ing in current.result.vision.ingredients" :key="ing.name" class="ing">
+                {{ ing.name }} <b class="mono">{{ Math.round(ing.portion_g) }}g</b>
+              </span>
+            </div>
 
-              <el-descriptions :column="4" border style="margin:12px 0">
-                <el-descriptions-item label="热量" class="hl">{{ current.calories }} kcal</el-descriptions-item>
-                <el-descriptions-item label="蛋白质">{{ current.result.nutrition.protein_g }} g</el-descriptions-item>
-                <el-descriptions-item label="脂肪">{{ current.result.nutrition.fat_g }} g</el-descriptions-item>
-                <el-descriptions-item label="碳水">{{ current.result.nutrition.carb_g }} g</el-descriptions-item>
-              </el-descriptions>
-              <el-alert v-if="!current.result.nutrition.matched" :title="current.result.nutrition.note" type="warning" :closable="false" style="margin-bottom:12px" />
-              <el-alert v-else title="营养值来自本地营养数据库，口径精确一致" type="success" :closable="false" style="margin-bottom:12px" />
-
-              <div v-if="current.result.vision.corrected" class="ing-tags">
-                <span class="ing-label">主要食材：</span>
-                <el-tag v-for="ing in current.result.vision.ingredients" :key="ing.name" size="small" type="info">{{ ing.name }}</el-tag>
-                <span v-if="!current.result.vision.ingredients.length" class="muted">营养库暂无食材明细</span>
+            <!-- 低置信度候选确认 -->
+            <div v-if="matchInfo?.needs_confirm && !current.result.vision.corrected" class="confirm-box">
+              <div class="confirm-head">
+                <span class="confirm-k mono">NEEDS CONFIRM</span>
+                <span class="confirm-t">{{ matchInfo.reasons.join('；') }}</span>
               </div>
-              <el-table v-else :data="current.result.vision.ingredients" size="small" max-height="200">
-                <el-table-column prop="name" label="食材" />
-                <el-table-column prop="portion_g" label="估算克重(g)" width="140" />
-              </el-table>
-
-              <div v-if="matchInfo?.needs_confirm && !current.result.vision.corrected" class="confirm-box">
-                <el-alert
-                  type="warning" :closable="false" show-icon
-                  :title="`需要你确认：${matchInfo.reasons.join('；')}`"
-                  description="从候选里选一个，或改克重后点确认，营养值会按营养库重算。"
-                />
-                <div class="cand-list">
-                  <div
-                    v-for="c in matchInfo.candidates" :key="c.name"
-                    class="cand" :class="{ active: confirmName === c.name }"
-                    @click="pickCandidate(c)"
-                  >
-                    <div class="cand-name">
-                      {{ c.name }}
-                      <el-tag size="small" type="info">{{ methodLabel(c.match_method) }} {{ Math.round(c.score * 100) }}%</el-tag>
-                    </div>
-                    <div class="cand-meta">
-                      {{ c.category }} · 标准 {{ c.common_portion_g }}g
-                      <span v-if="c.calories_per_100g"> · {{ Math.round(c.calories_per_100g) }} kcal/100g</span>
-                      <span v-if="c.distinguish_tip"> · {{ c.distinguish_tip }}</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="confirm-actions">
-                  <span class="muted">克重</span>
-                  <el-input-number v-model="confirmPortion" :min="10" :max="3000" :step="50" style="width:140px" />
-                  <span class="muted">g</span>
-                  <el-button type="warning" :loading="confirming" @click="confirmMatch">确认并重算营养</el-button>
-                </div>
+              <div class="cand-list">
+                <button
+                  v-for="c in matchInfo.candidates" :key="c.name"
+                  class="cand" :class="{ active: confirmName === c.name }"
+                  @click="pickCandidate(c)"
+                >
+                  <span class="cand-name">{{ c.name }}<span class="cand-score mono">{{ Math.round(c.score * 100) }}%</span></span>
+                  <span class="cand-meta">
+                    {{ c.category }} · 标准 {{ c.common_portion_g }}g
+                    <template v-if="c.calories_per_100g"> · {{ Math.round(c.calories_per_100g) }} kcal/100g</template>
+                  </span>
+                </button>
               </div>
-
-              <div class="portion-quick">
-                <span class="muted">份量：</span>
-                <el-button size="small" :loading="confirming" @click="quickPortion(0.7)">小份</el-button>
-                <el-button size="small" :loading="confirming" @click="quickPortion(1)">标准份</el-button>
-                <el-button size="small" :loading="confirming" @click="quickPortion(1.3)">大份</el-button>
+              <div class="confirm-actions">
+                <span class="muted">克重</span>
+                <el-input-number v-model="confirmPortion" :min="10" :max="3000" :step="50" style="width: 130px" />
+                <span class="muted">g</span>
+                <el-button type="primary" :loading="confirming" @click="confirmMatch">确认并重算营养</el-button>
               </div>
+            </div>
 
-              <div class="actions">
-                <el-button type="success" :disabled="!!current.food_record_id" @click="openSave">
-                  {{ saveLabel }}
-                </el-button>
-                <el-button type="warning" plain @click="openCorrect()">识别有误？手动校准</el-button>
-              </div>
-            </template>
-            <template v-else>
-              <el-alert title="未识别到食物，请换一张图片" type="warning" :closable="false" />
-              <el-button type="warning" plain style="margin-top:12px" @click="openCorrect()">其实是食物？手动校准</el-button>
-            </template>
+            <!-- 份量快捷 + 操作 -->
+            <div class="portion-quick">
+              <span class="pq-k mono">PORTION</span>
+              <button class="qbtn" :disabled="confirming" @click="quickPortion(0.7)">小份</button>
+              <button class="qbtn" :disabled="confirming" @click="quickPortion(1)">标准份</button>
+              <button class="qbtn" :disabled="confirming" @click="quickPortion(1.3)">大份</button>
+            </div>
+
+            <div class="actions">
+              <el-button type="primary" :disabled="!!current.food_record_id" @click="openSave">{{ saveLabel }}</el-button>
+              <el-button @click="openCorrect()">识别有误？手动校准</el-button>
+            </div>
           </template>
-        </div>
-      </el-col>
-    </el-row>
+
+          <template v-else>
+            <div class="placeholder" style="min-height: 220px">
+              <span class="ph-k mono">NOT FOOD</span>
+              <span class="ph-t">未识别到食物，请换一张图片</span>
+              <button class="btn-ghost" @click="openCorrect()">其实是食物？手动校准</button>
+            </div>
+          </template>
+        </template>
+      </div>
+    </div>
 
     <!-- 识别历史 -->
-    <div class="page-card">
-      <h3 class="page-title">🕘 识别历史</h3>
+    <div class="history">
+      <div class="sec">
+        <span class="sec-no">03</span>
+        <span class="sec-title">识别历史</span>
+        <span class="sec-line"></span>
+        <span class="sec-act mono">{{ total }} RECORDS</span>
+      </div>
       <el-table :data="history" size="small">
-        <el-table-column label="图片" width="90">
+        <el-table-column label="图片" width="86">
           <template #default="{ row }">
-            <el-image v-if="row.image_url" :src="row.image_url" fit="cover" style="width:56px;height:56px;border-radius:6px" :preview-src-list="[row.image_url]" preview-teleported />
+            <el-image
+              v-if="row.image_url" :src="row.image_url" fit="cover"
+              style="width: 48px; height: 48px; border-radius: 3px"
+              :preview-src-list="[row.image_url]" preview-teleported
+            />
+            <span v-else class="muted mono">—</span>
           </template>
         </el-table-column>
-        <el-table-column prop="dish_name" label="菜品" min-width="120" />
-        <el-table-column prop="calories" label="热量(kcal)" width="110" />
-        <el-table-column label="状态" width="130">
+        <el-table-column prop="dish_name" label="菜品" min-width="130" />
+        <el-table-column prop="calories" label="热量 (kcal)" width="110">
+          <template #default="{ row }"><span class="mono">{{ row.calories }}</span></template>
+        </el-table-column>
+        <el-table-column label="状态" width="120">
           <template #default="{ row }">
-            <el-tag v-if="row.food_record_id" type="success" size="small">已保存记录</el-tag>
-            <el-tag v-else-if="!row.is_food" type="info" size="small">非食物</el-tag>
-            <el-tag v-else type="warning" size="small">未保存</el-tag>
+            <span v-if="row.food_record_id" class="tag-pill ok">已保存记录</span>
+            <span v-else-if="!row.is_food" class="tag-pill">非食物</span>
+            <span v-else class="tag-pill warn-pill">未保存</span>
           </template>
         </el-table-column>
         <el-table-column label="来源" width="100">
           <template #default="{ row }">
-            <el-tag v-if="row.provider === 'mock'" type="danger" size="small" effect="plain">本地模拟</el-tag>
-            <el-tag v-else type="primary" size="small" effect="plain">AI 视觉</el-tag>
+            <span class="tag-pill" :class="{ mock: row.provider === 'mock' }">
+              {{ row.provider === 'mock' ? '本地模拟' : 'AI 视觉' }}
+            </span>
           </template>
         </el-table-column>
         <el-table-column prop="created_at" label="时间" min-width="150">
-          <template #default="{ row }">{{ new Date(row.created_at).toLocaleString('zh-CN') }}</template>
+          <template #default="{ row }"><span class="mono muted">{{ new Date(row.created_at).toLocaleString('zh-CN') }}</span></template>
         </el-table-column>
-        <el-table-column label="操作" width="170" fixed="right">
+        <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button
-              link type="primary" size="small"
-              :loading="rerunningId === row.id"
-              :title="row.food_record_id ? '重新识别会同步更新已保存的饮食记录' : '复用原图再识别一次'"
-              @click="rerunRec(row)"
-            >重新识别</el-button>
-            <el-button
-              link type="danger" size="small"
-              :disabled="!!row.food_record_id"
-              :title="row.food_record_id ? '已生成饮食记录，禁止删除（保护溯源）' : ''"
-              @click="deleteRec(row)"
-            >删除</el-button>
+            <el-button link type="primary" size="small" :loading="rerunningId === row.id" @click="rerunRec(row)">重新识别</el-button>
+            <el-button link type="danger" size="small" :disabled="!!row.food_record_id" @click="deleteRec(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -587,27 +637,27 @@ onMounted(() => {
     </div>
 
     <!-- 保存餐次选择 -->
-    <el-dialog v-model="saveDialog" title="保存为饮食记录" width="360px">
-      <p style="margin-top:0">这是哪一餐？</p>
+    <el-dialog v-model="saveDialog" title="保存为饮食记录" width="380px">
+      <p class="dlg-tip">这是哪一餐？</p>
       <el-radio-group v-model="mealType">
         <el-radio-button v-for="(label, key) in MEAL_LABELS" :key="key" :value="key">{{ label }}</el-radio-button>
       </el-radio-group>
       <template #footer>
         <el-button @click="saveDialog = false">取消</el-button>
-        <el-button type="success" :loading="saving" @click="confirmSave">保存（+2 分）</el-button>
+        <el-button type="primary" :loading="saving" @click="confirmSave">保存（+2 分）</el-button>
       </template>
     </el-dialog>
 
-    <!-- 手动校准：只改菜名+克数，热量/营养由本地营养库自动重算 -->
-    <el-dialog v-model="correctDialog" title="手动校准识别结果" width="440px">
-      <p class="dlg-tip">热量与营养由本地营养库按「每100g × 克数」自动计算，不可手动修改</p>
+    <!-- 手动校准 -->
+    <el-dialog v-model="correctDialog" title="手动校准识别结果" width="460px">
+      <p class="dlg-tip">热量与营养由本地营养库按「每 100g × 克数」自动计算，不可手动修改。</p>
       <div class="form-row">
         <span class="form-label">菜名</span>
         <el-select
           v-model="correctForm.dish_name"
           filterable allow-create default-first-option
           placeholder="搜索营养库菜品，或直接输入菜名"
-          style="flex:1"
+          style="flex: 1"
           @change="onDishChange"
         >
           <el-option v-for="f in foodLibrary" :key="f.name" :label="f.name" :value="f.name">
@@ -618,7 +668,7 @@ onMounted(() => {
       </div>
       <div class="form-row">
         <span class="form-label">克数</span>
-        <el-input-number v-model="correctForm.portion_g" :min="10" :max="3000" :step="50" style="width:150px" />
+        <el-input-number v-model="correctForm.portion_g" :min="10" :max="3000" :step="50" style="width: 150px" />
         <template v-if="selectedOption">
           <el-button size="small" @click="applySize(0.7)">小份</el-button>
           <el-button size="small" @click="applySize(1)">标准份</el-button>
@@ -628,52 +678,408 @@ onMounted(() => {
       <div class="preview-box">
         <template v-if="previewNut">
           <span>校准后：</span>
-          <b class="hl">{{ previewNut.calories }} kcal</b>
-          <span class="muted">蛋白 {{ previewNut.protein_g }}g · 脂肪 {{ previewNut.fat_g }}g · 碳水 {{ previewNut.carb_g }}g</span>
+          <b class="hl mono">{{ previewNut.calories }} kcal</b>
+          <span class="muted mono">蛋白 {{ previewNut.protein_g }}g · 脂肪 {{ previewNut.fat_g }}g · 碳水 {{ previewNut.carb_g }}g</span>
         </template>
         <span v-else class="muted">该菜不在营养库中，将按通用估算值计算热量</span>
       </div>
       <template #footer>
         <el-button @click="correctDialog = false">取消</el-button>
-        <el-button type="warning" :loading="correctSaving" @click="confirmCorrect">保存校准</el-button>
+        <el-button type="primary" :loading="correctSaving" @click="confirmCorrect">保存校准</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <style scoped>
-.upload-inner { padding: 28px 0; }
-.upload-inner .tip { font-size: 12px; color: #c0c4cc; }
-.preview { max-height: 260px; border-radius: 8px; }
-.loading-bar { margin-top: 10px; }
-.result-head { display: flex; align-items: center; gap: 10px; }
-.result-head .dish { font-size: 22px; font-weight: 700; }
-.conf { display: flex; align-items: center; gap: 10px; color: #909399; font-size: 13px; }
-.basis { margin: 6px 0 0; font-size: 12px; color: #909399; }
-.hl { color: #f56c6c; font-weight: 700; }
-.actions { display: flex; gap: 10px; margin-top: 14px; }
-.confirm-box { margin: 4px 0 12px; }
-.cand-list { margin: 10px 0; display: flex; flex-direction: column; gap: 8px; }
-.cand { border: 1px solid #ebeef5; border-radius: 8px; padding: 8px 12px; cursor: pointer; transition: all .15s; }
-.cand:hover { border-color: #e6a23c; background: #fdf6ec; }
-.cand.active { border-color: #e6a23c; background: #fdf6ec; box-shadow: 0 0 0 1px #e6a23c inset; }
-.cand-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-.cand-meta { font-size: 12px; color: #909399; margin-top: 4px; }
-.confirm-actions { display: flex; align-items: center; gap: 8px; }
-.budget { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 8px 10px; background: #f5f7fa; border-radius: 8px; }
-.budget-text { font-size: 13px; color: #606266; white-space: nowrap; }
-.budget-text .over { color: #f56c6c; }
-.portion-quick { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-.dishes-box { margin: 10px 0 4px; }
-.dishes-title { font-size: 13px; color: #606266; margin-bottom: 6px; }
-.ing-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
-.ing-label { font-size: 13px; color: #606266; }
-.muted { font-size: 12px; color: #909399; }
-.dlg-tip { margin: 0 0 14px; font-size: 12px; color: #909399; }
-.form-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-.form-label { width: 40px; font-size: 14px; color: #606266; flex-shrink: 0; }
-.preview-box { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #f5f7fa; border-radius: 6px; font-size: 13px; }
-.opt-extra { float: right; margin-left: 16px; font-size: 12px; color: #909399; }
-.pager { margin-top: 12px; display: flex; justify-content: flex-end; }
-</style>
+/* ---------- 两栏 ---------- */
+.recog {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr);
+  gap: 32px;
+  align-items: start;
+}
 
+/* ---------- 样本托盘 ---------- */
+.tray {
+  position: relative;
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  border-radius: 4px;
+  padding: 16px;
+}
+.tray::before,
+.tray::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--ink);
+  pointer-events: none;
+}
+.tray::before { left: 12px; top: 12px; border-right: 0; border-bottom: 0; }
+.tray::after { right: 12px; bottom: 12px; border-left: 0; border-top: 0; }
+
+.tray :deep(.el-upload) { display: block; width: 100%; }
+.tray :deep(.el-upload-dragger) {
+  border: 1px dashed var(--line);
+  background: transparent;
+  padding: 0;
+  border-radius: 2px;
+  width: 100%;
+  min-height: 356px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tray :deep(.el-upload-dragger:hover) { border-color: var(--accent); background: var(--accent-soft); }
+.tray:has(.preview) :deep(.el-upload-dragger) { min-height: auto; border: 0; }
+.tray:has(.preview) .upload-inner { padding: 18px; }
+
+.upload-inner {
+  padding: 34px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.tray-ico {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+}
+.tray-ico svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.up-t { font-family: var(--serif); font-size: 16px; font-weight: 600; margin: 4px 0 0; color: var(--ink); }
+.up-s { font-size: 10.5px; letter-spacing: 0.06em; color: var(--muted); margin: 0; }
+.up-btn {
+  margin-top: 8px;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 999px;
+  padding: 9px 22px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+.preview {
+  width: 100%;
+  max-height: 320px;
+  border-radius: 3px;
+  object-fit: cover;
+}
+.preview-cap { font-size: 10px; letter-spacing: 0.08em; color: var(--muted); margin-top: 8px; }
+
+/* 识别中脉冲 */
+.pulse { display: flex; gap: 5px; margin-bottom: 6px; }
+.pulse span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.1s infinite ease-in-out;
+}
+.pulse span:nth-child(2) { animation-delay: 0.16s; }
+.pulse span:nth-child(3) { animation-delay: 0.32s; }
+@keyframes pulse {
+  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-4px); }
+}
+
+.tray-foot {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 4px 0;
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+/* 预算 */
+.budget {
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 4px;
+  padding: 13px 15px;
+}
+.budget-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 9px; }
+.budget-k { font-size: 9.5px; letter-spacing: 0.16em; color: var(--muted); }
+.budget-v { font-size: 12px; color: var(--ink); }
+.budget-bar { height: 4px; background: var(--paper-2); border-radius: 999px; overflow: hidden; }
+.budget-bar i { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.4s; }
+.budget-bar i.over { background: var(--clay); }
+.budget-note { margin-top: 8px; font-size: 10px; letter-spacing: 0.04em; }
+.budget-note .over { color: var(--clay); }
+
+/* ---------- 结果区 ---------- */
+.placeholder {
+  border: 1px dashed var(--line-2);
+  border-radius: 4px;
+  padding: 40px 26px;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  background: var(--surface);
+}
+.ph-k { font-size: 10px; letter-spacing: 0.18em; color: var(--muted); }
+.ph-t { font-family: var(--serif); font-size: 16px; font-weight: 600; color: var(--ink); }
+.ph-s { font-size: 11.5px; color: var(--muted); line-height: 1.7; max-width: 340px; }
+
+.warn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #e8cdc4;
+  background: var(--clay-soft);
+  color: #8f452f;
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+.warn-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--clay); flex: 0 0 5px; }
+
+/* 营养成分表 */
+.label {
+  border: 1px solid var(--ink);
+  background: var(--surface);
+  padding: 18px 20px 16px;
+  border-radius: 2px;
+}
+.label-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 7px solid var(--ink);
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  gap: 14px;
+}
+.label-h {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+.label-h span {
+  display: block;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  font-weight: 400;
+  margin-top: 4px;
+}
+.label-serv { font-size: 9.5px; color: var(--muted); text-align: right; line-height: 1.8; letter-spacing: 0.04em; }
+
+.lrow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 86px 44px;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.lrow.big { border-bottom: 9px solid var(--ink); padding: 6px 0 8px; }
+.lrow.big .lk { font-size: 15px; font-weight: 700; }
+.lrow.big .lv { font-size: 21px; font-weight: 700; }
+.lk { font-size: 12.5px; color: var(--ink-2); }
+.lk small {
+  display: block;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  margin-top: 2px;
+}
+.lv {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  text-align: right;
+  font-weight: 600;
+  color: var(--ink);
+}
+.lp {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--muted);
+  text-align: right;
+}
+.label-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+/* 标签药丸 */
+.meta-row { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 12px; }
+.tag-pill {
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  color: var(--ink-2);
+  background: var(--surface);
+}
+.tag-pill.ok { border-color: #d6dccd; background: #eef0e9; color: #4c5c45; }
+.tag-pill.warn-pill { border-color: #e7d5bb; background: #f7efe3; color: #7d5626; }
+.tag-pill.mock { border-color: #e8cdc4; background: var(--clay-soft); color: #8f452f; }
+.conf {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: 0.04em;
+}
+.conf i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+
+.basis {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.note-line {
+  margin-top: 8px;
+  border-left: 2px solid var(--ochre);
+  background: #f7efe3;
+  color: #7d5626;
+  font-size: 11.5px;
+  line-height: 1.7;
+  padding: 7px 11px;
+  border-radius: 0 3px 3px 0;
+}
+
+/* 多菜 */
+.dishes { margin-top: 16px; }
+.dishes-title { font-size: 12px; color: var(--ink-2); margin-bottom: 8px; }
+.dish-cards { display: flex; gap: 8px; flex-wrap: wrap; }
+.dish-card {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 4px;
+  padding: 9px 12px;
+  min-width: 132px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--sans);
+  transition: border-color 0.18s;
+}
+.dish-card:hover { border-color: var(--ink); }
+.dn { font-size: 12.5px; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+.need { font-size: 9px; color: #8f452f; border: 1px solid #e8cdc4; border-radius: 999px; padding: 0 5px; font-weight: 400; }
+.dv { font-size: 9.5px; color: var(--muted); }
+.dc { font-size: 9px; color: var(--accent); letter-spacing: 0.06em; }
+
+/* 食材 */
+.ings { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 14px; }
+.ings-k { font-size: 8.5px; letter-spacing: 0.16em; color: var(--muted); margin-right: 4px; }
+.ing {
+  font-size: 10.5px;
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+.ing b { font-weight: 600; color: var(--ink); font-size: 9.5px; }
+
+/* 候选确认 */
+.confirm-box { margin-top: 16px; border: 1px solid #e7d5bb; background: #fdf8ef; border-radius: 4px; padding: 13px 15px; }
+.confirm-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.confirm-k { font-size: 9px; letter-spacing: 0.16em; color: var(--ochre); }
+.confirm-t { font-size: 11.5px; color: #7d5626; }
+.cand-list { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+.cand {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--sans);
+  transition: border-color 0.16s, background 0.16s;
+}
+.cand:hover { border-color: var(--ochre); }
+.cand.active { border-color: var(--ochre); background: #fdf8ef; box-shadow: 0 0 0 1px var(--ochre) inset; }
+.cand-name { font-size: 12.5px; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+.cand-score { font-size: 9.5px; color: var(--muted); font-weight: 400; }
+.cand-meta { display: block; font-size: 10.5px; color: var(--muted); margin-top: 3px; }
+.confirm-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* 份量 + 操作 */
+.portion-quick { display: flex; align-items: center; gap: 6px; margin-top: 14px; }
+.pq-k { font-size: 8.5px; letter-spacing: 0.16em; color: var(--muted); margin-right: 4px; }
+.qbtn {
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  color: var(--ink-2);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: var(--sans);
+  transition: background 0.16s, color 0.16s;
+}
+.qbtn:hover:not(:disabled) { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.qbtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+
+/* 历史 */
+.history { margin-top: 34px; }
+.pager { display: flex; justify-content: flex-end; margin-top: 12px; }
+
+.muted { font-size: 11.5px; color: var(--muted); }
+.hl { color: var(--clay); font-weight: 700; }
+
+/* 弹窗内 */
+.dlg-tip { margin: 0 0 14px; font-size: 11.5px; color: var(--muted); line-height: 1.7; }
+.form-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.form-label { width: 40px; font-size: 12.5px; color: var(--ink-2); flex-shrink: 0; }
+.preview-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 11.5px;
+  flex-wrap: wrap;
+}
+.opt-extra { float: right; margin-left: 16px; font-size: 11px; color: var(--muted); }
+
+@media (max-width: 1080px) {
+  .recog { grid-template-columns: 1fr; }
+  .tray :deep(.el-upload-dragger) { min-height: 260px; }
+}
+</style>

@@ -35,7 +35,7 @@ async function load() {
     unlockedCount.value = r.unlocked_count
     equippedId.value = r.equipped_achievement_id
     if (r.newly_unlocked?.length) {
-      ElMessage.success(`🎉 解锁新成就：${r.newly_unlocked.join('、')}`)
+      ElMessage.success(` 解锁新成就：${r.newly_unlocked.join('、')}`)
     }
   } finally {
     loading.value = false
@@ -62,7 +62,7 @@ onMounted(load)
     <div class="page-card">
       <div class="head">
         <div>
-          <h3 class="page-title">🏅 成就徽章</h3>
+          <h3 class="page-title">成就徽章</h3>
           <span class="sub">自动解锁 · 头衔可装备，排行榜会展示你装备的头衔</span>
         </div>
         <el-tag type="warning" effect="dark" size="large" round>已解锁 {{ unlockedCount }} / {{ items.length }}</el-tag>
@@ -107,13 +107,13 @@ onMounted(load)
 
 <style scoped>
 .head { display: flex; justify-content: space-between; align-items: flex-start; }
-.sub { color: #909399; font-size: 13px; }
+.sub { color: #7c7669; font-size: 13px; }
 .ach { text-align: center; margin-bottom: 14px; height: 100%; }
 .ach.locked { opacity: 0.55; }
-.ach .icon { font-size: 40px; margin: 6px 0; }
+.ach .icon { font-size: 34px; margin: 10px 0 8px; filter: grayscale(1); opacity: 0.6; }
 .ach .name { font-weight: 700; margin-bottom: 6px; }
 .ach .cat { margin-bottom: 6px; }
-.ach .desc { color: #606266; font-size: 13px; min-height: 36px; }
-.ach .cond { color: #c0c4cc; font-size: 12px; margin: 6px 0; }
+.ach .desc { color: #46413a; font-size: 13px; min-height: 36px; }
+.ach .cond { color: #a8a293; font-size: 12px; margin: 6px 0; }
 .ach .foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
 </style>

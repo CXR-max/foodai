@@ -14,8 +14,8 @@ const drawer = ref(false)
 
 const CATEGORIES = [
   { key: 'all', label: '全部' },
-  { key: 'privilege', label: '⚡ 产品权益' },
-  { key: 'goods', label: '🎁 实物好券' },
+  { key: 'privilege', label: '产品权益' },
+  { key: 'goods', label: '实物好券' },
 ]
 
 const filtered = computed(() =>
@@ -90,7 +90,7 @@ onMounted(load)
           <el-tab-pane v-for="c in CATEGORIES" :key="c.key" :name="c.key" :label="c.label" />
         </el-tabs>
         <div class="right">
-          <el-tag type="warning" effect="dark" size="large" round>💰 我的积分：{{ auth.user?.points_total ?? 0 }}</el-tag>
+          <el-tag type="warning" effect="dark" size="large" round>我的积分：{{ auth.user?.points_total ?? 0 }}</el-tag>
           <el-button @click="drawer = true">我的兑换（{{ redemptions.length }}）</el-button>
         </div>
       </div>
@@ -140,7 +140,7 @@ onMounted(load)
 
     <!-- 使用补签卡弹窗 -->
     <el-dialog v-model="makeupDialog" title="使用补签卡" width="360px">
-      <p style="margin-top:0;color:#909399">选择要补签的日期（补签后该天记为已打卡，并奖励积分）</p>
+      <p style="margin-top:0;color:#7c7669">选择要补签的日期（补签后该天记为已打卡，并奖励积分）</p>
       <el-date-picker
         v-model="makeupDate"
         type="date"
@@ -163,15 +163,15 @@ onMounted(load)
 .head :deep(.el-tabs__header) { margin-bottom: 0; }
 .right { display: flex; gap: 10px; align-items: center; padding-bottom: 8px; }
 .reward { text-align: center; margin-bottom: 14px; }
-.reward .icon { font-size: 40px; margin: 6px 0; }
+.reward .icon { font-size: 34px; margin: 10px 0 8px; filter: grayscale(1); opacity: 0.55; }
 .reward .name { font-weight: 700; }
-.reward .desc { color: #909399; font-size: 12px; height: 34px; margin: 6px 0; }
+.reward .desc { color: #7c7669; font-size: 12px; height: 34px; margin: 6px 0; }
 .reward .foot { display: flex; justify-content: space-between; margin-bottom: 8px; }
-.cost { color: #e6a23c; font-weight: 800; font-size: 17px; }
-.stock { color: #c0c4cc; font-size: 12px; }
-.redeem-item { border: 1px dashed #ddd; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+.cost { color: #a9722f; font-weight: 800; font-size: 17px; }
+.stock { color: #a8a293; font-size: 12px; }
+.redeem-item { border: 1px dashed #cfc6b2; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
 .redeem-item .row1 { display: flex; justify-content: space-between; font-weight: 600; }
-.redeem-item .code { margin-top: 6px; color: #67c23a; letter-spacing: 1px; }
-.redeem-item .time { color: #c0c4cc; font-size: 12px; margin-top: 4px; }
+.redeem-item .code { margin-top: 6px; color: #5e7355; letter-spacing: 1px; }
+.redeem-item .time { color: #a8a293; font-size: 12px; margin-top: 4px; }
 .use-row { margin-top: 8px; display: flex; justify-content: flex-end; }
 </style>

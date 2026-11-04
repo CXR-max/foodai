@@ -10,7 +10,7 @@ const plans = ref<Plan[]>([])
 const current = ref<Plan | null>(null)          // 当前展示的方案（含 days）
 const activeDay = ref('1')                      // 当前 tab（第几天）
 const generating = ref(false)
-const MEAL_LABELS: Record<string, string> = { breakfast: '🌅 早餐', lunch: '☀️ 午餐', dinner: '🌙 晚餐', snack: '🍎 加餐' }
+const MEAL_LABELS: Record<string, string> = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', snack: '加餐' }
 const importedDays = ref<Set<number>>(new Set()) // 已导入日历的 plan_day id
 
 // ---- 定制向导①：偏好面板（引导回忆，可当场改，可跳过）----
@@ -291,7 +291,7 @@ onMounted(async () => {
     <!-- 定制向导：偏好面板 + 文字对话 -->
     <div class="page-card">
       <div>
-        <h3 class="page-title" style="margin-bottom:4px">✨ AI 养生方案定制</h3>
+        <h3 class="page-title" style="margin-bottom:4px">AI 养生方案定制</h3>
         <span class="sub">勾选偏好 + 直接和 AI 聊 → 合并生成 · 生成后可重生成 / 手动编辑</span>
       </div>
 
@@ -299,15 +299,15 @@ onMounted(async () => {
         <el-col :span="12">
           <div class="wizard-box">
             <div class="wizard-title">① 勾选偏好（帮你回忆，可跳过）</div>
-            <div class="pref-label">😋 口味</div>
+            <div class="pref-label">口味</div>
             <el-checkbox-group v-model="prefs.taste_preferences">
               <el-checkbox v-for="t in TASTES" :key="t" :value="t">{{ t }}</el-checkbox>
             </el-checkbox-group>
-            <div class="pref-label">🚫 饮食禁忌</div>
+            <div class="pref-label">饮食禁忌</div>
             <el-checkbox-group v-model="prefs.dietary_restrictions">
               <el-checkbox v-for="t in RESTRICTIONS" :key="t" :value="t">{{ t }}</el-checkbox>
             </el-checkbox-group>
-            <div class="pref-label">🏃 运动兴趣</div>
+            <div class="pref-label">运动兴趣</div>
             <el-checkbox-group v-model="prefs.exercise_preferences">
               <el-checkbox v-for="t in EXERCISES" :key="t" :value="t">{{ t }}</el-checkbox>
             </el-checkbox-group>
@@ -353,7 +353,7 @@ onMounted(async () => {
 
     <!-- 历史方案切换 -->
     <div v-if="plans.length" class="page-card">
-      <span style="margin-right:8px;color:#909399">历史方案：</span>
+      <span style="margin-right:8px;color:#7c7669">历史方案：</span>
       <el-select :model-value="current?.id" style="width:260px" @change="(v: number) => openPlan(v)">
         <el-option v-for="p in plans" :key="p.id" :value="p.id" :label="p.title" />
       </el-select>
@@ -363,7 +363,7 @@ onMounted(async () => {
     <div v-if="current" class="page-card">
       <div class="plan-toolbar">
         <el-alert :title="current.summary" type="success" :closable="false" class="summary-alert" />
-        <el-button :disabled="generating" @click="confirmRegenerate">🔄 重新生成</el-button>
+        <el-button :disabled="generating" @click="confirmRegenerate">重新生成</el-button>
       </div>
 
       <el-tabs v-model="activeDay">
@@ -375,9 +375,9 @@ onMounted(async () => {
               <el-tag size="small" style="margin-left:8px" effect="plain">全日约 {{ day.estimated_calories }} kcal</el-tag>
             </div>
             <div style="display:flex;gap:8px">
-              <el-button size="small" :disabled="generating" @click="openEdit(day)">✏️ 编辑这一天</el-button>
+              <el-button size="small" :disabled="generating" @click="openEdit(day)">编辑这一天</el-button>
               <el-button size="small" type="success" :disabled="generating || importedDays.has(day.id)" @click="importDay(day)">
-                {{ importedDays.has(day.id) ? '✓ 已导入日历' : '📥 导入日历' }}
+                {{ importedDays.has(day.id) ? '已导入日历' : '导入日历' }}
               </el-button>
             </div>
           </div>
@@ -389,7 +389,7 @@ onMounted(async () => {
             <el-table-column label="内容" min-width="300">
               <template #default="{ row }">
                 <div v-for="item in row.items" :key="item.name" class="meal-item">
-                  🍽 {{ item.name }} <span class="portion">约{{ item.portion_g }}g</span>
+                   {{ item.name }} <span class="portion">约{{ item.portion_g }}g</span>
                 </div>
               </template>
             </el-table-column>
@@ -400,11 +400,11 @@ onMounted(async () => {
 
           <el-card v-if="day.exercise" shadow="never" class="exercise-card">
             <div class="exercise-row">
-              <div class="exercise-icon">🏃</div>
+              <div class="exercise-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2.5 2.5" /></svg></div>
               <div style="flex:1">
                 <b>{{ day.exercise.type }}</b>
-                <span style="color:#909399;margin-left:10px">{{ day.exercise.duration_min }} 分钟 · 消耗约 {{ day.exercise.calories_burned }} kcal</span>
-                <div class="tips" v-if="day.exercise.tips">💡 {{ day.exercise.tips }}</div>
+                <span style="color:#7c7669;margin-left:10px">{{ day.exercise.duration_min }} 分钟 · 消耗约 {{ day.exercise.calories_burned }} kcal</span>
+                <div class="tips" v-if="day.exercise.tips">{{ day.exercise.tips }}</div>
               </div>
             </div>
           </el-card>
@@ -451,28 +451,28 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.sub { color: #909399; font-size: 13px; }
-.wizard-box { border: 1px solid #ebeef5; border-radius: 8px; padding: 12px 14px; height: 100%; background: #fafcff; }
-.wizard-title { font-weight: 600; color: #409eff; margin-bottom: 8px; }
+.sub { color: #7c7669; font-size: 13px; }
+.wizard-box { border: 1px solid #e2dbcb; border-radius: 8px; padding: 12px 14px; height: 100%; background: #fdfbf6; }
+.wizard-title { font-weight: 600; color: #5a5f8c; margin-bottom: 8px; }
 .chat-title { display: flex; justify-content: space-between; align-items: center; }
-.pref-label { font-size: 13px; color: #606266; margin: 10px 0 4px; }
+.pref-label { font-size: 13px; color: #46413a; margin: 10px 0 4px; }
 
-.session { border: 1px solid #ebeef5; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
+.session { border: 1px solid #e2dbcb; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
 .session-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.session-time { color: #909399; font-size: 12px; }
+.session-time { color: #7c7669; font-size: 12px; }
 .session-msg { font-size: 13px; line-height: 1.6; margin: 4px 0; white-space: pre-wrap; }
-.session-msg.user b { color: #409eff; }
-.session-msg.assistant b { color: #67c23a; }
+.session-msg.user b { color: #5a5f8c; }
+.session-msg.assistant b { color: #5e7355; }
 
 .chat-box { display: flex; flex-direction: column; }
 .chat-list { flex: 1; min-height: 180px; max-height: 260px; overflow-y: auto; padding: 4px 2px; }
-.chat-empty { color: #c0c4cc; font-size: 13px; line-height: 1.6; }
+.chat-empty { color: #a8a293; font-size: 13px; line-height: 1.6; }
 .chat-row { display: flex; margin-bottom: 8px; }
 .chat-row.user { justify-content: flex-end; }
 .chat-row.assistant { justify-content: flex-start; }
 .bubble { max-width: 85%; padding: 8px 12px; border-radius: 10px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
-.chat-row.user .bubble { background: #409eff; color: #fff; }
-.chat-row.assistant .bubble { background: #f0f2f5; color: #303133; }
+.chat-row.user .bubble { background: #5a5f8c; color: #fff; }
+.chat-row.assistant .bubble { background: #ede8dd; color: #1c1a17; }
 .chat-input { display: flex; gap: 8px; margin-top: 8px; }
 
 .gen-actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-top: 14px; }
@@ -482,11 +482,12 @@ onMounted(async () => {
 
 .day-head { display: flex; justify-content: space-between; align-items: center; }
 .meal-item { padding: 2px 0; }
-.meal-item .portion { color: #909399; font-size: 12px; margin-left: 6px; }
-.exercise-card { margin-top: 12px; background: #f0f9eb; border: 1px solid #e1f3d8; }
+.meal-item .portion { color: #7c7669; font-size: 12px; margin-left: 6px; }
+.exercise-card { margin-top: 12px; background: #f0f3d8; border: 1px solid #dde1d9; }
 .exercise-row { display: flex; align-items: center; gap: 14px; }
-.exercise-icon { font-size: 30px; }
-.tips { color: #909399; font-size: 13px; margin-top: 4px; }
+.exercise-icon { width: 30px; height: 30px; display: grid; place-items: center; color: var(--accent); flex: 0 0 30px; }
+.exercise-icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
+.tips { color: #7c7669; font-size: 13px; margin-top: 4px; }
 .edit-meal { margin-bottom: 18px; }
 .edit-meal-title { font-weight: 600; margin-bottom: 8px; }
 .edit-item { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }

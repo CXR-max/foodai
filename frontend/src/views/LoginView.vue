@@ -32,34 +32,40 @@ async function submit() {
 
 <template>
   <div class="auth-page">
-    <el-card class="auth-card">
-      <h2 class="auth-title">🥗 识膳智行</h2>
-      <p class="auth-sub">AI 健康管理平台 · 爱吃才是最好的营养师</p>
-      <el-form ref="formRef" :model="form" :rules="rules" size="large" @keyup.enter="submit">
-        <el-form-item prop="username">
-          <el-input v-model="form.username" placeholder="用户名" />
-        </el-form-item>
-        <el-form-item prop="password">
-          <el-input v-model="form.password" type="password" show-password placeholder="密码" />
-        </el-form-item>
-        <el-button type="success" size="large" style="width: 100%" :loading="loading" @click="submit">
-          登 录
-        </el-button>
-      </el-form>
-      <div class="auth-footer">
-        还没有账号？<router-link to="/register">立即注册</router-link>
-      </div>
-    </el-card>
+    <div class="auth-shell">
+      <aside class="auth-brand">
+        <div class="ab-top mono">SHISHAN ZHIXING · EST. 2026</div>
+        <div>
+          <div class="ab-logo">膳</div>
+          <h1 class="ab-title">识膳<br /><em>智行</em></h1>
+          <p class="ab-sub">AI 健康管理平台</p>
+        </div>
+        <ul class="ab-list">
+          <li><span class="no mono">01</span>食物识别与营养换算</li>
+          <li><span class="no mono">02</span>按目标生成每日餐单</li>
+          <li><span class="no mono">03</span>打卡 / 积分 / 排行榜</li>
+        </ul>
+        <div class="ab-foot mono">EAT WELL · LIVE WELL</div>
+      </aside>
+
+      <section class="auth-form">
+        <h2 class="auth-title">登录</h2>
+        <p class="auth-sub">继续你的每日健康报告。</p>
+
+        <el-form ref="formRef" :model="form" :rules="rules" size="large" @keyup.enter="submit">
+          <el-form-item prop="username">
+            <el-input v-model="form.username" placeholder="用户名" />
+          </el-form-item>
+          <el-form-item prop="password">
+            <el-input v-model="form.password" type="password" show-password placeholder="密码" />
+          </el-form-item>
+          <el-button type="primary" size="large" style="width: 100%; margin-top: 6px" :loading="loading" @click="submit">
+            登 录
+          </el-button>
+        </el-form>
+
+        <div class="auth-footer">还没有账号？<router-link to="/register">立即注册</router-link></div>
+      </section>
+    </div>
   </div>
 </template>
-
-<style scoped>
-.auth-page {
-  height: 100%; display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #1d2530 0%, #2c3a2f 100%);
-}
-.auth-card { width: 380px; padding: 12px 8px; }
-.auth-title { text-align: center; margin: 8px 0 4px; }
-.auth-sub { text-align: center; color: #909399; font-size: 13px; margin-bottom: 24px; }
-.auth-footer { text-align: center; margin-top: 16px; font-size: 13px; color: #909399; }
-</style>
