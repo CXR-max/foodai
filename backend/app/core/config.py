@@ -74,11 +74,17 @@ class Settings(BaseSettings):
     LLM_CHAT_MAX_TOKENS: int = 128    # 聊天回复最大输出（提示词要求 ≤80 字）
     LLM_INTENT_MAX_TOKENS: int = 512  # 约束抽取 JSON 输出上限
     LLM_INTENT_TIMEOUT: int = 45      # 约束抽取独立超时（秒）
+    LLM_REPORT_MAX_TOKENS: int = 700  # AI 健康周报输出上限（结构化 JSON 点评）
     LLM_VISION_MAX_TOKENS: int = 1500 # 食物识别输出上限（思考 token 与 JSON 共用预算，留足余量）
     LLM_VISION_THINKING: bool = False # glm-4v-flash 不支持思考模式，关闭避免报错
     LLM_VISION_MAX_RETRIES: int = 2   # 识别 JSON 校验失败重试次数（比文字宽松，防误降级 mock）
     LLM_VISION_RATE_RETRIES: int = 3  # 免费模型 429 限流时的退避重试次数（失败很快，重试成本低）
     LLM_FALLBACK_TO_MOCK: bool = True # 真模型失败后自动降级 mock（演示保命开关）
+    TEXT_FALLBACK_TO_CLOUD: bool = True  # 文字用本地模型时，连不上自动切云端（有 key 才生效）
+
+    # ---- 识别防刷 ----
+    VISION_DAILY_QUOTA: int = 50      # 每人每天最多识别次数（0=不限制）
+    VISION_DEDUPE_HOURS: int = 24     # 同图去重窗口（小时内重复上传直接回放上次结果）
 
     # ---- 派生：当前生效的文字 / 视觉配置（业务代码只认这几个）----
     @property

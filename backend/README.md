@@ -2,23 +2,56 @@
 
 AI 健康管理平台后端。**默认 mock 模式，无需任何 API key 即可跑通全部功能**。
 
-## 启动（3 条命令）
+## 启动
+
+完整的安装/启动/模型切换见根目录 [README.md](../README.md) 和 [部署说明](../docs/deployment.md)。最短路径：
 
 ```bash
-# 1. 首次：创建虚拟环境并装依赖（已有 .venv 跳过）
-E:/app/miniconda3/python.exe -m venv .venv
-./.venv/Scripts/python.exe -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
-
-# 2. 首次：建数据库表
-./.venv/Scripts/python.exe -m alembic upgrade head
-
-# 3. 启动（之后每天开发只需这一条）
+cd backend
+./.venv/Scripts/python.exe seed_all.py                    # 首次：迁移 + 种子 + 200 道菜谱
 ./.venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8000
 ```
+
+> `seed_all.py` 幂等，可重复执行；只建表不灌数据用 `python -m alembic upgrade head`。
+> 它会导入 200 道菜谱，并把「家常菜 / 川 / 粤 / 鲁 / 苏」121 道设为 active。
 
 - 接口文档：http://localhost:8000/docs
 - 演示造数（排行榜预置几个用户）：`./.venv/Scripts/python.exe seed_demo.py`
 - 端到端自测（需先启动）：`./.venv/Scripts/python.exe e2e_test.py`
+
+## 模型配置（`.env`，不提交）
+
+| 用途 | 推荐配置 | 说明 |
+|---|---|---|
+| 文字 | `TEXT_PROVIDER=local` + `LLM_MODE=local` + `LOCAL_TEXT_MODEL=qwen2.5:7b-instruct` | 本地 Ollama，免费/离线；Ollama 没起时自动切云端 `CLOUD_TEXT_MODEL` |
+| 视觉 | `CLOUD_VISION_MODEL=glm-4v-flash` | 本地没有视觉模型，必须走云端；`CLOUD_VISION_FALLBACK_MODEL=glm-4.1v-thinking-flash` 作 429 限流兜底 |
+| 输出上限 | `LLM_VISION_MAX_TOKENS=1024` | `glm-4v-flash` 的硬上限，设大会报 `max_tokens 非法` |
+
+本地模型启动：
+
+```powershell
+# 模型放仓库根目录 models/（已 gitignore），脚本会自动指向
+.\scripts\start-ollama.ps1
+```
+
+> 换模型/改 `.env` 后必须重启 uvicorn，配置只在进程启动时读取。
+
+## 营养库表（新增）
+
+- 表：`foods`、`food_aliases`、`food_relations`、`food_ingredients`、`food_recipes`、`food_recipe_items`、`import_batches`
+- 内置种子：八大菜系 + 家常菜 + 轻食 + 单个食物/饮品，启动时 `foods` 为空会自动导入；也可手动：
+  `./.venv/Scripts/python.exe seed_foods.py`（`--force` 覆盖）
+- 外部数据导入（先安装导入依赖，再 dry-run，确认后加 `--commit`）：
+  `./.venv/Scripts/python.exe -m pip install -r requirements-import.txt`
+  `./.venv/Scripts/python.exe -m scripts.nutrition_import.importer 文件.csv --source tfda --version 2026 --license OGDL-1.0`
+- 已内置的适配器：`tfda.py`、`cofid.py`、`usda.py`（FNDDS 2021-2023）、`mext.py`（日本 2023）、`recipes.py`（食材克重→菜品）、`activate.py`（staging 启停）
+- 易混淆候选生成：`./.venv/Scripts/python.exe -m scripts.nutrition_import.relations`
+- 自建菜谱（食材克重 → 菜品营养）：`./.venv/Scripts/python.exe -m scripts.nutrition_import.recipes recipe.json --commit`
+- 启用/停用 staging 条目：`./.venv/Scripts/python.exe -m scripts.nutrition_import.activate --source tfda --food-type single_food --commit`
+- 数据源、许可、字段映射、K-FIND 申请步骤和手动下载步骤见 [app/data/SOURCES.md](app/data/SOURCES.md)
+- 手工整理 CSV 可复制 [app/data/import_template.csv](app/data/import_template.csv)
+- 查看全部（含 staging）：`GET /api/foods?include_inactive=true`；规模统计：`GET /api/foods/stats`
+- 当前已接入 TFDA 与 CoFID 适配器，默认 `active=false` 进入 staging，避免干扰识别活跃池
 
 ## 目录结构（一个功能 = 一个文件，好找好改）
 
@@ -39,9 +72,9 @@ backend/
     │   ├── security.py        # 密码哈希(pbkdf2) + JWT
     │   └── deps.py            # "当前登录用户"依赖
     ├── db/session.py          # 数据库连接
-    ├── models/                # ★ 11 张表定义（users/health_profiles/recognitions/
-    │                          #   food_records/diet_plans+plan_days/check_ins/
-    │                          #   points_logs/weight_logs/rewards/redemptions）
+    ├── models/                # ★ 18 张表定义（业务 11 张 + 营养库 7 张：
+    │                          #   foods/food_aliases/food_relations/food_ingredients/
+    │                          #   food_recipes/food_recipe_items/import_batches）
     ├── schemas/               # API 请求参数校验
     ├── routers/               # ★ API 路由，按模块一个文件：
     │                          #   auth 认证 / profile 档案 / recognitions 识别 /

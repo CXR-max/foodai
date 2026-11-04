@@ -97,8 +97,9 @@ check("营养结构", c.get("/stats/nutrition", params={"days": 7}).status_code 
 lb = c.get("/points/leaderboard").json()
 check("排行榜实时", len(lb) >= 1 and lb[0]["points_total"] >= lb[-1]["points_total"])
 rewards = c.get("/rewards").json()
-check("商城 10 个奖励", len(rewards) == 10)
-target50 = next(r for r in rewards if r["points_cost"] == 50)
+# 荣誉类虚拟商品已改为「成就解锁制」下架，商城只剩 6 个权益/实物类
+check("商城 6 个奖励", len(rewards) == 6)
+target50 = next(r for r in rewards if r["points_cost"] == 30)
 r = c.post(f"/rewards/{target50['id']}/redeem").json()
 check("兑换成功得核销码", bool(r.get("code")), f"→ {r.get('code')} 余{r.get('points_total')}分")
 target80 = next(r for r in rewards if r["points_cost"] == 80)

@@ -1,0 +1,5094 @@
+[
+  {
+    "source": "legacy_json",
+    "source_id": "米饭",
+    "name_zh": "米饭",
+    "name_en": null,
+    "name_norm": "米饭",
+    "food_type": "dish",
+    "dish_style": "主食",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 116,
+      "protein_g": 2.6,
+      "fat_g": 0.3,
+      "carb_g": 25.9,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "大米"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "糙米饭",
+    "name_zh": "糙米饭",
+    "name_en": null,
+    "name_norm": "糙米饭",
+    "food_type": "dish",
+    "dish_style": "主食",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 112,
+      "protein_g": 2.6,
+      "fat_g": 0.9,
+      "carb_g": 23.5,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "糙米"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "馒头",
+    "name_zh": "馒头",
+    "name_en": null,
+    "name_norm": "馒头",
+    "food_type": "dish",
+    "dish_style": "主食",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 100.0,
+    "common_portion_g": 100.0,
+    "nutrition": {
+      "calories": 223,
+      "protein_g": 7.0,
+      "fat_g": 1.1,
+      "carb_g": 47.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "面粉"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "全麦面包",
+    "name_zh": "全麦面包",
+    "name_en": null,
+    "name_norm": "全麦面包",
+    "food_type": "dish",
+    "dish_style": "主食",
+    "region": "通用",
+    "cuisine": "西式",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "ready_to_eat",
+    "edible_ratio": 1.0,
+    "serving_g": 100.0,
+    "common_portion_g": 100.0,
+    "nutrition": {
+      "calories": 246,
+      "protein_g": 9.0,
+      "fat_g": 3.5,
+      "carb_g": 45.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "全麦粉"
+    ],
+    "suitable_meals": [
+      "breakfast"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "扬州炒饭",
+    "name_zh": "扬州炒饭",
+    "name_en": null,
+    "name_norm": "扬州炒饭",
+    "food_type": "dish",
+    "dish_style": "主食",
+    "region": "大陆",
+    "cuisine": "苏",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 300.0,
+    "common_portion_g": 300.0,
+    "nutrition": {
+      "calories": 180,
+      "protein_g": 6.5,
+      "fat_g": 6.5,
+      "carb_g": 25.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "米饭",
+      "鸡蛋",
+      "火腿",
+      "青豆"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "牛肉拉面",
+    "name_zh": "牛肉拉面",
+    "name_en": null,
+    "name_norm": "牛肉拉面",
+    "food_type": "dish",
+    "dish_style": "主食",
+    "region": "大陆",
+    "cuisine": "西北",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 400.0,
+    "common_portion_g": 400.0,
+    "nutrition": {
+      "calories": 115,
+      "protein_g": 6.5,
+      "fat_g": 3.5,
+      "carb_g": 16.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "面条",
+      "牛肉",
+      "萝卜",
+      "香菜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "过桥米线",
+    "name_zh": "过桥米线",
+    "name_en": null,
+    "name_norm": "过桥米线",
+    "food_type": "dish",
+    "dish_style": "主食",
+    "region": "大陆",
+    "cuisine": "滇",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 400.0,
+    "common_portion_g": 400.0,
+    "nutrition": {
+      "calories": 110,
+      "protein_g": 5.0,
+      "fat_g": 3.0,
+      "carb_g": 17.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "米线",
+      "鸡肉",
+      "豆腐皮",
+      "韭菜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "猪肉白菜饺子",
+    "name_zh": "猪肉白菜饺子",
+    "name_en": null,
+    "name_norm": "猪肉白菜饺子",
+    "food_type": "dish",
+    "dish_style": "主食",
+    "region": "大陆",
+    "cuisine": "北方",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 300.0,
+    "common_portion_g": 300.0,
+    "nutrition": {
+      "calories": 220,
+      "protein_g": 9.0,
+      "fat_g": 9.0,
+      "carb_g": 25.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "面粉",
+      "猪肉",
+      "白菜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "煎饺",
+    "name_zh": "煎饺",
+    "name_en": null,
+    "name_norm": "煎饺",
+    "food_type": "dish",
+    "dish_style": "主食",
+    "region": "大陆",
+    "cuisine": "北方",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 250.0,
+    "common_portion_g": 250.0,
+    "nutrition": {
+      "calories": 250,
+      "protein_g": 8.5,
+      "fat_g": 12.0,
+      "carb_g": 26.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "面粉",
+      "猪肉",
+      "白菜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "蒸红薯",
+    "name_zh": "蒸红薯",
+    "name_en": null,
+    "name_norm": "蒸红薯",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 150.0,
+    "common_portion_g": 150.0,
+    "nutrition": {
+      "calories": 86,
+      "protein_g": 1.6,
+      "fat_g": 0.2,
+      "carb_g": 20.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "红薯"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "snack"
+    ],
+    "taste_tags": [
+      "偏甜"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "水煮玉米",
+    "name_zh": "水煮玉米",
+    "name_en": null,
+    "name_norm": "水煮玉米",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 106,
+      "protein_g": 4.0,
+      "fat_g": 1.2,
+      "carb_g": 22.8,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "玉米"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "snack"
+    ],
+    "taste_tags": [
+      "偏甜"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "清汤面条",
+    "name_zh": "清汤面条",
+    "name_en": null,
+    "name_norm": "清汤面条",
+    "food_type": "dish",
+    "dish_style": "主食",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 350.0,
+    "common_portion_g": 350.0,
+    "nutrition": {
+      "calories": 110,
+      "protein_g": 3.5,
+      "fat_g": 1.5,
+      "carb_g": 22.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "面条",
+      "青菜",
+      "葱花"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "宫保鸡丁",
+    "name_zh": "宫保鸡丁",
+    "name_en": null,
+    "name_norm": "宫保鸡丁",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "川",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 250.0,
+    "common_portion_g": 250.0,
+    "nutrition": {
+      "calories": 194,
+      "protein_g": 13.0,
+      "fat_g": 11.0,
+      "carb_g": 10.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "鸡胸肉",
+      "花生",
+      "干辣椒",
+      "葱段"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏辣"
+    ],
+    "dietary_tags": [
+      "含花生"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "鱼香肉丝",
+    "name_zh": "鱼香肉丝",
+    "name_en": null,
+    "name_norm": "鱼香肉丝",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "川",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 250.0,
+    "common_portion_g": 250.0,
+    "nutrition": {
+      "calories": 145,
+      "protein_g": 8.7,
+      "fat_g": 8.4,
+      "carb_g": 8.6,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "猪里脊",
+      "木耳",
+      "胡萝卜",
+      "笋丝"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏甜"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "红烧肉",
+    "name_zh": "红烧肉",
+    "name_en": null,
+    "name_norm": "红烧肉",
+    "food_type": "dish",
+    "dish_style": "家常菜",
+    "region": "大陆",
+    "cuisine": "浙",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 150.0,
+    "common_portion_g": 150.0,
+    "nutrition": {
+      "calories": 475,
+      "protein_g": 13.5,
+      "fat_g": 45.0,
+      "carb_g": 6.5,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "五花肉",
+      "冰糖",
+      "生抽"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏甜"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "红烧排骨",
+    "name_zh": "红烧排骨",
+    "name_en": null,
+    "name_norm": "红烧排骨",
+    "food_type": "dish",
+    "dish_style": "家常菜",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 320,
+      "protein_g": 17.0,
+      "fat_g": 24.0,
+      "carb_g": 8.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "猪排骨",
+      "冰糖",
+      "葱姜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏甜"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "可乐鸡翅",
+    "name_zh": "可乐鸡翅",
+    "name_en": null,
+    "name_norm": "可乐鸡翅",
+    "food_type": "dish",
+    "dish_style": "家常菜",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 240,
+      "protein_g": 15.0,
+      "fat_g": 14.0,
+      "carb_g": 12.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "鸡翅",
+      "可乐",
+      "生抽"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏甜"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "糖醋里脊",
+    "name_zh": "糖醋里脊",
+    "name_en": null,
+    "name_norm": "糖醋里脊",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "鲁",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 240,
+      "protein_g": 12.0,
+      "fat_g": 10.0,
+      "carb_g": 24.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "猪里脊",
+      "番茄酱",
+      "白糖"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏甜",
+      "偏酸"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "青椒肉丝",
+    "name_zh": "青椒肉丝",
+    "name_en": null,
+    "name_norm": "青椒肉丝",
+    "food_type": "dish",
+    "dish_style": "家常菜",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 230.0,
+    "common_portion_g": 230.0,
+    "nutrition": {
+      "calories": 130,
+      "protein_g": 9.0,
+      "fat_g": 8.0,
+      "carb_g": 5.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "猪肉丝",
+      "青椒"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "土豆炖牛肉",
+    "name_zh": "土豆炖牛肉",
+    "name_en": null,
+    "name_norm": "土豆炖牛肉",
+    "food_type": "dish",
+    "dish_style": "家常菜",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 300.0,
+    "common_portion_g": 300.0,
+    "nutrition": {
+      "calories": 118,
+      "protein_g": 9.0,
+      "fat_g": 6.0,
+      "carb_g": 8.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "牛肉",
+      "土豆",
+      "胡萝卜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡",
+      "偏咸"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "番茄牛腩",
+    "name_zh": "番茄牛腩",
+    "name_en": null,
+    "name_norm": "番茄牛腩",
+    "food_type": "dish",
+    "dish_style": "家常菜",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 300.0,
+    "common_portion_g": 300.0,
+    "nutrition": {
+      "calories": 130,
+      "protein_g": 10.0,
+      "fat_g": 7.0,
+      "carb_g": 7.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "牛腩",
+      "番茄",
+      "洋葱"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏酸",
+      "清淡"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "清蒸鲈鱼",
+    "name_zh": "清蒸鲈鱼",
+    "name_en": null,
+    "name_norm": "清蒸鲈鱼",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "粤",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 112,
+      "protein_g": 18.5,
+      "fat_g": 4.0,
+      "carb_g": 1.5,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "鲈鱼",
+      "葱丝",
+      "蒸鱼豉油"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "海鲜"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "水煮鱼",
+    "name_zh": "水煮鱼",
+    "name_en": null,
+    "name_norm": "水煮鱼",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "川",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 300.0,
+    "common_portion_g": 300.0,
+    "nutrition": {
+      "calories": 160,
+      "protein_g": 13.0,
+      "fat_g": 10.0,
+      "carb_g": 3.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "草鱼",
+      "豆芽",
+      "干辣椒",
+      "花椒"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏辣"
+    ],
+    "dietary_tags": [
+      "海鲜"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "白灼虾",
+    "name_zh": "白灼虾",
+    "name_en": null,
+    "name_norm": "白灼虾",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "粤",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 93,
+      "protein_g": 20.0,
+      "fat_g": 1.0,
+      "carb_g": 1.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "鲜虾",
+      "蘸料"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "海鲜"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "红烧鸡腿",
+    "name_zh": "红烧鸡腿",
+    "name_en": null,
+    "name_norm": "红烧鸡腿",
+    "food_type": "dish",
+    "dish_style": "家常菜",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 180.0,
+    "common_portion_g": 180.0,
+    "nutrition": {
+      "calories": 218,
+      "protein_g": 18.0,
+      "fat_g": 14.0,
+      "carb_g": 6.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "鸡腿",
+      "生抽",
+      "冰糖"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "回锅肉",
+    "name_zh": "回锅肉",
+    "name_en": null,
+    "name_norm": "回锅肉",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "川",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 285,
+      "protein_g": 12.0,
+      "fat_g": 25.0,
+      "carb_g": 6.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "五花肉",
+      "蒜苗",
+      "豆瓣酱"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏辣"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "西红柿炒鸡蛋",
+    "name_zh": "西红柿炒鸡蛋",
+    "name_en": null,
+    "name_norm": "西红柿炒鸡蛋",
+    "food_type": "dish",
+    "dish_style": "家常菜",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "素菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 250.0,
+    "common_portion_g": 250.0,
+    "nutrition": {
+      "calories": 86,
+      "protein_g": 4.4,
+      "fat_g": 6.1,
+      "carb_g": 4.3,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "西红柿",
+      "鸡蛋"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏酸",
+      "清淡"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "麻婆豆腐",
+    "name_zh": "麻婆豆腐",
+    "name_en": null,
+    "name_norm": "麻婆豆腐",
+    "food_type": "dish",
+    "dish_style": "家常菜",
+    "region": "大陆",
+    "cuisine": "川",
+    "category_l1": "素菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 220.0,
+    "common_portion_g": 220.0,
+    "nutrition": {
+      "calories": 153,
+      "protein_g": 9.5,
+      "fat_g": 10.0,
+      "carb_g": 5.5,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "豆腐",
+      "肉末",
+      "豆瓣酱",
+      "花椒"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏辣"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "蒜蓉空心菜",
+    "name_zh": "蒜蓉空心菜",
+    "name_en": null,
+    "name_norm": "蒜蓉空心菜",
+    "food_type": "dish",
+    "dish_style": "家常菜",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "素菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 40,
+      "protein_g": 2.5,
+      "fat_g": 2.2,
+      "carb_g": 3.5,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "空心菜",
+      "蒜末"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "酸辣土豆丝",
+    "name_zh": "酸辣土豆丝",
+    "name_en": null,
+    "name_norm": "酸辣土豆丝",
+    "food_type": "dish",
+    "dish_style": "家常菜",
+    "region": "大陆",
+    "cuisine": "川",
+    "category_l1": "素菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 220.0,
+    "common_portion_g": 220.0,
+    "nutrition": {
+      "calories": 95,
+      "protein_g": 2.0,
+      "fat_g": 4.5,
+      "carb_g": 12.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "土豆",
+      "干辣椒",
+      "醋"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏酸",
+      "偏辣"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "白灼生菜",
+    "name_zh": "白灼生菜",
+    "name_en": null,
+    "name_norm": "白灼生菜",
+    "food_type": "dish",
+    "dish_style": "家常菜",
+    "region": "大陆",
+    "cuisine": "粤",
+    "category_l1": "素菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 180.0,
+    "common_portion_g": 180.0,
+    "nutrition": {
+      "calories": 25,
+      "protein_g": 1.5,
+      "fat_g": 1.0,
+      "carb_g": 3.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "生菜",
+      "生抽"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "西兰花炒虾仁",
+    "name_zh": "西兰花炒虾仁",
+    "name_en": null,
+    "name_norm": "西兰花炒虾仁",
+    "food_type": "dish",
+    "dish_style": "家常菜",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "素菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 250.0,
+    "common_portion_g": 250.0,
+    "nutrition": {
+      "calories": 85,
+      "protein_g": 11.0,
+      "fat_g": 3.0,
+      "carb_g": 4.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "西兰花",
+      "虾仁",
+      "蒜末"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "海鲜"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "地三鲜",
+    "name_zh": "地三鲜",
+    "name_en": null,
+    "name_norm": "地三鲜",
+    "food_type": "dish",
+    "dish_style": "家常菜",
+    "region": "大陆",
+    "cuisine": "东北",
+    "category_l1": "素菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 250.0,
+    "common_portion_g": 250.0,
+    "nutrition": {
+      "calories": 140,
+      "protein_g": 3.0,
+      "fat_g": 8.0,
+      "carb_g": 16.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "茄子",
+      "土豆",
+      "青椒"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "干煸四季豆",
+    "name_zh": "干煸四季豆",
+    "name_en": null,
+    "name_norm": "干煸四季豆",
+    "food_type": "dish",
+    "dish_style": "家常菜",
+    "region": "大陆",
+    "cuisine": "川",
+    "category_l1": "素菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 220.0,
+    "common_portion_g": 220.0,
+    "nutrition": {
+      "calories": 120,
+      "protein_g": 4.0,
+      "fat_g": 7.0,
+      "carb_g": 10.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "四季豆",
+      "肉末",
+      "干辣椒"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏辣"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "小米粥",
+    "name_zh": "小米粥",
+    "name_en": null,
+    "name_norm": "小米粥",
+    "food_type": "dish",
+    "dish_style": "汤粥",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "汤粥",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 300.0,
+    "common_portion_g": 300.0,
+    "nutrition": {
+      "calories": 46,
+      "protein_g": 1.4,
+      "fat_g": 0.7,
+      "carb_g": 9.7,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "小米"
+    ],
+    "suitable_meals": [
+      "breakfast"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "皮蛋瘦肉粥",
+    "name_zh": "皮蛋瘦肉粥",
+    "name_en": null,
+    "name_norm": "皮蛋瘦肉粥",
+    "food_type": "dish",
+    "dish_style": "汤粥",
+    "region": "大陆",
+    "cuisine": "粤",
+    "category_l1": "汤粥",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 350.0,
+    "common_portion_g": 350.0,
+    "nutrition": {
+      "calories": 60,
+      "protein_g": 3.0,
+      "fat_g": 1.5,
+      "carb_g": 9.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "大米",
+      "皮蛋",
+      "瘦肉"
+    ],
+    "suitable_meals": [
+      "breakfast"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "紫菜蛋花汤",
+    "name_zh": "紫菜蛋花汤",
+    "name_en": null,
+    "name_norm": "紫菜蛋花汤",
+    "food_type": "dish",
+    "dish_style": "汤粥",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "汤粥",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 250.0,
+    "common_portion_g": 250.0,
+    "nutrition": {
+      "calories": 25,
+      "protein_g": 1.8,
+      "fat_g": 1.2,
+      "carb_g": 2.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "紫菜",
+      "鸡蛋",
+      "虾皮"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "海鲜"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "番茄蛋汤",
+    "name_zh": "番茄蛋汤",
+    "name_en": null,
+    "name_norm": "番茄蛋汤",
+    "food_type": "dish",
+    "dish_style": "汤粥",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "汤粥",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 280.0,
+    "common_portion_g": 280.0,
+    "nutrition": {
+      "calories": 35,
+      "protein_g": 1.5,
+      "fat_g": 1.8,
+      "carb_g": 3.2,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "番茄",
+      "鸡蛋"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏酸",
+      "清淡"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "冬瓜排骨汤",
+    "name_zh": "冬瓜排骨汤",
+    "name_en": null,
+    "name_norm": "冬瓜排骨汤",
+    "food_type": "dish",
+    "dish_style": "汤粥",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "汤粥",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 300.0,
+    "common_portion_g": 300.0,
+    "nutrition": {
+      "calories": 55,
+      "protein_g": 4.0,
+      "fat_g": 3.0,
+      "carb_g": 2.5,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "冬瓜",
+      "猪排骨"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "甜豆浆",
+    "name_zh": "甜豆浆",
+    "name_en": null,
+    "name_norm": "甜豆浆",
+    "food_type": "beverage",
+    "dish_style": "饮品",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "早餐",
+    "category_l2": null,
+    "state": "ready_to_eat",
+    "edible_ratio": 1.0,
+    "serving_g": 250.0,
+    "common_portion_g": 250.0,
+    "nutrition": {
+      "calories": 31,
+      "protein_g": 3.0,
+      "fat_g": 1.6,
+      "carb_g": 1.2,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "黄豆",
+      "糖"
+    ],
+    "suitable_meals": [
+      "breakfast"
+    ],
+    "taste_tags": [
+      "偏甜"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "茶叶蛋",
+    "name_zh": "茶叶蛋",
+    "name_en": null,
+    "name_norm": "茶叶蛋",
+    "food_type": "dish",
+    "dish_style": "早餐",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "早餐",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 60.0,
+    "common_portion_g": 60.0,
+    "nutrition": {
+      "calories": 144,
+      "protein_g": 12.0,
+      "fat_g": 10.0,
+      "carb_g": 2.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "鸡蛋",
+      "茶叶",
+      "酱油"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "snack"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "鸡蛋饼",
+    "name_zh": "鸡蛋饼",
+    "name_en": null,
+    "name_norm": "鸡蛋饼",
+    "food_type": "dish",
+    "dish_style": "早餐",
+    "region": "大陆",
+    "cuisine": "家常菜",
+    "category_l1": "早餐",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 150.0,
+    "common_portion_g": 150.0,
+    "nutrition": {
+      "calories": 240,
+      "protein_g": 8.0,
+      "fat_g": 11.0,
+      "carb_g": 26.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "面粉",
+      "鸡蛋",
+      "葱花"
+    ],
+    "suitable_meals": [
+      "breakfast"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "火腿三明治",
+    "name_zh": "火腿三明治",
+    "name_en": null,
+    "name_norm": "火腿三明治",
+    "food_type": "dish",
+    "dish_style": "早餐",
+    "region": "通用",
+    "cuisine": "西式",
+    "category_l1": "早餐",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 180.0,
+    "common_portion_g": 180.0,
+    "nutrition": {
+      "calories": 250,
+      "protein_g": 10.0,
+      "fat_g": 9.0,
+      "carb_g": 30.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "面包",
+      "火腿",
+      "生菜",
+      "奶酪"
+    ],
+    "suitable_meals": [
+      "breakfast"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "含乳"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "燕麦片",
+    "name_zh": "燕麦片",
+    "name_en": null,
+    "name_norm": "燕麦片",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "早餐",
+    "category_l2": null,
+    "state": "raw",
+    "edible_ratio": 1.0,
+    "serving_g": 50.0,
+    "common_portion_g": 50.0,
+    "nutrition": {
+      "calories": 370,
+      "protein_g": 13.0,
+      "fat_g": 7.0,
+      "carb_g": 60.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "燕麦"
+    ],
+    "suitable_meals": [
+      "breakfast"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "纯牛奶",
+    "name_zh": "纯牛奶",
+    "name_en": null,
+    "name_norm": "纯牛奶",
+    "food_type": "beverage",
+    "dish_style": "饮品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "早餐",
+    "category_l2": null,
+    "state": "ready_to_eat",
+    "edible_ratio": 1.0,
+    "serving_g": 250.0,
+    "common_portion_g": 250.0,
+    "nutrition": {
+      "calories": 54,
+      "protein_g": 3.0,
+      "fat_g": 3.2,
+      "carb_g": 3.4,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "牛奶"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "snack"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "素食",
+      "含乳"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "麻辣香锅",
+    "name_zh": "麻辣香锅",
+    "name_en": null,
+    "name_norm": "麻辣香锅",
+    "food_type": "dish",
+    "dish_style": "小吃",
+    "region": "大陆",
+    "cuisine": "川",
+    "category_l1": "小吃",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 350.0,
+    "common_portion_g": 350.0,
+    "nutrition": {
+      "calories": 180,
+      "protein_g": 9.0,
+      "fat_g": 12.0,
+      "carb_g": 9.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "丸子",
+      "藕片",
+      "午餐肉",
+      "青菜",
+      "干辣椒"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏辣"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "麻辣烫",
+    "name_zh": "麻辣烫",
+    "name_en": null,
+    "name_norm": "麻辣烫",
+    "food_type": "dish",
+    "dish_style": "小吃",
+    "region": "大陆",
+    "cuisine": "川",
+    "category_l1": "小吃",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 400.0,
+    "common_portion_g": 400.0,
+    "nutrition": {
+      "calories": 120,
+      "protein_g": 6.0,
+      "fat_g": 6.5,
+      "carb_g": 10.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "丸子",
+      "豆腐",
+      "青菜",
+      "粉丝"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏辣"
+    ],
+    "dietary_tags": [],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "关东煮",
+    "name_zh": "关东煮",
+    "name_en": null,
+    "name_norm": "关东煮",
+    "food_type": "dish",
+    "dish_style": "小吃",
+    "region": "日本",
+    "cuisine": "日式",
+    "category_l1": "小吃",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 350.0,
+    "common_portion_g": 350.0,
+    "nutrition": {
+      "calories": 80,
+      "protein_g": 5.0,
+      "fat_g": 3.0,
+      "carb_g": 8.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "鱼豆腐",
+      "萝卜",
+      "昆布"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner",
+      "snack"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "海鲜"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "寿司",
+    "name_zh": "寿司",
+    "name_en": null,
+    "name_norm": "寿司",
+    "food_type": "dish",
+    "dish_style": "小吃",
+    "region": "日本",
+    "cuisine": "日式",
+    "category_l1": "小吃",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 250.0,
+    "common_portion_g": 250.0,
+    "nutrition": {
+      "calories": 143,
+      "protein_g": 6.0,
+      "fat_g": 3.0,
+      "carb_g": 23.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "米饭",
+      "海苔",
+      "三文鱼",
+      "黄瓜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "海鲜"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "汉堡",
+    "name_zh": "汉堡",
+    "name_en": null,
+    "name_norm": "汉堡",
+    "food_type": "dish",
+    "dish_style": "小吃",
+    "region": "通用",
+    "cuisine": "西式",
+    "category_l1": "小吃",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 220.0,
+    "common_portion_g": 220.0,
+    "nutrition": {
+      "calories": 295,
+      "protein_g": 15.0,
+      "fat_g": 14.0,
+      "carb_g": 28.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "面包胚",
+      "牛肉饼",
+      "生菜",
+      "奶酪"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [
+      "含乳"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "披萨",
+    "name_zh": "披萨",
+    "name_en": null,
+    "name_norm": "披萨",
+    "food_type": "dish",
+    "dish_style": "小吃",
+    "region": "通用",
+    "cuisine": "西式",
+    "category_l1": "小吃",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 266,
+      "protein_g": 11.0,
+      "fat_g": 10.0,
+      "carb_g": 33.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "饼底",
+      "芝士",
+      "番茄酱",
+      "火腿"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [
+      "含乳"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "炸薯条",
+    "name_zh": "炸薯条",
+    "name_en": null,
+    "name_norm": "炸薯条",
+    "food_type": "dish",
+    "dish_style": "小吃",
+    "region": "通用",
+    "cuisine": "西式",
+    "category_l1": "小吃",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 150.0,
+    "common_portion_g": 150.0,
+    "nutrition": {
+      "calories": 312,
+      "protein_g": 3.4,
+      "fat_g": 15.0,
+      "carb_g": 41.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "土豆",
+      "食用油"
+    ],
+    "suitable_meals": [
+      "snack"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "油条",
+    "name_zh": "油条",
+    "name_en": null,
+    "name_norm": "油条",
+    "food_type": "dish",
+    "dish_style": "早餐",
+    "region": "大陆",
+    "cuisine": "北方",
+    "category_l1": "小吃",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 100.0,
+    "common_portion_g": 100.0,
+    "nutrition": {
+      "calories": 388,
+      "protein_g": 6.9,
+      "fat_g": 17.6,
+      "carb_g": 51.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "面粉",
+      "食用油"
+    ],
+    "suitable_meals": [
+      "breakfast"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "苹果",
+    "name_zh": "苹果",
+    "name_en": null,
+    "name_norm": "苹果",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "水果",
+    "category_l2": null,
+    "state": "raw",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 53,
+      "protein_g": 0.4,
+      "fat_g": 0.2,
+      "carb_g": 13.7,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "苹果"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "snack"
+    ],
+    "taste_tags": [
+      "偏甜"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "香蕉",
+    "name_zh": "香蕉",
+    "name_en": null,
+    "name_norm": "香蕉",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "水果",
+    "category_l2": null,
+    "state": "raw",
+    "edible_ratio": 1.0,
+    "serving_g": 150.0,
+    "common_portion_g": 150.0,
+    "nutrition": {
+      "calories": 93,
+      "protein_g": 1.4,
+      "fat_g": 0.2,
+      "carb_g": 22.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "香蕉"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "snack"
+    ],
+    "taste_tags": [
+      "偏甜"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "西瓜",
+    "name_zh": "西瓜",
+    "name_en": null,
+    "name_norm": "西瓜",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "水果",
+    "category_l2": null,
+    "state": "raw",
+    "edible_ratio": 1.0,
+    "serving_g": 300.0,
+    "common_portion_g": 300.0,
+    "nutrition": {
+      "calories": 31,
+      "protein_g": 0.5,
+      "fat_g": 0.3,
+      "carb_g": 6.8,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "西瓜"
+    ],
+    "suitable_meals": [
+      "snack"
+    ],
+    "taste_tags": [
+      "偏甜"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "葡萄",
+    "name_zh": "葡萄",
+    "name_en": null,
+    "name_norm": "葡萄",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "水果",
+    "category_l2": null,
+    "state": "raw",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 45,
+      "protein_g": 0.4,
+      "fat_g": 0.3,
+      "carb_g": 10.3,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "葡萄"
+    ],
+    "suitable_meals": [
+      "snack"
+    ],
+    "taste_tags": [
+      "偏甜",
+      "偏酸"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "橙子",
+    "name_zh": "橙子",
+    "name_en": null,
+    "name_norm": "橙子",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "水果",
+    "category_l2": null,
+    "state": "raw",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 48,
+      "protein_g": 0.8,
+      "fat_g": 0.2,
+      "carb_g": 11.1,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "橙子"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "snack"
+    ],
+    "taste_tags": [
+      "偏酸",
+      "偏甜"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "珍珠奶茶",
+    "name_zh": "珍珠奶茶",
+    "name_en": null,
+    "name_norm": "珍珠奶茶",
+    "food_type": "beverage",
+    "dish_style": "饮品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "饮品",
+    "category_l2": null,
+    "state": "ready_to_eat",
+    "edible_ratio": 1.0,
+    "serving_g": 500.0,
+    "common_portion_g": 500.0,
+    "nutrition": {
+      "calories": 120,
+      "protein_g": 1.2,
+      "fat_g": 3.5,
+      "carb_g": 21.0,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "红茶",
+      "牛奶",
+      "珍珠",
+      "糖"
+    ],
+    "suitable_meals": [
+      "snack"
+    ],
+    "taste_tags": [
+      "偏甜"
+    ],
+    "dietary_tags": [
+      "含乳"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "legacy_json",
+    "source_id": "可乐",
+    "name_zh": "可乐",
+    "name_en": null,
+    "name_norm": "可乐",
+    "food_type": "beverage",
+    "dish_style": "饮品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "饮品",
+    "category_l2": null,
+    "state": "ready_to_eat",
+    "edible_ratio": 1.0,
+    "serving_g": 330.0,
+    "common_portion_g": 330.0,
+    "nutrition": {
+      "calories": 43,
+      "protein_g": 0.0,
+      "fat_g": 0.0,
+      "carb_g": 10.6,
+      "fiber_g": null,
+      "sodium_mg": null,
+      "sugar_g": null
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "碳酸水",
+      "糖"
+    ],
+    "suitable_meals": [
+      "snack"
+    ],
+    "taste_tags": [
+      "偏甜"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "legacy_seed",
+    "license": "internal-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "葱烧海参",
+    "name_zh": "葱烧海参",
+    "name_en": null,
+    "name_norm": "葱烧海参",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "鲁",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 95,
+      "protein_g": 12.0,
+      "fat_g": 3.5,
+      "carb_g": 3.0,
+      "fiber_g": 0.5,
+      "sodium_mg": 700,
+      "sugar_g": 1.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "海参",
+      "大葱",
+      "酱油"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [
+      "海鲜"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "九转大肠",
+    "name_zh": "九转大肠",
+    "name_en": null,
+    "name_norm": "九转大肠",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "鲁",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 310,
+      "protein_g": 10.0,
+      "fat_g": 26.0,
+      "carb_g": 9.0,
+      "fiber_g": 0.2,
+      "sodium_mg": 800,
+      "sugar_g": 6.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "猪大肠",
+      "糖",
+      "醋",
+      "酱油"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏甜",
+      "偏酸"
+    ],
+    "dietary_tags": [],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "把子肉",
+    "name_zh": "把子肉",
+    "name_en": null,
+    "name_norm": "把子肉",
+    "food_type": "dish",
+    "dish_style": "家常菜",
+    "region": "大陆",
+    "cuisine": "鲁",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 150.0,
+    "common_portion_g": 150.0,
+    "nutrition": {
+      "calories": 360,
+      "protein_g": 12.0,
+      "fat_g": 32.0,
+      "carb_g": 5.0,
+      "fiber_g": 0.1,
+      "sodium_mg": 900,
+      "sugar_g": 4.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "五花肉",
+      "酱油",
+      "冰糖"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏咸",
+      "偏甜"
+    ],
+    "dietary_tags": [],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "白切鸡",
+    "name_zh": "白切鸡",
+    "name_en": null,
+    "name_norm": "白切鸡",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "粤",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 150.0,
+    "common_portion_g": 150.0,
+    "nutrition": {
+      "calories": 180,
+      "protein_g": 20.0,
+      "fat_g": 10.0,
+      "carb_g": 0.5,
+      "fiber_g": 0.0,
+      "sodium_mg": 450,
+      "sugar_g": 0.5
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "鸡",
+      "姜",
+      "葱"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "煲仔饭",
+    "name_zh": "煲仔饭",
+    "name_en": null,
+    "name_norm": "煲仔饭",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "粤",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 400.0,
+    "common_portion_g": 400.0,
+    "nutrition": {
+      "calories": 175,
+      "protein_g": 7.0,
+      "fat_g": 6.0,
+      "carb_g": 24.0,
+      "fiber_g": 0.8,
+      "sodium_mg": 500,
+      "sugar_g": 2.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "米饭",
+      "腊肠",
+      "青菜",
+      "酱油"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "叉烧",
+    "name_zh": "叉烧",
+    "name_en": null,
+    "name_norm": "叉烧",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "粤",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 150.0,
+    "common_portion_g": 150.0,
+    "nutrition": {
+      "calories": 260,
+      "protein_g": 18.0,
+      "fat_g": 15.0,
+      "carb_g": 12.0,
+      "fiber_g": 0.2,
+      "sodium_mg": 800,
+      "sugar_g": 10.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "猪肉",
+      "叉烧酱",
+      "蜂蜜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏甜"
+    ],
+    "dietary_tags": [],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "狮子头",
+    "name_zh": "狮子头",
+    "name_en": null,
+    "name_norm": "狮子头",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "苏",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 240,
+      "protein_g": 12.0,
+      "fat_g": 19.0,
+      "carb_g": 7.0,
+      "fiber_g": 0.5,
+      "sodium_mg": 600,
+      "sugar_g": 2.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "猪肉",
+      "荸荠",
+      "鸡蛋",
+      "葱姜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "盐水鸭",
+    "name_zh": "盐水鸭",
+    "name_en": null,
+    "name_norm": "盐水鸭",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "苏",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 150.0,
+    "common_portion_g": 150.0,
+    "nutrition": {
+      "calories": 220,
+      "protein_g": 18.0,
+      "fat_g": 16.0,
+      "carb_g": 1.0,
+      "fiber_g": 0.0,
+      "sodium_mg": 1000,
+      "sugar_g": 0.5
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "鸭肉",
+      "盐",
+      "花椒"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "松鼠鳜鱼",
+    "name_zh": "松鼠鳜鱼",
+    "name_en": null,
+    "name_norm": "松鼠鳜鱼",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "苏",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 250.0,
+    "common_portion_g": 250.0,
+    "nutrition": {
+      "calories": 190,
+      "protein_g": 15.0,
+      "fat_g": 9.0,
+      "carb_g": 12.0,
+      "fiber_g": 0.5,
+      "sodium_mg": 600,
+      "sugar_g": 8.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "鳜鱼",
+      "番茄酱",
+      "糖",
+      "淀粉"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏甜",
+      "偏酸"
+    ],
+    "dietary_tags": [
+      "海鲜"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "苏式汤面",
+    "name_zh": "苏式汤面",
+    "name_en": null,
+    "name_norm": "苏式汤面",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "苏",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 400.0,
+    "common_portion_g": 400.0,
+    "nutrition": {
+      "calories": 115,
+      "protein_g": 5.0,
+      "fat_g": 3.0,
+      "carb_g": 18.0,
+      "fiber_g": 0.8,
+      "sodium_mg": 500,
+      "sugar_g": 1.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "面条",
+      "猪骨汤",
+      "青菜",
+      "葱"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "lunch"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "东坡肉",
+    "name_zh": "东坡肉",
+    "name_en": null,
+    "name_norm": "东坡肉",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "浙",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 150.0,
+    "common_portion_g": 150.0,
+    "nutrition": {
+      "calories": 420,
+      "protein_g": 12.0,
+      "fat_g": 38.0,
+      "carb_g": 7.0,
+      "fiber_g": 0.1,
+      "sodium_mg": 700,
+      "sugar_g": 6.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "五花肉",
+      "黄酒",
+      "酱油",
+      "冰糖"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏甜"
+    ],
+    "dietary_tags": [],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "西湖醋鱼",
+    "name_zh": "西湖醋鱼",
+    "name_en": null,
+    "name_norm": "西湖醋鱼",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "浙",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 250.0,
+    "common_portion_g": 250.0,
+    "nutrition": {
+      "calories": 115,
+      "protein_g": 15.0,
+      "fat_g": 3.5,
+      "carb_g": 5.0,
+      "fiber_g": 0.3,
+      "sodium_mg": 600,
+      "sugar_g": 4.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "草鱼",
+      "醋",
+      "糖",
+      "姜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏酸",
+      "偏甜"
+    ],
+    "dietary_tags": [
+      "海鲜"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "龙井虾仁",
+    "name_zh": "龙井虾仁",
+    "name_en": null,
+    "name_norm": "龙井虾仁",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "浙",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 110,
+      "protein_g": 18.0,
+      "fat_g": 3.0,
+      "carb_g": 2.0,
+      "fiber_g": 0.2,
+      "sodium_mg": 400,
+      "sugar_g": 0.5
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "虾仁",
+      "龙井茶",
+      "蛋清"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "海鲜"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "片儿川",
+    "name_zh": "片儿川",
+    "name_en": null,
+    "name_norm": "片儿川",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "浙",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 400.0,
+    "common_portion_g": 400.0,
+    "nutrition": {
+      "calories": 110,
+      "protein_g": 6.0,
+      "fat_g": 3.0,
+      "carb_g": 16.0,
+      "fiber_g": 0.8,
+      "sodium_mg": 550,
+      "sugar_g": 1.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "面条",
+      "雪菜",
+      "笋",
+      "瘦肉"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "佛跳墙",
+    "name_zh": "佛跳墙",
+    "name_en": null,
+    "name_norm": "佛跳墙",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "闽",
+    "category_l1": "汤粥",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 300.0,
+    "common_portion_g": 300.0,
+    "nutrition": {
+      "calories": 155,
+      "protein_g": 12.0,
+      "fat_g": 9.0,
+      "carb_g": 6.0,
+      "fiber_g": 0.5,
+      "sodium_mg": 700,
+      "sugar_g": 2.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "鲍鱼",
+      "海参",
+      "鸡",
+      "香菇",
+      "高汤"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡",
+      "偏咸"
+    ],
+    "dietary_tags": [
+      "海鲜"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "荔枝肉",
+    "name_zh": "荔枝肉",
+    "name_en": null,
+    "name_norm": "荔枝肉",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "闽",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 215,
+      "protein_g": 10.0,
+      "fat_g": 12.0,
+      "carb_g": 18.0,
+      "fiber_g": 0.5,
+      "sodium_mg": 600,
+      "sugar_g": 9.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "猪肉",
+      "荸荠",
+      "番茄酱",
+      "糖"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏甜",
+      "偏酸"
+    ],
+    "dietary_tags": [],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "海蛎煎",
+    "name_zh": "海蛎煎",
+    "name_en": null,
+    "name_norm": "海蛎煎",
+    "food_type": "dish",
+    "dish_style": "小吃",
+    "region": "大陆",
+    "cuisine": "闽",
+    "category_l1": "小吃",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 185,
+      "protein_g": 8.0,
+      "fat_g": 12.0,
+      "carb_g": 13.0,
+      "fiber_g": 0.5,
+      "sodium_mg": 650,
+      "sugar_g": 2.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "海蛎",
+      "鸡蛋",
+      "红薯粉",
+      "葱"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner",
+      "snack"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [
+      "海鲜"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "沙茶面",
+    "name_zh": "沙茶面",
+    "name_en": null,
+    "name_norm": "沙茶面",
+    "food_type": "dish",
+    "dish_style": "小吃",
+    "region": "大陆",
+    "cuisine": "闽",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 400.0,
+    "common_portion_g": 400.0,
+    "nutrition": {
+      "calories": 130,
+      "protein_g": 6.0,
+      "fat_g": 5.0,
+      "carb_g": 17.0,
+      "fiber_g": 1.0,
+      "sodium_mg": 700,
+      "sugar_g": 3.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "面条",
+      "沙茶酱",
+      "瘦肉",
+      "豆芽"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [
+      "海鲜"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "剁椒鱼头",
+    "name_zh": "剁椒鱼头",
+    "name_en": null,
+    "name_norm": "剁椒鱼头",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "湘",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 300.0,
+    "common_portion_g": 300.0,
+    "nutrition": {
+      "calories": 110,
+      "protein_g": 15.0,
+      "fat_g": 4.0,
+      "carb_g": 3.0,
+      "fiber_g": 0.5,
+      "sodium_mg": 800,
+      "sugar_g": 1.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "鱼头",
+      "剁椒",
+      "姜",
+      "葱"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏辣"
+    ],
+    "dietary_tags": [
+      "海鲜"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "辣椒炒肉",
+    "name_zh": "辣椒炒肉",
+    "name_en": null,
+    "name_norm": "辣椒炒肉",
+    "food_type": "dish",
+    "dish_style": "家常菜",
+    "region": "大陆",
+    "cuisine": "湘",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 250.0,
+    "common_portion_g": 250.0,
+    "nutrition": {
+      "calories": 180,
+      "protein_g": 10.0,
+      "fat_g": 14.0,
+      "carb_g": 4.0,
+      "fiber_g": 1.0,
+      "sodium_mg": 700,
+      "sugar_g": 1.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "猪肉",
+      "青椒",
+      "辣椒",
+      "蒜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏辣"
+    ],
+    "dietary_tags": [],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "小炒黄牛肉",
+    "name_zh": "小炒黄牛肉",
+    "name_en": null,
+    "name_norm": "小炒黄牛肉",
+    "food_type": "dish",
+    "dish_style": "家常菜",
+    "region": "大陆",
+    "cuisine": "湘",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 250.0,
+    "common_portion_g": 250.0,
+    "nutrition": {
+      "calories": 150,
+      "protein_g": 15.0,
+      "fat_g": 8.0,
+      "carb_g": 3.0,
+      "fiber_g": 0.8,
+      "sodium_mg": 700,
+      "sugar_g": 1.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "牛肉",
+      "小米椒",
+      "蒜",
+      "香菜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏辣"
+    ],
+    "dietary_tags": [],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "口味虾",
+    "name_zh": "口味虾",
+    "name_en": null,
+    "name_norm": "口味虾",
+    "food_type": "dish",
+    "dish_style": "小吃",
+    "region": "大陆",
+    "cuisine": "湘",
+    "category_l1": "小吃",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 300.0,
+    "common_portion_g": 300.0,
+    "nutrition": {
+      "calories": 130,
+      "protein_g": 16.0,
+      "fat_g": 5.0,
+      "carb_g": 5.0,
+      "fiber_g": 0.5,
+      "sodium_mg": 900,
+      "sugar_g": 2.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "小龙虾",
+      "辣椒",
+      "花椒",
+      "啤酒"
+    ],
+    "suitable_meals": [
+      "dinner",
+      "snack"
+    ],
+    "taste_tags": [
+      "偏辣"
+    ],
+    "dietary_tags": [
+      "海鲜"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "臭鳜鱼",
+    "name_zh": "臭鳜鱼",
+    "name_en": null,
+    "name_norm": "臭鳜鱼",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "徽",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 250.0,
+    "common_portion_g": 250.0,
+    "nutrition": {
+      "calories": 140,
+      "protein_g": 18.0,
+      "fat_g": 7.0,
+      "carb_g": 2.0,
+      "fiber_g": 0.3,
+      "sodium_mg": 900,
+      "sugar_g": 1.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "鳜鱼",
+      "盐",
+      "姜",
+      "辣椒"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [
+      "海鲜"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "毛豆腐",
+    "name_zh": "毛豆腐",
+    "name_en": null,
+    "name_norm": "毛豆腐",
+    "food_type": "dish",
+    "dish_style": "小吃",
+    "region": "大陆",
+    "cuisine": "徽",
+    "category_l1": "素菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 130,
+      "protein_g": 10.0,
+      "fat_g": 8.0,
+      "carb_g": 4.0,
+      "fiber_g": 0.5,
+      "sodium_mg": 600,
+      "sugar_g": 1.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "豆腐",
+      "毛霉菌",
+      "菜籽油",
+      "辣椒"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "笋干烧肉",
+    "name_zh": "笋干烧肉",
+    "name_en": null,
+    "name_norm": "笋干烧肉",
+    "food_type": "dish",
+    "dish_style": "家常菜",
+    "region": "大陆",
+    "cuisine": "徽",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 250.0,
+    "common_portion_g": 250.0,
+    "nutrition": {
+      "calories": 280,
+      "protein_g": 10.0,
+      "fat_g": 22.0,
+      "carb_g": 10.0,
+      "fiber_g": 2.0,
+      "sodium_mg": 800,
+      "sugar_g": 3.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "五花肉",
+      "笋干",
+      "酱油",
+      "冰糖"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏咸",
+      "偏甜"
+    ],
+    "dietary_tags": [],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "徽州一品锅",
+    "name_zh": "徽州一品锅",
+    "name_en": null,
+    "name_norm": "徽州一品锅",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "徽",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 350.0,
+    "common_portion_g": 350.0,
+    "nutrition": {
+      "calories": 160,
+      "protein_g": 9.0,
+      "fat_g": 10.0,
+      "carb_g": 8.0,
+      "fiber_g": 1.5,
+      "sodium_mg": 700,
+      "sugar_g": 2.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "五花肉",
+      "豆腐",
+      "笋干",
+      "青菜",
+      "丸子"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏咸"
+    ],
+    "dietary_tags": [],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "酸菜鱼",
+    "name_zh": "酸菜鱼",
+    "name_en": null,
+    "name_norm": "酸菜鱼",
+    "food_type": "dish",
+    "dish_style": "餐馆菜",
+    "region": "大陆",
+    "cuisine": "川",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 350.0,
+    "common_portion_g": 350.0,
+    "nutrition": {
+      "calories": 105,
+      "protein_g": 13.0,
+      "fat_g": 4.0,
+      "carb_g": 3.0,
+      "fiber_g": 0.5,
+      "sodium_mg": 800,
+      "sugar_g": 1.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "草鱼",
+      "酸菜",
+      "辣椒",
+      "花椒"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏辣",
+      "偏酸"
+    ],
+    "dietary_tags": [
+      "海鲜"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "鱼香茄子",
+    "name_zh": "鱼香茄子",
+    "name_en": null,
+    "name_norm": "鱼香茄子",
+    "food_type": "dish",
+    "dish_style": "家常菜",
+    "region": "大陆",
+    "cuisine": "川",
+    "category_l1": "素菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 250.0,
+    "common_portion_g": 250.0,
+    "nutrition": {
+      "calories": 130,
+      "protein_g": 3.0,
+      "fat_g": 8.0,
+      "carb_g": 12.0,
+      "fiber_g": 2.0,
+      "sodium_mg": 700,
+      "sugar_g": 5.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "茄子",
+      "豆瓣酱",
+      "糖",
+      "醋",
+      "蒜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏甜",
+      "偏辣"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "鸡胸肉沙拉",
+    "name_zh": "鸡胸肉沙拉",
+    "name_en": null,
+    "name_norm": "鸡胸肉沙拉",
+    "food_type": "light_meal",
+    "dish_style": "轻食",
+    "region": "通用",
+    "cuisine": "轻食",
+    "category_l1": "素菜",
+    "category_l2": null,
+    "state": "ready_to_eat",
+    "edible_ratio": 1.0,
+    "serving_g": 300.0,
+    "common_portion_g": 300.0,
+    "nutrition": {
+      "calories": 110,
+      "protein_g": 12.0,
+      "fat_g": 4.0,
+      "carb_g": 6.0,
+      "fiber_g": 2.0,
+      "sodium_mg": 350,
+      "sugar_g": 2.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "鸡胸肉",
+      "生菜",
+      "番茄",
+      "黄瓜",
+      "橄榄油"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "金枪鱼藜麦碗",
+    "name_zh": "金枪鱼藜麦碗",
+    "name_en": null,
+    "name_norm": "金枪鱼藜麦碗",
+    "food_type": "light_meal",
+    "dish_style": "轻食",
+    "region": "通用",
+    "cuisine": "轻食",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "ready_to_eat",
+    "edible_ratio": 1.0,
+    "serving_g": 350.0,
+    "common_portion_g": 350.0,
+    "nutrition": {
+      "calories": 140,
+      "protein_g": 10.0,
+      "fat_g": 5.0,
+      "carb_g": 15.0,
+      "fiber_g": 2.5,
+      "sodium_mg": 400,
+      "sugar_g": 1.5
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "金枪鱼",
+      "藜麦",
+      "玉米",
+      "黄瓜",
+      "橄榄油"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "海鲜"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "牛油果鸡胸沙拉",
+    "name_zh": "牛油果鸡胸沙拉",
+    "name_en": null,
+    "name_norm": "牛油果鸡胸沙拉",
+    "food_type": "light_meal",
+    "dish_style": "轻食",
+    "region": "通用",
+    "cuisine": "轻食",
+    "category_l1": "素菜",
+    "category_l2": null,
+    "state": "ready_to_eat",
+    "edible_ratio": 1.0,
+    "serving_g": 300.0,
+    "common_portion_g": 300.0,
+    "nutrition": {
+      "calories": 150,
+      "protein_g": 11.0,
+      "fat_g": 8.0,
+      "carb_g": 8.0,
+      "fiber_g": 3.0,
+      "sodium_mg": 350,
+      "sugar_g": 2.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "鸡胸肉",
+      "牛油果",
+      "生菜",
+      "番茄",
+      "橄榄油"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "希腊酸奶水果杯",
+    "name_zh": "希腊酸奶水果杯",
+    "name_en": null,
+    "name_norm": "希腊酸奶水果杯",
+    "food_type": "light_meal",
+    "dish_style": "轻食",
+    "region": "通用",
+    "cuisine": "轻食",
+    "category_l1": "早餐",
+    "category_l2": null,
+    "state": "ready_to_eat",
+    "edible_ratio": 1.0,
+    "serving_g": 250.0,
+    "common_portion_g": 250.0,
+    "nutrition": {
+      "calories": 90,
+      "protein_g": 6.0,
+      "fat_g": 2.0,
+      "carb_g": 12.0,
+      "fiber_g": 1.5,
+      "sodium_mg": 60,
+      "sugar_g": 9.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "希腊酸奶",
+      "蓝莓",
+      "草莓",
+      "燕麦"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "snack"
+    ],
+    "taste_tags": [
+      "偏甜"
+    ],
+    "dietary_tags": [
+      "含乳"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "全麦鸡胸三明治",
+    "name_zh": "全麦鸡胸三明治",
+    "name_en": null,
+    "name_norm": "全麦鸡胸三明治",
+    "food_type": "light_meal",
+    "dish_style": "轻食",
+    "region": "通用",
+    "cuisine": "轻食",
+    "category_l1": "早餐",
+    "category_l2": null,
+    "state": "ready_to_eat",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 180,
+      "protein_g": 14.0,
+      "fat_g": 5.0,
+      "carb_g": 20.0,
+      "fiber_g": 3.0,
+      "sodium_mg": 500,
+      "sugar_g": 3.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "全麦面包",
+      "鸡胸肉",
+      "生菜",
+      "番茄"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "lunch"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "荞麦面沙拉",
+    "name_zh": "荞麦面沙拉",
+    "name_en": null,
+    "name_norm": "荞麦面沙拉",
+    "food_type": "light_meal",
+    "dish_style": "轻食",
+    "region": "通用",
+    "cuisine": "轻食",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "ready_to_eat",
+    "edible_ratio": 1.0,
+    "serving_g": 300.0,
+    "common_portion_g": 300.0,
+    "nutrition": {
+      "calories": 130,
+      "protein_g": 5.0,
+      "fat_g": 4.0,
+      "carb_g": 20.0,
+      "fiber_g": 2.0,
+      "sodium_mg": 400,
+      "sugar_g": 2.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "荞麦面",
+      "黄瓜",
+      "胡萝卜",
+      "芝麻",
+      "醋"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "水煮蛋",
+    "name_zh": "水煮蛋",
+    "name_en": null,
+    "name_norm": "水煮蛋",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "早餐",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 50.0,
+    "common_portion_g": 50.0,
+    "nutrition": {
+      "calories": 155,
+      "protein_g": 13.0,
+      "fat_g": 11.0,
+      "carb_g": 1.1,
+      "fiber_g": 0.0,
+      "sodium_mg": 124,
+      "sugar_g": 1.1
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "鸡蛋"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "snack"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "鸡胸肉(熟)",
+    "name_zh": "鸡胸肉(熟)",
+    "name_en": null,
+    "name_norm": "鸡胸肉(熟)",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 100.0,
+    "common_portion_g": 100.0,
+    "nutrition": {
+      "calories": 165,
+      "protein_g": 31.0,
+      "fat_g": 3.6,
+      "carb_g": 0.0,
+      "fiber_g": 0.0,
+      "sodium_mg": 74,
+      "sugar_g": 0.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "鸡胸肉"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner",
+      "snack"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "西兰花(熟)",
+    "name_zh": "西兰花(熟)",
+    "name_en": null,
+    "name_norm": "西兰花(熟)",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "素菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 150.0,
+    "common_portion_g": 150.0,
+    "nutrition": {
+      "calories": 35,
+      "protein_g": 2.4,
+      "fat_g": 0.4,
+      "carb_g": 7.0,
+      "fiber_g": 3.3,
+      "sodium_mg": 41,
+      "sugar_g": 1.4
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "西兰花"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "生菜",
+    "name_zh": "生菜",
+    "name_en": null,
+    "name_norm": "生菜",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "素菜",
+    "category_l2": null,
+    "state": "raw",
+    "edible_ratio": 1.0,
+    "serving_g": 100.0,
+    "common_portion_g": 100.0,
+    "nutrition": {
+      "calories": 15,
+      "protein_g": 1.4,
+      "fat_g": 0.2,
+      "carb_g": 2.9,
+      "fiber_g": 1.3,
+      "sodium_mg": 28,
+      "sugar_g": 0.8
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "生菜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "黄瓜",
+    "name_zh": "黄瓜",
+    "name_en": null,
+    "name_norm": "黄瓜",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "素菜",
+    "category_l2": null,
+    "state": "raw",
+    "edible_ratio": 1.0,
+    "serving_g": 150.0,
+    "common_portion_g": 150.0,
+    "nutrition": {
+      "calories": 16,
+      "protein_g": 0.7,
+      "fat_g": 0.1,
+      "carb_g": 3.6,
+      "fiber_g": 0.5,
+      "sodium_mg": 2,
+      "sugar_g": 1.7
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "黄瓜"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner",
+      "snack"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "番茄",
+    "name_zh": "番茄",
+    "name_en": null,
+    "name_norm": "番茄",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "素菜",
+    "category_l2": null,
+    "state": "raw",
+    "edible_ratio": 1.0,
+    "serving_g": 150.0,
+    "common_portion_g": 150.0,
+    "nutrition": {
+      "calories": 18,
+      "protein_g": 0.9,
+      "fat_g": 0.2,
+      "carb_g": 3.9,
+      "fiber_g": 1.2,
+      "sodium_mg": 5,
+      "sugar_g": 2.6
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "番茄"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "偏酸"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "土豆(熟)",
+    "name_zh": "土豆(熟)",
+    "name_en": null,
+    "name_norm": "土豆(熟)",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 150.0,
+    "common_portion_g": 150.0,
+    "nutrition": {
+      "calories": 87,
+      "protein_g": 1.9,
+      "fat_g": 0.1,
+      "carb_g": 20.0,
+      "fiber_g": 1.8,
+      "sodium_mg": 5,
+      "sugar_g": 0.9
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "土豆"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "红薯(熟)",
+    "name_zh": "红薯(熟)",
+    "name_en": null,
+    "name_norm": "红薯(熟)",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 150.0,
+    "common_portion_g": 150.0,
+    "nutrition": {
+      "calories": 90,
+      "protein_g": 1.6,
+      "fat_g": 0.2,
+      "carb_g": 20.7,
+      "fiber_g": 3.0,
+      "sodium_mg": 36,
+      "sugar_g": 6.5
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "红薯"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "snack"
+    ],
+    "taste_tags": [
+      "偏甜"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "玉米(熟)",
+    "name_zh": "玉米(熟)",
+    "name_en": null,
+    "name_norm": "玉米(熟)",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "主食",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 106,
+      "protein_g": 4.0,
+      "fat_g": 1.2,
+      "carb_g": 22.8,
+      "fiber_g": 2.4,
+      "sodium_mg": 1,
+      "sugar_g": 4.5
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "玉米"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "snack"
+    ],
+    "taste_tags": [
+      "偏甜"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "无糖酸奶",
+    "name_zh": "无糖酸奶",
+    "name_en": null,
+    "name_norm": "无糖酸奶",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "早餐",
+    "category_l2": null,
+    "state": "ready_to_eat",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 60,
+      "protein_g": 3.5,
+      "fat_g": 3.2,
+      "carb_g": 4.5,
+      "fiber_g": 0.0,
+      "sodium_mg": 50,
+      "sugar_g": 4.5
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "牛奶",
+      "乳酸菌"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "snack"
+    ],
+    "taste_tags": [
+      "偏酸"
+    ],
+    "dietary_tags": [
+      "含乳"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "北豆腐",
+    "name_zh": "北豆腐",
+    "name_en": null,
+    "name_norm": "北豆腐",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "素菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 200.0,
+    "common_portion_g": 200.0,
+    "nutrition": {
+      "calories": 116,
+      "protein_g": 12.2,
+      "fat_g": 6.5,
+      "carb_g": 3.0,
+      "fiber_g": 0.5,
+      "sodium_mg": 7,
+      "sugar_g": 0.5
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "黄豆",
+      "卤水"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "三文鱼(熟)",
+    "name_zh": "三文鱼(熟)",
+    "name_en": null,
+    "name_norm": "三文鱼(熟)",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "荤菜",
+    "category_l2": null,
+    "state": "cooked",
+    "edible_ratio": 1.0,
+    "serving_g": 150.0,
+    "common_portion_g": 150.0,
+    "nutrition": {
+      "calories": 208,
+      "protein_g": 20.0,
+      "fat_g": 13.0,
+      "carb_g": 0.0,
+      "fiber_g": 0.0,
+      "sodium_mg": 59,
+      "sugar_g": 0.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "三文鱼"
+    ],
+    "suitable_meals": [
+      "lunch",
+      "dinner"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "海鲜"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "牛油果",
+    "name_zh": "牛油果",
+    "name_en": null,
+    "name_norm": "牛油果",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "水果",
+    "category_l2": null,
+    "state": "raw",
+    "edible_ratio": 1.0,
+    "serving_g": 100.0,
+    "common_portion_g": 100.0,
+    "nutrition": {
+      "calories": 160,
+      "protein_g": 2.0,
+      "fat_g": 15.0,
+      "carb_g": 9.0,
+      "fiber_g": 7.0,
+      "sodium_mg": 7,
+      "sugar_g": 0.7
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "牛油果"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "snack"
+    ],
+    "taste_tags": [
+      "清淡"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  },
+  {
+    "source": "app_seed",
+    "source_id": "蓝莓",
+    "name_zh": "蓝莓",
+    "name_en": null,
+    "name_norm": "蓝莓",
+    "food_type": "single_food",
+    "dish_style": "单品",
+    "region": "通用",
+    "cuisine": "通用",
+    "category_l1": "水果",
+    "category_l2": null,
+    "state": "raw",
+    "edible_ratio": 1.0,
+    "serving_g": 100.0,
+    "common_portion_g": 100.0,
+    "nutrition": {
+      "calories": 57,
+      "protein_g": 0.7,
+      "fat_g": 0.3,
+      "carb_g": 14.5,
+      "fiber_g": 2.4,
+      "sodium_mg": 1,
+      "sugar_g": 10.0
+    },
+    "extra_nutrients": null,
+    "ingredients": [
+      "蓝莓"
+    ],
+    "suitable_meals": [
+      "breakfast",
+      "snack"
+    ],
+    "taste_tags": [
+      "偏甜"
+    ],
+    "dietary_tags": [
+      "素食"
+    ],
+    "source_type": "seed_estimate",
+    "license": "app-seed",
+    "source_url": null,
+    "version": "1",
+    "verified": false,
+    "active": true
+  }
+]

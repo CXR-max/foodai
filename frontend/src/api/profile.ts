@@ -4,6 +4,7 @@ import { get, post, put } from './http'
 export interface Profile {
   height_cm: number | null
   weight_kg: number | null
+  body_fat_pct: number | null
   age: number | null
   gender: string | null
   activity_level: string

@@ -12,6 +12,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    host: '127.0.0.1', // 固定绑定 IPv4，避免某些工具/浏览器访问 127.0.0.1 时连不上
     // 允许通过内网穿透的公网域名访问（vite 默认会拦截陌生 Host 头）
     allowedHosts: true,
     proxy: {

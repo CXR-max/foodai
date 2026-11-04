@@ -1,0 +1,2 @@
+name_zh,name_en,category_l1,category_l2,food_type,dish_style,region,cuisine,state,edible_ratio,serving_g,common_portion_g,energy_kcal,protein_g,fat_g,carb_g,fiber_g,sodium_mg,sugar_g,ingredients,taste_tags,dietary_tags,suitable_meals,source_id,source_url,verified,active
+示例菜品,Example dish,荤菜,,dish,家常菜,大陆,家常菜,cooked,1,200,200,150,12,8,6,1,500,1,猪肉|青椒,偏辣,,lunch|dinner,DEMO-001,,false,false

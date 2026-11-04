@@ -38,6 +38,21 @@ class OpenAICompatProvider(LLMProvider):
             timeout=settings.LLM_TIMEOUT,
             max_retries=0,
         )
+        # 本地文字模型（Ollama）连不上时，自动切云端同一份 key（省得答辩现场翻车）
+        self.text_fallback_client = None
+        self.text_fallback_model = ""
+        if (
+            settings.TEXT_PROVIDER.strip().lower() == "local"
+            and settings.TEXT_FALLBACK_TO_CLOUD
+            and settings.CLOUD_API_KEY
+        ):
+            self.text_fallback_client = OpenAI(
+                api_key=settings.CLOUD_API_KEY,
+                base_url=settings.CLOUD_BASE_URL,
+                timeout=settings.LLM_TIMEOUT,
+                max_retries=0,
+            )
+            self.text_fallback_model = settings.CLOUD_TEXT_MODEL
 
     # ---------------- 内部：真正发起调用的两个小函数 ----------------
 
@@ -57,20 +72,33 @@ class OpenAICompatProvider(LLMProvider):
         if timeout:
             kwargs["timeout"] = timeout
         t0 = time.perf_counter()
-        resp = self.text_client.chat.completions.create(**kwargs)
-        logger.info("文本模型=%s 耗时=%.1fs 输出tokens=%s", model,
+        try:
+            resp = self.text_client.chat.completions.create(**kwargs)
+        except Exception as exc:  # noqa: BLE001 —— 本地 Ollama 没起/崩了，切云端
+            if not self.text_fallback_client:
+                raise
+            logger.warning("本地文字模型不可用（%s），切云端 %s", type(exc).__name__, self.text_fallback_model)
+            kwargs["model"] = self.text_fallback_model
+            resp = self.text_fallback_client.chat.completions.create(**kwargs)
+        logger.info("文本模型=%s 耗时=%.1fs 输出tokens=%s", kwargs["model"],
                     time.perf_counter() - t0, getattr(resp.usage, "completion_tokens", "?"))
         return resp.choices[0].message.content or ""
 
     def _vision_once(self, messages: list[dict], model: str, thinking: bool, max_tokens: int) -> str:
         """单次视觉调用；thinking 参数走 extra_body 透传（智谱专有）"""
+        # glm-4v-flash 的 max_tokens 硬上限是 1024，超出直接 400；思考模型则需要更多空间
+        if "glm-4v-flash" in model:
+            max_tokens = min(max_tokens, 1024)
         kwargs = {
             "model": model,
             "messages": messages,
             "temperature": 0.3,
             "max_tokens": max_tokens,
         }
-        if thinking:
+        # 思考模型默认会输出大段推理，容易把 JSON 挤到截断；识别场景显式关闭思考
+        if "thinking" in model:
+            kwargs["extra_body"] = {"thinking": {"type": "enabled" if thinking else "disabled"}}
+        elif thinking:
             kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
         t0 = time.perf_counter()
         resp = self.vision_client.chat.completions.create(**kwargs)
@@ -191,9 +219,9 @@ class OpenAICompatProvider(LLMProvider):
                 }]
         raise LLMError(f"模型输出 JSON 校验失败（已重试）：{last_err}")
 
-    def chat(self, messages: list[dict]) -> str:
+    def chat(self, messages: list[dict], max_tokens: int | None = None) -> str:
         # 纯文字沟通：不强制 JSON，限制长度让它更短更快
-        return self._chat(messages, max_tokens=settings.LLM_CHAT_MAX_TOKENS)
+        return self._chat(messages, max_tokens=max_tokens or settings.LLM_CHAT_MAX_TOKENS)
 
     def chat_json(self, messages: list[dict], model: str | None = None,
                   max_tokens: int | None = None, timeout: float | None = None) -> str:

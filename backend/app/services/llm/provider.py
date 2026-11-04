@@ -79,9 +79,9 @@ class FallbackProvider(LLMProvider):
             yield {"type": "day",
                    "day": self.mock.generate_day(profile_ctx, day_index, days, prior_days, note)}
 
-    def chat(self, messages: list[dict]) -> str:
+    def chat(self, messages: list[dict], max_tokens: int | None = None) -> str:
         try:
-            return self.real.chat(messages)
+            return self.real.chat(messages, max_tokens=max_tokens)
         except FALLBACK_ERRORS as e:
             self._used = "mock"
             logger.warning("真模型对话失败，降级 mock：%s", e)

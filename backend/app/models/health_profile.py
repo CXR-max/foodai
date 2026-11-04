@@ -13,6 +13,7 @@ class HealthProfile(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
     height_cm = Column(Float, nullable=True)
     weight_kg = Column(Float, nullable=True)
+    body_fat_pct = Column(Float, nullable=True)   # 体脂率 %（选填，用于运动消耗个性化计算）
     age = Column(Integer, nullable=True)
     gender = Column(String(10), nullable=True)
     activity_level = Column(String(20), nullable=True)

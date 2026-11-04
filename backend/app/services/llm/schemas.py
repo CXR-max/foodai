@@ -14,10 +14,21 @@ class RecognizedIngredient(BaseModel):
     portion_g: float = Field(default=0, ge=0)  # 该食材估算克重
 
 
+class RecognizedDish(BaseModel):
+    """多菜场景下的单道菜（一张图可能有饭+菜+汤）"""
+    dish_name: str
+    category: str = ""
+    size_class: str = "normal"
+    portion_g: float = Field(default=0, ge=0)
+    portion_desc: str = ""
+    confidence: float = Field(default=0.8, ge=0, le=1)
+    ingredients: list[RecognizedIngredient] = Field(default_factory=list)
+
+
 class VisionRecognitionResult(BaseModel):
     """视觉模型的识别结果"""
     is_food: bool = True                       # 图片里是否包含食物
-    dish_name: str = ""                        # 菜品名（多道菜取最主要的一道）
+    dish_name: str = ""                        # 主菜名（兼容单菜；多菜时取最主要的一道）
     category: str = ""                         # 食材类别（主食/荤菜/素菜/汤粥/早餐/小吃/水果/饮品/其他）
     size_class: str = "normal"                 # 份量档位：small/normal/large（相对常见一份）
     basis: str = ""                            # 份量判断依据（参照物观察，如"普通白瓷碗八分满"）
@@ -26,6 +37,7 @@ class VisionRecognitionResult(BaseModel):
     portion_desc: str = ""                     # 分量描述，如"一碗约300g"
     confidence: float = Field(default=0.8, ge=0, le=1)
     description: str = ""                      # 一句话描述
+    dishes: list[RecognizedDish] = Field(default_factory=list)  # 多菜：每道菜单独一项
 
 
 # ---------- 方案生成 ----------

@@ -1,7 +1,7 @@
 """健康打卡（日历任务）表"""
 from datetime import datetime
 
-from sqlalchemy import Column, Date, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import JSON, Column, Date, DateTime, Float, ForeignKey, Integer, String
 
 from app.db.session import Base
 
@@ -21,5 +21,9 @@ class CheckIn(Base):
     exercise_type = Column(String(30), nullable=True)
     duration_min = Column(Integer, nullable=True)
     calories_burned = Column(Float, nullable=True)
+    # ---- 个性化消耗计算（一阶模型）----
+    intensity = Column(String(10), nullable=True)  # 强度档：light 轻松 / moderate 适中 / intense 吃力
+    met_used = Column(Float, nullable=True)        # 计算时采用的 MET 值（可追溯）
+    burn_detail = Column(JSON, nullable=True)      # 消耗计算明细（基础值 + 逐层系数，保证可解释）
     note = Column(String(300), nullable=True)
     created_at = Column(DateTime, nullable=True, default=datetime.now)

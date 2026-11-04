@@ -11,10 +11,19 @@ from app.services.llm import foods_data
 
 
 def build_food_recognition_prompt() -> str:
-    """构造识别提示词：注入本地营养库菜名+标准份量，引导模型输出可精确匹配的菜名"""
-    catalog = "、".join(
-        f'{f["name"]}(标准{f["common_portion_g"]}g)' for f in foods_data.load_foods()
-    )
+    """构造识别提示词：注入本地营养库菜名+标准份量，引导模型输出可精确匹配的菜名。
+
+    注意：活跃池现在有 1,800+ 条（含台湾食材），全量塞进提示词会撑爆模型上下文
+    （实测 glm-4v-flash 报 inputs tokens + max_new_tokens 超限）。所以只放「菜品」，
+    并按优先级截断到 300 条——食材由模型自然说出，不靠清单。
+    """
+    foods = [
+        f for f in foods_data.load_foods()
+        if f.get("food_type") in {"dish", "light_meal"}
+    ]
+    foods.sort(key=lambda f: (0 if f.get("source") == "recipe" else 1, f.get("id") or 0))
+    foods = foods[:300]
+    catalog = "、".join(f'{f["name"]}(标准{f["common_portion_g"]}g)' for f in foods)
     return f"""你是一个专业的营养分析专家，正在帮用户估算餐食的分量与热量。请仔细观察图片，严格只输出一个 JSON 对象，不要任何解释或 markdown 代码块。
 
 观察步骤（在心里执行，不要输出过程）：
@@ -36,6 +45,11 @@ def build_food_recognition_prompt() -> str:
   "portion_g": 0,
   "portion_desc": "分量描述，如：一碗约300g",
   "confidence": 0.85,
+  "dishes": [
+    {{"dish_name": "第1道菜的标准名", "category": "荤菜", "size_class": "normal", "portion_g": 200,
+      "portion_desc": "一小盘约200g", "confidence": 0.85,
+      "ingredients": [{{"name": "食材名", "portion_g": 估算克重}}]}}
+  ],
   "description": "一句话描述这道菜"
 }}
 
@@ -44,7 +58,9 @@ def build_food_recognition_prompt() -> str:
 - portion_g 是这份食物总克数的估算，必须与 size_class 判断一致
 - ingredients 列出 2~6 种主要食材及估算克重，总和应接近 portion_g
 - confidence 为 0~1 的识别置信度
-- 若图片中不是食物，is_food 设为 false，其余字段给默认值（dish_name 填"非食物"）"""
+- dishes 列出画面里所有能辨认的菜（最多 4 道），每道菜单独给名称/类别/份量/置信度；只有一道菜时数组里就放 1 项，且与顶层 dish_name/portion_g 一致
+- 顶层 dish_name 仍填最主要的一道（通常是分量最大的），保留兼容
+- 若图片中不是食物，is_food 设为 false，dishes 给空数组，其余字段给默认值（dish_name 填"非食物"）"""
 
 
 # ---------- 方案生成 ----------
@@ -170,3 +186,41 @@ PLAN_CHAT_SYSTEM = """你是"识膳智行"的营养健康顾问，正在和用�
 - 【务必简短】每次回复不超过 80 字，直接给建议或问 1 个关键问题，不要列长清单、不要长篇大论
 - 围绕口味偏好、饮食禁忌、运动兴趣、作息/就餐条件来了解需求
 - 用户已经说清楚的信息不要重复追问"""
+
+
+# ---------- 打卡 AI 个性化点评 ----------
+
+def build_checkin_praise_messages(ctx: dict) -> list[dict]:
+    """构造「打卡后个性化点评」消息：结合连续天数/运动消耗/当日完成度生成点评。
+
+    ctx 由 checkins.py 组装，字段：
+    - action_text: 本次动作描述，如「完成方案任务：午餐」「手动运动打卡：跑步 30 分钟」
+    - streak:      连续打卡天数
+    - done/total:  当日任务完成进度（任务打卡才传；手动打卡不传 total）
+    - all_done:    当日是否全部完成
+    - points:      本次获得积分
+    - goal:        用户目标中文（减脂/维持体重/增肌），由路由层补充
+    - today_burn:  今日运动总消耗（千卡），由路由层补充
+    """
+    system = (
+        "你是「识膳智行」的专业健康教练，用户刚完成一次健康打卡。"
+        "请根据数据输出 1~2 句话（合计 25~60 字）的个性化点评，结构如下：\n"
+        "- 第一句：点出本次数据里最值得肯定的亮点或进步（结合连续天数/消耗/完成度，不许空泛夸奖）\n"
+        "- 第二句：给一个马上能做的小建议或下阶段小目标（贴合用户的减脂/增肌目标，具体可执行）\n"
+        "- 语气像懂行的朋友，自然、有温度；禁止「加油」「坚持就是胜利」这类套话；emoji 最多 1 个"
+    )
+    lines = [
+        f"用户目标：{ctx.get('goal', '维持体重')}",
+        f"刚完成：{ctx.get('action_text', '一次打卡')}",
+        f"当前连续打卡 {ctx.get('streak', 0)} 天",
+        f"今日运动已消耗 {ctx.get('today_burn', 0)} 千卡",
+        f"本次获得 {ctx.get('points', 0)} 积分",
+    ]
+    if ctx.get("total"):
+        lines.append(
+            f"当日已完成 {ctx.get('done', 0)}/{ctx.get('total')} 项任务"
+            f"{'（当日任务已全部完成）' if ctx.get('all_done') else ''}"
+        )
+    lines.append("请输出点评（1~2 句，25~60 字）。")
+    return [{"role": "system", "content": system},
+            {"role": "user", "content": "\n".join(lines)}]
