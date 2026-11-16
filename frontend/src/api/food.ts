@@ -181,6 +181,24 @@ export const getFoodLibrary = (includeInactive = false) =>
 
 export const getFoodLibraryStats = () => get<FoodLibraryStats>('/foods/stats')
 
+/** 换一道：同热量档、同餐段的候选菜 */
+export interface FoodAlternative {
+  name: string
+  category: string
+  calories: number
+  protein_g: number
+  common_portion_g: number
+  portion_calories: number
+  taste_tags: string[]
+}
+
+export const getFoodAlternatives = (name: string, mealType?: string, limit = 6) =>
+  get<FoodAlternative[]>('/foods/alternatives', {
+    name,
+    ...(mealType ? { meal_type: mealType } : {}),
+    limit,
+  })
+
 /** 手动校准识别结果：只改菜名+克数，营养值由后端按营养库重算 */
 export const correctRecognition = (id: number, data: { dish_name: string; portion_g: number; dish_index?: number }) =>
   patch<Recognition>(`/recognitions/${id}`, data)

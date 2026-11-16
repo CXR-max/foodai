@@ -14,6 +14,13 @@ class ProfileIn(BaseModel):
     taste_preferences: list[str] | None = None       # 口味偏好
     dietary_restrictions: list[str] | None = None    # 饮食禁忌
     exercise_preferences: list[str] | None = None    # 运动兴趣
+    sleep_time: str | None = Field(default=None, max_length=5, description="习惯入睡时间 HH:MM")
+    wake_time: str | None = Field(default=None, max_length=5, description="习惯起床时间 HH:MM")
+    water_target_ml: int | None = Field(default=None, ge=0, le=6000, description="自定义饮水目标")
+    over_limit_policy: str | None = Field(
+        default=None, pattern="^(ask|portion|exercise)$",
+        description="改菜后热量超上限的默认处理：ask=手动选择 / portion=按比例缩份量 / exercise=加运动抵消",
+    )
 
 
 class WeightIn(BaseModel):

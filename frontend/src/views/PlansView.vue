@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 养生方案页：偏好面板 + 纯文字对话 → 合并生成 → 调整(重生成/可视化编辑) → 导入日历
+// 养生方案页：偏好面板 + 纯文字对话 → 合并生成 → 调整(重生成/可视化编辑) → 导入日程
 import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as planApi from '@/api/plan'
@@ -7,12 +7,16 @@ import type { Plan, PlanDay, PlanMeal } from '@/api/plan'
 import * as checkinApi from '@/api/checkin'
 import { isMobile } from '@/composables/useIsMobile'
 
+// generationOnly：移动端「计划 → 生成」tab 只借用生成向导，
+// 历史列表和方案详情由移动端自己的页面（可沿用/导入日程）承担，避免两套重复。
+const props = defineProps<{ generationOnly?: boolean }>()
+
 const plans = ref<Plan[]>([])
 const current = ref<Plan | null>(null)          // 当前展示的方案（含 days）
 const activeDay = ref('1')                      // 当前 tab（第几天）
 const generating = ref(false)
 const MEAL_LABELS: Record<string, string> = { breakfast: '🌅 早餐', lunch: '☀️ 午餐', dinner: '🌙 晚餐', snack: '🍎 加餐' }
-const importedDays = ref<Set<number>>(new Set()) // 已导入日历的 plan_day id
+const importedDays = ref<Set<number>>(new Set()) // 已导入日程的 plan_day id
 
 // ---- 定制向导①：偏好面板（引导回忆，可当场改，可跳过）----
 const TASTES = ['清淡', '咸鲜', '香辣', '微辣', '麻辣', '酸辣', '偏甜', '偏酸', '偏咸', '蒜香', '孜然', '酱香', '烧烤', '鲜香']
@@ -129,7 +133,7 @@ async function openPlan(id: number) {
   await refreshImported()
 }
 
-// 标记"已导入日历"的按钮
+// 标记"已导入日程"的按钮
 async function refreshImported() {
   importedDays.value = new Set()
   for (const day of days.value) {
@@ -263,6 +267,12 @@ function addItem(meal: PlanMeal) {
   meal.items.push({ name: '', portion_g: 100 })
 }
 
+/** 运动处方兼容：新数据用 exercises（多条），旧数据只有 exercise（一条） */
+function dayExercises(day: PlanDay) {
+  if (day.exercises && day.exercises.length) return day.exercises
+  return day.exercise ? [day.exercise] : []
+}
+
 async function saveEdit() {
   if (!editForm.value || !current.value) return
   const meals = editForm.value.meals
@@ -275,7 +285,7 @@ async function saveEdit() {
   activeDay.value = String(editForm.value.dayIndex)
 }
 
-// ---- 导入日历 ----
+// ---- 导入日程 ----
 async function importDay(day: PlanDay) {
   const r = await checkinApi.importFromPlan(day.id)
   ElMessage.success(r.message)
@@ -353,7 +363,7 @@ onMounted(async () => {
     </div>
 
     <!-- 历史方案切换 -->
-    <div v-if="plans.length" class="page-card">
+    <div v-if="plans.length && !props.generationOnly" class="page-card">
       <span style="margin-right:8px;color:#909399">历史方案：</span>
       <el-select :model-value="current?.id" style="width:260px" @change="(v: number) => openPlan(v)">
         <el-option v-for="p in plans" :key="p.id" :value="p.id" :label="p.title" />
@@ -361,7 +371,7 @@ onMounted(async () => {
     </div>
 
     <!-- 方案内容 -->
-    <div v-if="current" class="page-card">
+    <div v-if="current && !props.generationOnly" class="page-card">
       <div class="plan-toolbar">
         <el-alert :title="current.summary" type="success" :closable="false" class="summary-alert" />
         <el-button :disabled="generating" @click="confirmRegenerate">🔄 重新生成</el-button>
@@ -378,7 +388,7 @@ onMounted(async () => {
             <div class="day-head-actions">
               <el-button size="small" :disabled="generating" @click="openEdit(day)">✏️ 编辑这一天</el-button>
               <el-button size="small" type="success" :disabled="generating || importedDays.has(day.id)" @click="importDay(day)">
-                {{ importedDays.has(day.id) ? '✓ 已导入日历' : '📥 导入日历' }}
+                {{ importedDays.has(day.id) ? '✓ 已导入日程' : '📥 导入日程' }}
               </el-button>
             </div>
           </div>
@@ -417,20 +427,24 @@ onMounted(async () => {
             </el-table-column>
           </el-table>
 
-          <el-card v-if="day.exercise" shadow="never" class="exercise-card">
-            <div class="exercise-row">
-              <div class="exercise-icon">🏃</div>
+          <el-card v-if="dayExercises(day).length" shadow="never" class="exercise-card">
+            <div v-for="(ex, ei) in dayExercises(day)" :key="ei" class="exercise-row">
+              <div class="exercise-icon">{{ ei === 0 ? '🏃' : '🧘' }}</div>
               <div style="flex:1">
-                <b>{{ day.exercise.type }}</b>
-                <span style="color:#909399;margin-left:10px">{{ day.exercise.duration_min }} 分钟 · 消耗约 {{ day.exercise.calories_burned }} kcal</span>
-                <div class="tips" v-if="day.exercise.tips">💡 {{ day.exercise.tips }}</div>
+                <b>{{ ex.type }}</b>
+                <span style="color:#909399;margin-left:10px">{{ ex.duration_min }} 分钟 · 消耗约 {{ ex.calories_burned }} kcal</span>
+                <div class="tips" v-if="ex.tips">💡 {{ ex.tips }}</div>
               </div>
             </div>
           </el-card>
+          <div v-if="day.sleep || day.water_ml" class="plan-extra">
+            <span v-if="day.sleep">😴 {{ day.sleep.bedtime }}–{{ day.sleep.wake_at }} · 目标 {{ day.sleep.target_h }} 小时</span>
+            <span v-if="day.water_ml">💧 饮水 {{ day.water_ml }} ml</span>
+          </div>
         </el-tab-pane>
       </el-tabs>
     </div>
-    <el-empty v-else-if="!generating" description="还没有方案，勾选偏好或直接和 AI 聊几句，然后生成" />
+    <el-empty v-else-if="!generating && !props.generationOnly" description="还没有方案，勾选偏好或直接和 AI 聊几句，然后生成" />
 
     <!-- 可视化编辑弹窗 -->
     <el-dialog v-model="editDialog" title="编辑这一天（热量按营养库自动重算）" :width="isMobile ? '100%' : '640px'" :fullscreen="isMobile">
@@ -503,6 +517,12 @@ onMounted(async () => {
 .meal-item { padding: 2px 0; }
 .meal-item .portion { color: #909399; font-size: 12px; margin-left: 6px; }
 .exercise-card { margin-top: 12px; background: #f0f9eb; border: 1px solid #e1f3d8; }
+.plan-extra {
+  display: flex; flex-wrap: wrap; gap: 14px;
+  margin-top: 10px; padding: 10px 12px;
+  background: #f4f8ff; border: 1px solid #e3edff; border-radius: 8px;
+  font-size: 13px; color: #5a6b85;
+}
 .exercise-row { display: flex; align-items: center; gap: 14px; }
 .exercise-icon { font-size: 30px; }
 .tips { color: #909399; font-size: 13px; margin-top: 4px; }

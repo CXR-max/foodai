@@ -38,7 +38,27 @@ export interface BurnPreview {
   formula: string
 }
 
-export interface DayStat { date: string; total: number; done: number }
+export interface DayTaskBrief {
+  id: number
+  key: string
+  label: string
+  status: 'pending' | 'done'
+  short: string
+}
+
+export interface DayStat {
+  date: string
+  total: number
+  done: number
+  pct?: number
+  has_plan?: boolean
+  plan_id?: number
+  plan_day_id?: number
+  day_index?: number
+  theme?: string | null
+  plan_calories?: number
+  tasks?: DayTaskBrief[]
+}
 
 /** 单日任务列表（含待完成任务的方案餐详情） */
 export const getDay = (date?: string) =>

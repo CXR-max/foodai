@@ -57,11 +57,12 @@ class PlanMeal(BaseModel):
 
 
 class PlanExercise(BaseModel):
-    """当天的运动安排"""
+    """当天的运动安排（一天可以有多项：主项 + 拉伸）"""
     type: str                                  # 运动名
     duration_min: int = 30
     calories_burned: int = 0
     tips: str = ""
+    intensity: str = "moderate"                # light / moderate / intense
 
 
 class PlanDay(BaseModel):
@@ -69,7 +70,11 @@ class PlanDay(BaseModel):
     day_index: int                             # 第几天（1 起）
     theme: str = ""                            # 当天主题，如"轻盈开局"
     meals: list[PlanMeal] = Field(default_factory=list)
-    exercise: PlanExercise | None = None
+    exercise: PlanExercise | None = None       # 主项（兼容旧前端/旧方案）
+    exercises: list[PlanExercise] = Field(default_factory=list)   # 完整运动处方
+    sleep: dict | None = None                  # 睡眠方案（作息/时长/建议）
+    targets: dict | None = None                # 当日目标（热量上下限/饮水/睡眠/运动消耗）
+    water_ml: int | None = None                # 当日饮水目标
 
 
 class PlanResult(BaseModel):
@@ -77,3 +82,4 @@ class PlanResult(BaseModel):
     summary: str = ""
     daily_target_calories: float = 0
     days: list[PlanDay] = Field(min_length=1)
+    targets: dict | None = None                # 计划级每日目标（热量区间/蛋白/饮水/睡眠/运动）

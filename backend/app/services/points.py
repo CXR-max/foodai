@@ -24,6 +24,8 @@ RULES = {
     "log_weight":           ("记录体重", 2),
     "task_meal":            ("完成方案餐食任务", 3),
     "task_exercise":        ("完成方案运动任务", 3),
+    "task_sleep":           ("完成睡眠打卡", 3),
+    "task_water":           ("完成饮水打卡", 3),
     "task_all_done_bonus":  ("当日方案任务全部完成", 10),
     "manual_checkin":       ("手动打卡", 2),
     "makeup_checkin":       ("补签打卡", 5),

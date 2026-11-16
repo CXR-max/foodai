@@ -19,9 +19,8 @@ from typing import Any
 
 from ortools.sat.python import cp_model
 
-from app.services import nutrition
+from app.services import nutrition, plan_targets
 from app.services.llm import foods_data
-from app.services.llm.prompts import EXERCISE_METABOLIC
 from app.services.llm.schemas import (
     PlanDay, PlanExercise, PlanMeal, PlanMealItem, PlanResult,
 )
@@ -66,6 +65,7 @@ W_REPEAT_1 = 2000           # 与前一天重复
 W_REPEAT_2 = 1200           # 与前两天重复
 W_REPEAT_OLD = 800          # 与更早天数重复
 W_EXTRA_SERVING = 6000      # 单菜超过 2 份：每多 1 份的惩罚
+W_FIBER = 300               # 膳食纤维不足（每 0.1 g），营养库覆盖有限，只做低权重引导
 
 MEAL_COUNT = len(MEALS)
 MAX_DISH_SLOTS_PER_DAY = MEAL_COUNT * MAX_DISHES_PER_MEAL
@@ -255,13 +255,14 @@ def _meal_pool(
     return pool
 
 
-def _serving_units(food: dict) -> tuple[int, int]:
-    """一份菜的热量/蛋白（0.1 单位），全部由 foods_data 按克重换算"""
+def _serving_units(food: dict) -> tuple[int, int, int]:
+    """一份菜的热量/蛋白/纤维（0.1 单位），全部由 foods_data 按克重换算"""
     per = food["per_100g"]
     factor = float(food["common_portion_g"]) / 100.0
     calories = int(math.floor(float(per["calories"]) * factor * SCALE))
     protein = int(math.floor(float(per["protein_g"]) * factor * SCALE))
-    return calories, protein
+    fiber = int(math.floor(float(per.get("fiber_g") or 0) * factor * SCALE))
+    return calories, protein, fiber
 
 
 # ==================== 跨天去重 ====================
@@ -326,8 +327,14 @@ def _solve_day(
     enforce_include: bool,
     relax_variety: bool,
     vegetarian: bool,
+    calorie_min: int | None = None,
+    calorie_max: int | None = None,
+    fiber_min_g: float = 0.0,
 ) -> dict[str, list[tuple[dict, int]]] | None:
-    """构造并求解单日模型；无可行解/超时返回 None，由调用方放宽蛋白后重试。"""
+    """构造并求解单日模型；无可行解/超时返回 None，由调用方放宽蛋白后重试。
+
+    calorie_min/max：计划目标体系给的硬上下限（不传则退回「目标 ±7%」的旧口径）
+    """
     model = cp_model.CpModel()
 
     x: dict[tuple[str, str], cp_model.IntVar] = {}
@@ -335,6 +342,7 @@ def _solve_day(
     by_name: dict[str, list[cp_model.BoolVar]] = defaultdict(list)
     calories: dict[tuple[str, str], int] = {}
     protein: dict[tuple[str, str], int] = {}
+    fiber: dict[tuple[str, str], int] = {}
     extra_servings: list[cp_model.IntVar] = []
 
     for meal_type, _ratio in MEALS:
@@ -350,7 +358,7 @@ def _solve_day(
             # 0 份 = 不选；1~max_servings 份 = 选中
             model.Add(x_var <= max_servings * y_var)
             model.Add(x_var >= y_var)
-            calories[key], protein[key] = _serving_units(food)
+            calories[key], protein[key], fiber[key] = _serving_units(food)
             by_name[name].append(y_var)
             # 单菜超过 2 份的部分单独计惩罚（仅对标准份量较小的菜生效）
             if max_servings > 2:
@@ -360,10 +368,15 @@ def _solve_day(
 
     total_cal = sum(calories[key] * x[key] for key in x)
     total_protein = sum(protein[key] * x[key] for key in x)
+    total_fiber = sum(fiber[key] * x[key] for key in x)
 
     target_units = target * SCALE
-    lower = int(math.ceil(target_units * (1 - CALORIE_TOLERANCE)))
-    upper = int(math.floor(target_units * (1 + CALORIE_TOLERANCE))) - CAL_SAFETY_UNITS
+    if calorie_min and calorie_max:
+        lower = int(calorie_min) * SCALE
+        upper = int(calorie_max) * SCALE - CAL_SAFETY_UNITS
+    else:
+        lower = int(math.ceil(target_units * (1 - CALORIE_TOLERANCE)))
+        upper = int(math.floor(target_units * (1 + CALORIE_TOLERANCE))) - CAL_SAFETY_UNITS
     model.Add(total_cal >= lower)
     model.Add(total_cal <= upper)
 
@@ -371,6 +384,14 @@ def _solve_day(
         int(math.ceil(weight_kg * protein_factor * relax * SCALE)) + PROTEIN_SAFETY_UNITS
     )
     model.Add(total_protein >= required_protein)
+
+    # 膳食纤维：只做低权重的软引导。营养库里约四成菜品有 fiber_g，缺失按 0 计，
+    # 所以这里不能当硬约束（否则会把「没录纤维数据」的菜全判为不合格）。
+    fiber_short: cp_model.IntVar | None = None
+    required_fiber = int(math.ceil(float(fiber_min_g or 0) * SCALE))
+    if required_fiber > 0:
+        fiber_short = model.NewIntVar(0, required_fiber, "fiber_short")
+        model.Add(total_fiber + fiber_short >= required_fiber)
 
     # 每餐 1~3 道菜
     for meal_type, _ratio in MEALS:
@@ -457,6 +478,9 @@ def _solve_day(
     for extra in extra_servings:
         terms.append(W_EXTRA_SERVING * extra)
 
+    if fiber_short is not None:
+        terms.append(W_FIBER * fiber_short)
+
     total_dev = model.NewIntVar(0, target_units, "total_cal_dev")
     model.AddAbsEquality(total_dev, total_cal - target_units)
     terms.append(W_TOTAL_CAL * total_dev)
@@ -532,31 +556,11 @@ def _solve_day(
 
 # ==================== 输出组装 ====================
 
-def _build_exercise(profile_ctx: dict, day_index: int) -> PlanExercise:
-    """运动安排复用原 mock 规则（不参与营养约束）"""
-    preferences = [
-        item for item in (profile_ctx.get("exercise_preferences") or [])
-        if item in EXERCISE_METABOLIC
-    ]
-    exercise_type = (
-        preferences[(day_index - 1) % len(preferences)]
-        if preferences else ["快走", "瑜伽", "骑行"][day_index % 3]
-    )
-    duration = min(20 + 5 * (day_index - 1), 60)
-    weight = float(profile_ctx.get("weight_kg") or 0)
-    burned = int(EXERCISE_METABOLIC.get(exercise_type, 5) * duration * weight / 60) if weight > 0 else 0
-    return PlanExercise(
-        type=exercise_type,
-        duration_min=duration,
-        calories_burned=burned,
-        tips="循序渐进，注意热身；当天感到疲劳可适当降低强度",
-    )
-
-
 def _to_plan_day(
     day_index: int,
     selected: dict[str, list[tuple[dict, int]]],
     profile_ctx: dict,
+    targets: dict,
 ) -> PlanDay:
     meals: list[PlanMeal] = []
     for meal_type, _ratio in MEALS:
@@ -575,11 +579,17 @@ def _to_plan_day(
             items=items,
             calories=round(calories, 1),
         ))
+    # 运动处方 / 睡眠方案 / 当日目标：本地按目标体系算，不依赖模型
+    extra = plan_targets.enrich_day(profile_ctx, targets, day_index)
     return PlanDay(
         day_index=day_index,
         theme=THEMES[(day_index - 1) % len(THEMES)],
         meals=meals,
-        exercise=_build_exercise(profile_ctx, day_index),
+        exercise=PlanExercise(**extra["exercise"]) if extra["exercise"] else None,
+        exercises=[PlanExercise(**item) for item in extra["exercises"]],
+        sleep=extra["sleep"],
+        targets=extra["targets"],
+        water_ml=extra["water_ml"],
     )
 
 
@@ -598,6 +608,7 @@ def build_day(
         raise PlannerError(f"非法 day_index={day_index}（days={days}）")
 
     target = _target_calories(profile_ctx)
+    targets = plan_targets.build_targets(profile_ctx)
     weight_kg = _weight_kg(profile_ctx)
     _goal, protein_factor = _goal_factor(profile_ctx)
     restrictions = list(profile_ctx.get("dietary_restrictions") or [])
@@ -632,6 +643,9 @@ def build_day(
                 enforce_include=(day_index == 1 and not variety_relaxed),
                 relax_variety=variety_relaxed,
                 vegetarian=vegetarian,
+                calorie_min=int(targets.get("calorie_min") or 0) or None,
+                calorie_max=int(targets.get("calorie_max") or 0) or None,
+                fiber_min_g=float(targets.get("fiber_min_g") or 0),
             )
             if selected is not None:
                 if variety_relaxed:
@@ -648,7 +662,7 @@ def build_day(
                         "第 %d 天蛋白下限放宽到 %.0f%%（%.2f g/kg）",
                         day_index, relax * 100, protein_factor * relax,
                     )
-                return _to_plan_day(day_index, selected, profile_ctx)
+                return _to_plan_day(day_index, selected, profile_ctx, targets)
 
             last_required = weight_kg * protein_factor * relax
             logger.warning(
@@ -678,6 +692,7 @@ def build_plan(
         raise PlannerError("方案天数必须 >= 1")
 
     target = _target_calories(profile_ctx)
+    targets = plan_targets.build_targets(profile_ctx)
     _goal, protein_factor = _goal_factor(profile_ctx)
     track = meta if meta is not None else {}
     plan_days: list[PlanDay] = []
@@ -685,8 +700,9 @@ def build_plan(
         plan_days.append(build_day(profile_ctx, day_index, days, plan_days, note, track))
 
     summary = (
-        f"约束求解器已按每日 {target} kcal 目标生成 {days} 天方案"
-        f"（蛋白质下限 {protein_factor:g} g/kg，热量允许 ±{CALORIE_TOLERANCE:.0%}）"
+        f"约束求解器已按每日 {targets['calorie_min']}~{targets['calorie_max']} kcal 生成 {days} 天方案"
+        f"（蛋白下限 {protein_factor:g} g/kg，饮水 {targets['water_min_ml']} ml，"
+        f"睡眠 {targets['sleep_min_h']:g} 小时，运动消耗不低于 {targets['exercise_burn_min']} kcal）"
     )
     relaxed = track.get("relaxed", 1.0)
     if relaxed < 1.0:
@@ -703,4 +719,5 @@ def build_plan(
         summary=summary,
         daily_target_calories=target,
         days=plan_days,
+        targets=targets,
     )

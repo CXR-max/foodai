@@ -29,6 +29,9 @@ def profile_dict(p: HealthProfile, user: User) -> dict:
         "taste_preferences": p.taste_preferences or [],
         "dietary_restrictions": p.dietary_restrictions or [],
         "exercise_preferences": p.exercise_preferences or [],
+        "sleep_time": p.sleep_time, "wake_time": p.wake_time,
+        "water_target_ml": p.water_target_ml,
+        "over_limit_policy": p.over_limit_policy or "ask",   # 热量超限默认处理（用户偏好）
         "updated_at": p.updated_at.isoformat() if p.updated_at else None,
         # ---- 计算指标 ----
         "bmi": bmi,
@@ -48,6 +51,8 @@ def get_profile(user: User = Depends(get_current_user), db: Session = Depends(ge
             "activity_level": "moderate", "goal": "maintain", "target_weight_kg": None,
             "daily_calorie_target": None,
             "taste_preferences": [], "dietary_restrictions": [], "exercise_preferences": [],
+            "sleep_time": None, "wake_time": None, "water_target_ml": None,
+            "over_limit_policy": "ask",
             "updated_at": None, "bmi": None, "bmi_level": "未知", "bmr": None,
             "nickname": user.nickname or user.username, "profile_completed": False,
         }
