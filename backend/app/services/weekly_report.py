@@ -16,6 +16,7 @@ from app.models.check_in import CheckIn
 from app.models.food_record import FoodRecord
 from app.models.health_profile import HealthProfile
 from app.models.user import User
+from app.models.weekly_report import WeeklyReportCache
 from app.models.weight_log import WeightLog
 from app.services.llm.base import LLMError, extract_json
 from app.services.llm.provider import get_llm_provider
@@ -138,18 +139,70 @@ def _rule_based_report(s: dict) -> WeeklyReport:
     )
 
 
-def generate_weekly_report(db: Session, user: User) -> WeeklyReport:
+def _window_start() -> date:
+    """统计窗口起点（今天往前 6 天）。同一天内多次请求复用同一份缓存。"""
+    return date.today() - timedelta(days=6)
+
+
+def _load_cache(db: Session, user: User) -> WeeklyReport | None:
+    """命中当天窗口的缓存就直接返回，不再调模型（省 1~3s 与一次 token 费用）"""
+    try:
+        row = (db.query(WeeklyReportCache)
+               .filter(WeeklyReportCache.user_id == user.id,
+                       WeeklyReportCache.week_start == _window_start())
+               .first())
+    except Exception as e:  # noqa: BLE001 —— 缓存表未迁移时不能拖垮周报
+        logger.warning("周报缓存读取失败，按未命中处理：%s", e)
+        return None
+    if not row:
+        return None
+    return WeeklyReport(
+        summary=row.summary or "",
+        score=row.score if row.score is not None else 60,
+        highlights=row.highlights or [],
+        suggestions=row.suggestions or [],
+        source=row.source or "cache",
+    )
+
+
+def _save_cache(db: Session, user: User, report: WeeklyReport) -> None:
+    """落库缓存。写失败只告警：周报本身已经生成好了，不能因为缓存失败而 500。"""
+    try:
+        db.add(WeeklyReportCache(
+            user_id=user.id,
+            week_start=_window_start(),
+            summary=report.summary,
+            score=report.score,
+            highlights=report.highlights,
+            suggestions=report.suggestions,
+            source=report.source,
+        ))
+        db.commit()
+    except Exception as e:  # noqa: BLE001 —— 唯一键冲突（并发）等都属于可忽略
+        db.rollback()
+        logger.warning("周报缓存写入失败（不影响返回）：%s", e)
+
+
+def generate_weekly_report(db: Session, user: User, force: bool = False) -> WeeklyReport:
+    """生成周报：先查缓存 → 无数据走规则版 → 有数据调模型（失败再退规则版）"""
+    if not force:
+        cached = _load_cache(db, user)
+        if cached:
+            return cached
+
     s = collect_week_stats(db, user)
 
     # 一周几乎没数据 → 直接规则版，不浪费模型调用
     if s["days_with_records"] == 0 and s["checkin_days"] == 0:
-        return WeeklyReport(
+        report = WeeklyReport(
             summary="本周还没有任何饮食记录和打卡，先迈出第一步吧！",
             score=30,
             highlights=[],
             suggestions=["去「食物识别」记录第一餐", "在「健康打卡」完成一次运动打卡", "到「健康档案」完善身体数据"],
             source="mock",
         )
+        _save_cache(db, user, report)
+        return report
 
     goal_text = {"lose": "减脂", "maintain": "维持体重", "gain": "增肌"}.get(s["goal"], "维持体重")
     prompt = f"""你是营养师，请根据用户近 7 天的健康数据写一份中文周报，严格只输出 JSON（不要 markdown 代码块）：
@@ -174,7 +227,9 @@ def generate_weekly_report(db: Session, user: User) -> WeeklyReport:
         data.pop("source", None)
         report = WeeklyReport.model_validate(data)
         report.source = provider.active_name
-        return report
     except Exception as e:  # noqa: BLE001 —— 周报是锦上添花，任何失败都降级规则版
         logger.warning("周报模型生成失败，使用规则版：%s", e)
-        return _rule_based_report(s)
+        report = _rule_based_report(s)
+
+    _save_cache(db, user, report)
+    return report

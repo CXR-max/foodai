@@ -196,11 +196,16 @@ def trends(period: str = Query(default="week", alias="range", pattern="^(week|mo
 
 
 @router.get("/weekly-report")
-def weekly_report(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """AI 健康周报：汇总近 7 天数据 → 大模型点评与建议（失败自动降级规则版）"""
+def weekly_report(refresh: bool = Query(default=False, description="true=忽略缓存重新生成"),
+                  user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """AI 健康周报：汇总近 7 天数据 → 大模型点评与建议（失败自动降级规则版）
+
+    结果按「用户 + 统计窗口」缓存，同一天内重复打开不再调模型；
+    需要重新生成（比如刚补完记录）传 ?refresh=true。
+    """
     from app.services.weekly_report import collect_week_stats, generate_weekly_report
 
-    report = generate_weekly_report(db, user)
+    report = generate_weekly_report(db, user, force=refresh)
     s = collect_week_stats(db, user)   # 前端展示原始数据卡片用
     return {
         "summary": report.summary,

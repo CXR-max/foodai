@@ -1,13 +1,15 @@
 """健康打卡（日历任务）表"""
 from datetime import datetime
 
-from sqlalchemy import JSON, Column, Date, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import JSON, Column, Date, DateTime, Float, ForeignKey, Index, Integer, String
 
 from app.db.session import Base
 
 
 class CheckIn(Base):
     __tablename__ = "check_ins"
+    # 日历/连续天数/月历打点都是「按用户 + 日期」查，走复合索引
+    __table_args__ = (Index("ix_check_ins_user_date", "user_id", "check_date"), )
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)

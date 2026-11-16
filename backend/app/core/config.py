@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "dev-secret-please-change"   # 生产环境务必改成随机字符串
     JWT_EXPIRE_DAYS: int = 7                        # token 有效期（天）
 
+    # ---- 跨域白名单（逗号分隔）----
+    # 开发默认本机前端；部署到域名/手机 App 时改 .env 的 CORS_ORIGINS，不用改代码
+    CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
+
     # ---- 数据库：固定为 backend/foodai.db 绝对路径 ----
     # 用绝对路径的原因：不管从哪个目录启动 uvicorn/alembic，都指向同一个库文件
     DATABASE_URL: str = f"sqlite+pysqlite:///{(BASE_DIR / 'foodai.db').as_posix()}"
@@ -86,6 +90,11 @@ class Settings(BaseSettings):
     @property
     def is_local(self) -> bool:
         return self.LLM_MODE.strip().lower() == "local"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """跨域白名单；.env 里用逗号分隔，自动去空格与空项"""
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
     @property
     def text_base_url(self) -> str:

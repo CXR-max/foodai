@@ -1,13 +1,15 @@
 """饮食记录表"""
 from datetime import datetime
 
-from sqlalchemy import JSON, Column, Date, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import JSON, Column, Date, DateTime, Float, ForeignKey, Index, Integer, String
 
 from app.db.session import Base
 
 
 class FoodRecord(Base):
     __tablename__ = "food_records"
+    # 统计/趋势全是「某用户某天/某区间」查询，复合索引比两个单列索引更有效
+    __table_args__ = (Index("ix_food_records_user_eaten_date", "user_id", "eaten_date"), )
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)

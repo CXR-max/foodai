@@ -22,6 +22,9 @@ from app.models.weight_log import WeightLog
 from app.models.reward import Reward
 from app.models.redemption import Redemption
 from app.models.achievement import Achievement, UserAchievement
+from app.models.weekly_report import WeeklyReportCache
+from app.models.sleep_log import SleepLog
+from app.models.water_log import WaterLog
 from app.models.food import (
     Food,
     FoodAlias,
@@ -37,6 +40,8 @@ __all__ = [
     "DietPlan", "PlanDay", "CheckIn", "PointsLog",
     "WeightLog", "Reward", "Redemption", "PlanChatMessage",
     "Achievement", "UserAchievement",
+    "WeeklyReportCache",
+    "SleepLog", "WaterLog",
     "Food", "FoodAlias", "FoodRelation", "FoodIngredient",
     "FoodRecipe", "FoodRecipeItem", "ImportBatch",
 ]
