@@ -1,22 +1,23 @@
 <script setup lang="ts">
-// 手机底部导航：只放 5 个最高频入口，其余（数据追踪/商城/成就/排行）收进「我的」页
+// 手机底部导航（五大模块）：计划 / 日程 / 运动 / 社区 / 我的
 // 桌面端不渲染这个组件（由 MainLayout 用 v-if="isMobile" 控制）
+// 其余功能（档案/数据追踪/商城/成就/排行榜）都从「我的」或「社区」进入
 import { useRoute } from 'vue-router'
 import { hasPendingCheckin } from '@/stores/todayCheckin'
 
 const route = useRoute()
 
 const tabs = [
-  { path: '/recognition', title: '识别', icon: '🍽️' },
-  { path: '/plans', title: '方案', icon: '📋' },
-  { path: '/checkin', title: '打卡', icon: '✅' },
-  { path: '/dashboard', title: '仪表盘', icon: '📊' },
-  { path: '/profile', title: '我的', icon: '👤' },
+  { path: '/m/plan', title: '计划', icon: '📋' },
+  { path: '/m/schedule', title: '日程', icon: '✅' },
+  { path: '/m/sport', title: '运动', icon: '🏃' },
+  { path: '/m/community', title: '社区', icon: '💬' },
+  { path: '/m/me', title: '我的', icon: '👤' },
 ]
 
-// 打卡未完成时显示红点（复用全局打卡状态，和侧边栏红点同源）
+// 打卡未完成时在「日程」上显示红点（复用全局打卡状态，和侧边栏红点同源）
 function showDot(path: string) {
-  return path === '/checkin' && hasPendingCheckin()
+  return path === '/m/schedule' && hasPendingCheckin()
 }
 </script>
 

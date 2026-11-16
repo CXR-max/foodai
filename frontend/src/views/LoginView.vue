@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import { homePath } from '@/router'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -23,7 +24,7 @@ async function submit() {
   try {
     await auth.login(form.username, form.password)
     ElMessage.success('登录成功')
-    router.push('/dashboard')
+    router.push(homePath())
   } finally {
     loading.value = false
   }

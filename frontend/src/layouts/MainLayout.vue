@@ -24,12 +24,22 @@ const menus = [
   { path: '/leaderboard', title: '排行榜', icon: Medal },
 ]
 
-// 手机端抽屉：放全部 9 个菜单，保证任何页面都进得去
+// 手机端菜单：五大模块（与底部 tabBar 一致）
+// 其余功能从「我的」快捷入口 / 「社区」小板块进入，不再平铺
+const mobileMenus = [
+  { path: '/m/plan', title: '计划', icon: MagicStick },
+  { path: '/m/schedule', title: '日程', icon: Calendar },
+  { path: '/m/sport', title: '运动', icon: DataLine },
+  { path: '/m/community', title: '社区', icon: Coin },
+  { path: '/m/me', title: '我的', icon: User },
+]
+
+// 手机端抽屉：放全部 5 个模块（桌面端仍走上面 9 项的侧边栏）
 const drawer = ref(false)
 
 // 红点：仅"健康打卡"菜单 + 今日还有未完成项时显示
 function showDot(path: string) {
-  return path === '/checkin' && hasPendingCheckin()
+  return (path === '/checkin' || path === '/m/schedule') && hasPendingCheckin()
 }
 
 function refreshDot() {
@@ -88,7 +98,7 @@ onBeforeUnmount(() => window.removeEventListener('focus', refreshDot))
       </el-main>
     </el-container>
 
-    <!-- 手机：抽屉（全部 9 个菜单） -->
+    <!-- 手机：抽屉（五大模块） -->
     <el-drawer
       v-if="isMobile"
       v-model="drawer"
@@ -99,7 +109,7 @@ onBeforeUnmount(() => window.removeEventListener('focus', refreshDot))
     >
       <div class="drawer-logo">🥗 识膳智行</div>
       <el-menu :default-active="route.path" router @select="drawer = false">
-        <el-menu-item v-for="m in menus" :key="m.path" :index="m.path">
+        <el-menu-item v-for="m in mobileMenus" :key="m.path" :index="m.path">
           <el-badge is-dot :hidden="!showDot(m.path)" class="menu-badge">
             <el-icon><component :is="m.icon" /></el-icon>
           </el-badge>
