@@ -64,3 +64,10 @@ def reset(key: str) -> None:
     with _lock:
         _failures.pop(key, None)
         _locked_until.pop(key, None)
+
+
+def reset_all() -> None:
+    """清空全部计数（测试用；运维手动解锁某 IP 也走这里）"""
+    with _lock:
+        _failures.clear()
+        _locked_until.clear()
