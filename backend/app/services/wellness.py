@@ -15,7 +15,7 @@ from app.models.check_in import CheckIn
 from app.models.sleep_log import SleepLog
 from app.models.user import User
 from app.models.water_log import WaterLog
-from app.services import points
+from app.services import metric_bands, points
 from app.services.achievements import unlock_all
 
 logger = logging.getLogger("wellness")
@@ -176,18 +176,32 @@ def _sync_checkin(
     return task
 
 
-def sync_sleep_checkin(db: Session, user: User, log: SleepLog, min_hours: float) -> dict:
-    """睡眠达标判定：达到计划下限的 90% 记为完成（避免 6.9h vs 7h 卡死）"""
-    required_min = int(round(float(min_hours or 7.0) * 60))
-    achieved = (log.duration_min or 0) >= required_min * 0.9
+def sync_sleep_checkin(
+    db: Session,
+    user: User,
+    log: SleepLog,
+    min_hours: float,
+    targets: dict | None = None,
+) -> dict:
+    """睡眠达标判定：落在「浮动容忍带」内即完成（6.5h 也能算达标，由 metric_bands 统一判定）
+
+    传 targets 时按 sleep_min_h / sleep_max_h 的完整区间判定；
+    没传就用 min_hours 兜底（兼容旧调用）。
+    """
+    band_targets = dict(targets or {})
+    band_targets.setdefault("sleep_min_h", min_hours)
+    band_targets.setdefault("sleep_max_h", max(float(min_hours or 7.0) + 2, 9.0))
+    hours = round((log.duration_min or 0) / 60, 2)
+    achieved, band = metric_bands.achieved(band_targets, "sleep", hours)
     note = None
     if not achieved:
-        note = f"睡眠 {round((log.duration_min or 0) / 60, 1)}h，低于计划 {min_hours:g}h"
+        note = f"睡眠 {hours:g}h，低于区间 {band['range_text'] if band else ''}"
     task = _sync_checkin(db, user, log.sleep_date, "sleep", achieved, note)
     return {
         "achieved": achieved,
-        "required_min": required_min,
+        "required_min": int(round(float(min_hours or 7.0) * 60)),
         "duration_min": log.duration_min,
+        "band": band,
         "checkin_id": task.id if task else None,
     }
 
@@ -205,13 +219,17 @@ def add_water(
     ml: int,
     target_ml: int,
     source: str = "manual",
+    targets: dict | None = None,
 ) -> dict:
+    """记一次饮水；总量达到「浮动容忍下限」即完成打卡（不必卡死到整 2000 ml）"""
     amount = max(0, min(int(ml), 5000))
     if amount:
         db.add(WaterLog(user_id=user.id, log_date=day, ml=amount, source=source))
         db.flush()
     total = water_total(db, user.id, day)
-    achieved = target_ml > 0 and total >= target_ml
+    band_targets = dict(targets or {})
+    band_targets.setdefault("water_min_ml", target_ml)
+    achieved, band = metric_bands.achieved(band_targets, "water", total)
     note = None if achieved else f"已喝 {total} / {target_ml} ml"
     task = _sync_checkin(db, user, day, "water", achieved, note)
     if achieved:
@@ -219,7 +237,9 @@ def add_water(
     return {
         "total_ml": total,
         "target_ml": target_ml,
+        "max_ml": band_targets.get("water_max_ml"),
         "achieved": achieved,
+        "band": band,
         "checkin_id": task.id if task else None,
     }
 

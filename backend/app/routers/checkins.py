@@ -257,25 +257,27 @@ def complete_checkin(
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
             min_h = float(sleep_plan.get("target_h") or targets.get("sleep_min_h") or 7)
-            result = wellness.sync_sleep_checkin(db, user, log, min_h)
+            result = wellness.sync_sleep_checkin(db, user, log, min_h, targets)
             db.commit()
             db.refresh(c)
             hours = round((log.duration_min or 0) / 60, 1)
+            band_text = (result.get("band") or {}).get("range_text") or f"{min_h:g} h"
             return {
                 "id": c.id, "status": c.status, "points_awarded": c.points_awarded or 0,
                 "sleep": wellness.sleep_dict(log), "checkin": result,
-                "message": f"已按计划记录睡眠 {hours} 小时" if result["achieved"]
-                else f"睡眠 {hours} 小时，未达计划 {min_h:g} 小时",
+                "message": f"已记录睡眠 {hours} 小时（推荐 {band_text}）" if result["achieved"]
+                else f"睡眠 {hours} 小时，低于推荐 {band_text}",
             }
 
         target_ml = int(targets.get("water_min_ml") or 2000)
         remaining = max(0, target_ml - wellness.water_total(db, user.id, c.check_date))
-        result = wellness.add_water(db, user, c.check_date, remaining, target_ml)
+        result = wellness.add_water(db, user, c.check_date, remaining, target_ml, targets=targets)
         db.commit()
         db.refresh(c)
+        band_text = (result.get("band") or {}).get("range_text") or f"{target_ml} ml"
         return {
             "id": c.id, "status": c.status, "points_awarded": c.points_awarded or 0,
-            "water": result, "message": f"今日饮水 {result['total_ml']} / {target_ml} ml",
+            "water": result, "message": f"今日饮水 {result['total_ml']} ml（推荐 {band_text}）",
         }
 
     c.status = "done"

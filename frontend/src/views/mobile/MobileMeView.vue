@@ -51,6 +51,13 @@ const waterPct = computed(() => {
   return Math.min(100, Math.round(((day.value?.water.total_ml || 0) / target) * 100))
 })
 
+// 环下面显示「实际 / 推荐区间」，区间来自后端 metric_bands，和日程页同源
+const bands = computed(() => day.value?.bands || [])
+const bandText = (key: string) => {
+  const b = bands.value.find((x) => x.key === key)
+  return b ? b.range_text : ''
+}
+
 async function load() {
   loading.value = true
   try {
@@ -103,17 +110,17 @@ onMounted(() => {
           <div class="stat">
             <div class="stat-value">{{ Math.round(day?.burn.exercise_kcal || 0) }}</div>
             <div class="stat-label">运动消耗 kcal</div>
-            <div class="stat-sub">下限 {{ day?.targets.exercise_burn_min || '—' }}</div>
+            <div class="stat-sub">推荐 {{ bandText('exercise') || `≥${day?.targets.exercise_burn_min || '—'}` }}</div>
           </div>
           <div class="stat">
             <div class="stat-value">{{ day?.water.total_ml || 0 }}</div>
             <div class="stat-label">饮水 ml</div>
-            <div class="stat-sub">目标 {{ day?.water.target_ml || 2000 }}</div>
+            <div class="stat-sub">推荐 {{ bandText('water') || `${day?.water.target_ml || 2000} ml` }}</div>
           </div>
           <div class="stat">
             <div class="stat-value">{{ day?.sleep?.duration_h ? day.sleep.duration_h.toFixed(1) : '—' }}</div>
             <div class="stat-label">睡眠 小时</div>
-            <div class="stat-sub">下限 {{ day?.targets.sleep_min_h || 7 }}</div>
+            <div class="stat-sub">推荐 {{ bandText('sleep') || `≥${day?.targets.sleep_min_h || 7} h` }}</div>
           </div>
         </div>
         <el-progress :percentage="calPct" :stroke-width="8" :show-text="false" color="#67c23a" style="margin-top: 12px" />
@@ -148,33 +155,37 @@ onMounted(() => {
               <span class="ring-num">{{ dietPct }}%</span>
             </el-progress>
             <span class="ring-label">饮食</span>
-            <em>{{ Math.round(day?.intake.calories || 0) }}/{{ day?.targets.calorie_max || '—' }}</em>
+            <em>{{ Math.round(day?.intake.calories || 0) }}</em>
+            <em class="ring-range">{{ bandText('calorie') || `≤${day?.targets.calorie_max || '—'} kcal` }}</em>
           </div>
           <div class="ring">
             <el-progress type="circle" :percentage="sportPct" :width="72" :stroke-width="7" color="#e6a23c">
               <span class="ring-num">{{ sportPct }}%</span>
             </el-progress>
             <span class="ring-label">运动</span>
-            <em>{{ Math.round(day?.burn.exercise_kcal || 0) }}/{{ day?.targets.exercise_burn_min || '—' }}</em>
+            <em>{{ Math.round(day?.burn.exercise_kcal || 0) }}</em>
+            <em class="ring-range">{{ bandText('exercise') || `≥${day?.targets.exercise_burn_min || '—'} kcal` }}</em>
           </div>
           <div class="ring">
             <el-progress type="circle" :percentage="sleepPct" :width="72" :stroke-width="7" color="#409eff">
               <span class="ring-num">{{ sleepPct }}%</span>
             </el-progress>
             <span class="ring-label">睡眠</span>
-            <em>{{ day?.sleep?.duration_h ? day.sleep.duration_h.toFixed(1) : 0 }}/{{ day?.targets.sleep_min_h || 7 }}h</em>
+            <em>{{ day?.sleep?.duration_h ? day.sleep.duration_h.toFixed(1) : 0 }}</em>
+            <em class="ring-range">{{ bandText('sleep') || `≥${day?.targets.sleep_min_h || 7} h` }}</em>
           </div>
           <div class="ring">
             <el-progress type="circle" :percentage="waterPct" :width="72" :stroke-width="7" color="#79bbff">
               <span class="ring-num">{{ waterPct }}%</span>
             </el-progress>
             <span class="ring-label">饮水</span>
-            <em>{{ day?.water.total_ml || 0 }}/{{ day?.water.target_ml || 2000 }}ml</em>
+            <em>{{ day?.water.total_ml || 0 }}</em>
+            <em class="ring-range">{{ bandText('water') || `${day?.water.target_ml || 2000} ml` }}</em>
           </div>
         </div>
         <p class="hint">
-          饮食按热量上限、运动按下限、睡眠按 {{ day?.targets.sleep_min_h || 7 }} 小时算完成度；
-          目标与日程、运动页同源，改计划会自动跟着变。
+          上方是实际值，下方是推荐区间（热量按下限~上限、运动/饮水/睡眠按区间）；
+          处在浮动容忍内也算达标。目标与日程、运动页同源，改计划会自动跟着变。
         </p>
       </div>
     </section>
@@ -230,6 +241,7 @@ onMounted(() => {
 .ring-num { font-size: 12px; font-weight: 600; color: #303133; }
 .ring-label { font-size: 12px; color: #606266; }
 .ring em { font-style: normal; font-size: 10px; color: #b6bbc4; text-align: center; line-height: 1.3; }
+.ring .ring-range { font-size: 9.5px; color: #a8abb2; }
 .block-title em { font-style: normal; font-size: 11.5px; font-weight: 400; color: #909399; margin-left: auto; }
 .skeleton { font-size: 13px; color: #909399; text-align: center; padding: 16px; }
 </style>

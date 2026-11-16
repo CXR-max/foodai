@@ -63,6 +63,24 @@ export const addWater = (ml: number, date?: string) =>
 
 export const deleteWater = (id: number) => del(`/water/${id}`)
 
+/** 单个指标的「确切区间 + 浮动容忍 + 实际值 + 判定」，由后端 metric_bands 统一给 */
+export interface MetricBand {
+  key: 'calorie' | 'protein' | 'water' | 'sleep' | 'exercise' | 'steps'
+  label: string
+  unit: string
+  min: number
+  max: number
+  target: number | null
+  soft_min: number
+  soft_max: number
+  range_text: string
+  actual: number | null
+  status: 'in_range' | 'low' | 'high' | 'under' | 'over' | 'no_data'
+  status_text: string
+  hint: string
+  factor: number | null
+}
+
 export interface DaySummary {
   date: string
   has_plan: boolean
@@ -77,6 +95,8 @@ export interface DaySummary {
     water_ml: number | null
   }
   targets: PlanTargets
+  bands?: MetricBand[]
+  band_note?: string | null
   intake: {
     calories: number
     protein_g: number
@@ -86,7 +106,13 @@ export interface DaySummary {
     calorie_status: 'under' | 'in_range' | 'over' | null
   }
   burn: { exercise_kcal: number; exercise_min: number; times: number }
-  water: { total_ml: number; target_ml: number; pct: number | null; achieved: boolean }
+  water: {
+    total_ml: number
+    target_ml: number
+    max_ml?: number | null
+    pct: number | null
+    achieved: boolean
+  }
   sleep: SleepRecord | null
   tasks: { total: number; done: number; pct: number }
   progress: { calorie_pct: number | null; protein_pct: number | null; burn_pct: number | null }

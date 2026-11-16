@@ -14,7 +14,7 @@ from app.db.session import get_db
 from app.models.sleep_log import SleepLog
 from app.models.user import User
 from app.models.water_log import WaterLog
-from app.services import day_context, wellness
+from app.services import day_context, metric_bands, wellness
 
 router = APIRouter(tags=["睡眠与饮水"])
 
@@ -90,7 +90,7 @@ def save_sleep(data: SleepIn, user: User = Depends(get_current_user), db: Sessio
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    result = wellness.sync_sleep_checkin(db, user, log, min_h)
+    result = wellness.sync_sleep_checkin(db, user, log, min_h, targets)
     db.commit()
     db.refresh(log)
     return {
@@ -128,7 +128,8 @@ def get_water(
         "date": str(day),
         "total_ml": total,
         "target_ml": target,
-        "achieved": total >= target,
+        "max_ml": targets.get("water_max_ml"),
+        "achieved": metric_bands.achieved(targets, "water", total)[0],
         "records": [{"id": r.id, "ml": r.ml,
                      "created_at": r.created_at.isoformat() if r.created_at else None}
                     for r in rows],
@@ -141,7 +142,7 @@ def add_water(data: WaterIn, user: User = Depends(get_current_user), db: Session
     day = data.log_date or date.today()
     targets = _targets(db, user.id, day)
     target = int(targets.get("water_min_ml") or 2000)
-    result = wellness.add_water(db, user, day, data.ml, target, source=data.source)
+    result = wellness.add_water(db, user, day, data.ml, target, source=data.source, targets=targets)
     db.commit()
     return {"date": str(day), **result}
 

@@ -24,6 +24,7 @@ from app.models.diet_plan import DietPlan, PlanDay
 from app.models.food_record import FoodRecord
 from app.models.sleep_log import SleepLog
 from app.models.water_log import WaterLog
+from app.services import metric_bands
 
 logger = logging.getLogger("plan_review")
 
@@ -141,52 +142,68 @@ def build_review(db: Session, plan: DietPlan, final: bool = True) -> dict:
         if total else "这一期没导入日程，没有可打卡的任务"
 
     # ---- 2) 目标达成 35 ----
-    cal_hit = cal_sample = 0
-    ex_hit = ex_sample = 0
-    sleep_hit = sleep_sample = 0
-    water_hit = water_sample = 0
+    # 口径统一交给 metric_bands：区间内满分、浮动带内 75%、明显偏离 0 分，
+    # 不再由各页面各自写死阈值（例如睡眠从「差 20 分钟算过」改成「区间 + 0.5h 容忍」）
+    cal_sum = cal_sample = cal_hit = 0
+    ex_sum = ex_sample = ex_hit = 0
+    sleep_sum = sleep_sample = sleep_hit = 0
+    water_sum = water_sample = water_hit = 0
     ex_done_by_date: dict[date, bool] = defaultdict(bool)
+    ex_kcal_by_date: dict[date, float] = defaultdict(float)
     for c in checkins:
         if c.task_key == "exercise" and c.status == "done" and c.check_date:
             ex_done_by_date[c.check_date] = True
+            ex_kcal_by_date[c.check_date] += float(c.calories_burned or 0)
 
     for day in days:
         if not day.date:
             continue
-        t = _targets(plan, day)
-        lo, hi = t.get("calorie_min"), t.get("calorie_max")
+        t = metric_bands.effective_calorie_band(_targets(plan, day))
+
         eaten = food_by_date.get(day.date)
-        if eaten and lo and hi:
-            cal_sample += 1
-            if float(lo) <= eaten <= float(hi):
-                cal_hit += 1
+        if eaten:
+            band = metric_bands.build_band(t, "calorie", eaten)
+            if band and band["factor"] is not None:
+                cal_sample += 1
+                cal_sum += band["factor"]
+                cal_hit += 1 if band["factor"] >= 0.75 else 0
 
         if t.get("exercise_burn_min") and (day.exercises or day.exercise):
-            ex_sample += 1
-            if ex_done_by_date.get(day.date):
-                ex_hit += 1
+            burned = ex_kcal_by_date.get(day.date) or 0
+            if burned:
+                band = metric_bands.build_band(t, "exercise", burned)
+            else:
+                # 有任务但没记录消耗：打卡了按「刚好达标」算，没打卡算 0
+                band = {"factor": 1.0 if ex_done_by_date.get(day.date) else 0.0}
+            if band["factor"] is not None:
+                ex_sample += 1
+                ex_sum += band["factor"]
+                ex_hit += 1 if band["factor"] >= 0.75 else 0
 
-        need_sleep = t.get("sleep_min_h")
         dur = sleep_by_date.get(day.date)
-        if need_sleep and dur:
-            sleep_sample += 1
-            if dur / 60 >= float(need_sleep) - 0.3:   # 允许 20 分钟误差
-                sleep_hit += 1
+        if dur:
+            band = metric_bands.build_band(t, "sleep", dur / 60)
+            if band and band["factor"] is not None:
+                sleep_sample += 1
+                sleep_sum += band["factor"]
+                sleep_hit += 1 if band["factor"] >= 0.75 else 0
 
-        need_water = t.get("water_min_ml")
         ml = water_by_date.get(day.date)
-        if need_water and ml is not None:
-            water_sample += 1
-            if ml >= float(need_water) * 0.9:
-                water_hit += 1
+        if ml is not None and ml > 0:
+            band = metric_bands.build_band(t, "water", ml)
+            if band and band["factor"] is not None:
+                water_sample += 1
+                water_sum += band["factor"]
+                water_hit += 1 if band["factor"] >= 0.75 else 0
 
     parts = [
-        ("热量", cal_hit, cal_sample, 0.45),
-        ("运动", ex_hit, ex_sample, 0.20),
-        ("睡眠", sleep_hit, sleep_sample, 0.20),
-        ("饮水", water_hit, water_sample, 0.15),
+        ("热量", cal_sum, cal_hit, cal_sample, 0.45),
+        ("运动", ex_sum, ex_hit, ex_sample, 0.20),
+        ("睡眠", sleep_sum, sleep_hit, sleep_sample, 0.20),
+        ("饮水", water_sum, water_hit, water_sample, 0.15),
     ]
-    used = [(label, _ratio(hit, sample), weight) for label, hit, sample, weight in parts if sample]
+    used = [(label, _ratio(score_sum, sample), weight)
+            for label, score_sum, _hit, sample, weight in parts if sample]
     if used:
         weight_sum = sum(w for _, _, w in used)
         adherence_rate = sum(rate * w for _, rate, w in used) / weight_sum

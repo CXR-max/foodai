@@ -43,6 +43,7 @@ export interface PlanTargets {
   calorie_min?: number
   calorie_max?: number
   protein_min_g?: number
+  protein_max_g?: number
   fat_min_g?: number
   fat_max_g?: number
   carb_min_g?: number
@@ -51,15 +52,18 @@ export interface PlanTargets {
   sugar_max_g?: number
   sodium_max_mg?: number
   water_min_ml?: number
+  water_max_ml?: number
   sleep_min_h?: number
   sleep_max_h?: number
   exercise_burn_min?: number
+  exercise_burn_max?: number
   exercise_burn_target?: number
   exercise_days_per_week?: number
   is_training_day?: boolean
   bedtime?: string
   wake_time?: string
   steps_min?: number
+  steps_max?: number
   [key: string]: any
 }
 export interface PlanDay {

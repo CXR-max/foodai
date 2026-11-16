@@ -24,7 +24,7 @@ from app.services import (
     meal_recalc, nutrition, plan_lifecycle, plan_review, plan_targets, points, schedule_import,
 )
 from app.services.achievements import unlock_all
-from app.services.day_context import active_plan_day
+from app.services.day_context import active_plan_day, profile_targets
 from app.services.llm.prompts import PLAN_CHAT_SYSTEM
 from app.services.llm.provider import get_llm_provider
 from app.services.plan_intent import extract_plan_intent, merge_plan_intent
@@ -235,11 +235,17 @@ def plan_dict(
     stats: dict | None = None,
 ) -> dict:
     snapshot = p.basis_snapshot or {}
+    targets = dict(p.targets or {})
+    if targets and db is not None:
+        # 旧方案没有新加的上下限（water_max_ml / protein_max_g / exercise_burn_max），
+        # 用档案现算值补齐，保证「每日目标」永远能显示成区间
+        for key, value in profile_targets(db, p.user_id).items():
+            targets.setdefault(key, value)
     result = {
         "id": p.id, "title": p.title, "status": p.status,
         "start_date": str(p.start_date), "summary": p.summary,
         "daily_target_calories": p.daily_target_calories,
-        "targets": p.targets,
+        "targets": targets or p.targets,
         "reused_from": p.reused_from,
         "plan_version": p.plan_version or 1,
         "provider": p.provider,
@@ -621,7 +627,7 @@ def get_active_plan(
     return {
         "has_plan": True,
         "date": str(day),
-        "plan": plan_dict(plan),
+        "plan": plan_dict(plan, db=db),
         "day": plan_day_dict(plan_day),
         "targets": day_context_targets(db, user.id, day),
     }

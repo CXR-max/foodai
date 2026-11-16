@@ -38,6 +38,18 @@ const dateLabel = computed(() => {
 })
 const pct = computed(() => summary.value?.tasks.pct || 0)
 
+// 每日指标区间：热量/蛋白/饮水/睡眠/运动，都由后端 metric_bands 算好（区间 + 浮动容忍）
+const bands = computed(() => summary.value?.bands || [])
+const heroBands = computed(() =>
+  ['calorie', 'protein', 'water', 'sleep', 'exercise']
+    .map((k) => bands.value.find((b) => b.key === k))
+    .filter(Boolean) as NonNullable<DaySummary['bands']>,
+)
+const bandCls = (status?: string) =>
+  status === 'in_range' ? 'ok' : status === 'low' || status === 'high' ? 'warn' : status === 'under' || status === 'over' ? 'bad' : ''
+const waterBand = computed(() => bands.value.find((b) => b.key === 'water'))
+const sleepBand = computed(() => bands.value.find((b) => b.key === 'sleep'))
+
 async function load() {
   loading.value = true
   try {
@@ -259,28 +271,42 @@ onMounted(load)
       </div>
       <el-progress :percentage="pct" :stroke-width="8" :show-text="false" color="#fff" />
       <div class="hero-targets">
-        <div class="ht">
-          <span>摄入</span>
-          <b>{{ Math.round(summary?.intake.calories || 0) }}</b>
-          <em>/ {{ summary?.targets.calorie_min || '—' }}~{{ summary?.targets.calorie_max || '—' }}</em>
-        </div>
-        <div class="ht">
-          <span>运动</span>
-          <b>{{ summary?.burn.exercise_kcal || 0 }}</b>
-          <em>/ ≥{{ summary?.targets.exercise_burn_min || '—' }}</em>
-        </div>
-        <div class="ht">
-          <span>饮水</span>
-          <b>{{ water?.total_ml || 0 }}</b>
-          <em>/ {{ water?.target_ml || 2000 }}ml</em>
-        </div>
-        <div class="ht">
-          <span>睡眠</span>
-          <b>{{ sleep?.duration_h ? sleep.duration_h.toFixed(1) : '—' }}</b>
-          <em>/ ≥{{ summary?.targets.sleep_min_h || 7 }}h</em>
+        <div v-for="b in heroBands" :key="b.key" class="ht" :class="bandCls(b.status)">
+          <span>{{ b.label }}</span>
+          <b>{{ b.actual != null ? b.actual : '—' }}</b>
+          <em>{{ b.min }}~{{ b.max }}{{ b.unit === 'h' ? 'h' : '' }}</em>
         </div>
       </div>
+      <p v-if="summary?.band_note" class="hero-note">{{ summary.band_note }}</p>
     </div>
+
+    <!-- 指标区间：每项给确切上下限 + 实际值 + 判定，超限才提示怎么补 -->
+    <section v-if="bands.length" class="block">
+      <h3 class="block-title">
+        今日指标区间
+        <em>{{ bands.filter((b) => b.status === 'in_range' || b.status === 'low' || b.status === 'high').length }}/{{ bands.length }} 达标</em>
+      </h3>
+      <div class="card bands-card">
+        <div v-for="b in bands" :key="b.key" class="band-row" :class="bandCls(b.status)">
+          <div class="band-head">
+            <span class="band-name">{{ b.label }}</span>
+            <span class="band-status">{{ b.status_text }}</span>
+          </div>
+          <div class="band-mid">
+            <span class="band-range">推荐 {{ b.range_text }}</span>
+            <span class="band-value">
+              <b>{{ b.actual != null ? b.actual : '—' }}</b>
+              <em v-if="b.actual != null">{{ b.unit }}</em>
+            </span>
+          </div>
+          <p class="band-hint">{{ b.hint }}</p>
+        </div>
+        <p class="band-foot">
+          区间为推荐值，绿色=区间内，黄色=在浮动容忍内也算达标，红色=明显偏离。
+          口径见「计划 → 每日目标」，超限可在计划详情里改餐或加运动。
+        </p>
+      </div>
+    </section>
 
     <!-- 日历入口 -->
     <div class="cal-bar" @click="calendarOpen = !calendarOpen">
@@ -397,7 +423,7 @@ onMounted(load)
       <div class="card water-card">
         <div class="row">
           <span>💧 饮水</span>
-          <b>{{ water?.total_ml || 0 }} / {{ water?.target_ml || 2000 }} ml</b>
+          <b>{{ water?.total_ml || 0 }} / {{ waterBand?.range_text || `${water?.target_ml || 2000} ml` }}</b>
         </div>
         <el-progress
           :percentage="Math.min(100, Math.round(((water?.total_ml || 0) / (water?.target_ml || 2000)) * 100))"
@@ -431,6 +457,7 @@ onMounted(load)
         </div>
         <div v-else-if="summary?.plan?.sleep" class="sleep-line">
           计划 {{ summary.plan.sleep.bedtime }} 入睡 · {{ summary.plan.sleep.wake_at }} 起床
+          <span v-if="sleepBand">，推荐 {{ sleepBand.range_text }}</span>
         </div>
         <div v-if="summary?.plan?.sleep?.tips" class="sleep-tips">{{ summary.plan.sleep.tips }}</div>
         <div class="actions">
@@ -494,11 +521,33 @@ onMounted(load)
 .hero-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
 .hero-top .date { font-size: 15px; font-weight: 600; }
 .hero-top .ratio { font-size: 12px; opacity: 0.9; }
-.hero-targets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 10px; }
+.hero-targets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-top: 10px; }
 .ht { display: flex; flex-direction: column; align-items: center; }
 .ht span { font-size: 10.5px; opacity: 0.85; }
 .ht b { font-size: 14px; }
-.ht em { font-style: normal; font-size: 9.5px; opacity: 0.8; }
+.ht em { font-style: normal; font-size: 9px; opacity: 0.8; white-space: nowrap; }
+.ht.bad b { color: #ffe0e0; }
+.ht.warn b { color: #fff3c4; }
+.hero-note { font-size: 11px; line-height: 1.5; margin: 8px 0 0; opacity: 0.9; }
+/* 指标区间卡片 */
+.bands-card { padding: 2px 12px 10px; }
+.band-row { padding: 10px 0 9px; border-bottom: 1px solid #f2f3f5; }
+.band-row:last-of-type { border-bottom: none; }
+.band-head { display: flex; align-items: center; justify-content: space-between; }
+.band-name { font-size: 13.5px; font-weight: 600; color: #303133; }
+.band-mid { display: flex; align-items: baseline; justify-content: space-between; margin-top: 2px; }
+.band-range { font-size: 11.5px; color: #909399; }
+.band-value b { font-size: 17px; color: #303133; }
+.band-value em { font-style: normal; font-size: 10.5px; color: #a8abb2; margin-left: 2px; }
+.band-status { font-size: 11px; padding: 1px 7px; border-radius: 4px; background: #f2f3f5; color: #909399; }
+.band-row.ok .band-status { background: #f0f9eb; color: #4f9d2f; }
+.band-row.ok .band-value b { color: #4f9d2f; }
+.band-row.warn .band-status { background: #fdf6ec; color: #c98a1b; }
+.band-row.warn .band-value b { color: #c98a1b; }
+.band-row.bad .band-status { background: #fef0f0; color: #d94a4a; }
+.band-row.bad .band-value b { color: #d94a4a; }
+.band-hint { font-size: 11.5px; line-height: 1.6; color: #909399; margin: 3px 0 0; }
+.band-foot { font-size: 11px; line-height: 1.7; color: #a8abb2; margin: 6px 0 0; }
 .cal-bar { display: flex; justify-content: space-between; align-items: center; background: #fff; border-radius: 10px; padding: 10px 12px; font-size: 13px; color: #606266; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
 .cal-toggle { font-size: 12px; color: #4f9d2f; }
 .calendar { background: #fff; border-radius: 12px; padding: 10px 12px 6px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }

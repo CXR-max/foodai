@@ -464,23 +464,23 @@ onMounted(async () => {
             <span class="t-unit">kcal</span>
           </div>
           <div class="target">
-            <span class="t-label">蛋白下限</span>
-            <b>{{ targets.protein_min_g || '—' }}</b>
+            <span class="t-label">蛋白</span>
+            <b>{{ targets.protein_min_g || '—' }}~{{ targets.protein_max_g || '—' }}</b>
             <span class="t-unit">g</span>
           </div>
           <div class="target">
             <span class="t-label">饮水</span>
-            <b>{{ targets.water_min_ml || '—' }}</b>
+            <b>{{ targets.water_min_ml || '—' }}~{{ targets.water_max_ml || '—' }}</b>
             <span class="t-unit">ml</span>
           </div>
           <div class="target">
             <span class="t-label">睡眠</span>
-            <b>{{ targets.sleep_min_h || '—' }}</b>
+            <b>{{ targets.sleep_min_h || '—' }}~{{ targets.sleep_max_h || '—' }}</b>
             <span class="t-unit">小时</span>
           </div>
           <div class="target">
             <span class="t-label">运动消耗</span>
-            <b>{{ targets.exercise_burn_min || '—' }}</b>
+            <b>{{ targets.exercise_burn_min || '—' }}~{{ targets.exercise_burn_max || '—' }}</b>
             <span class="t-unit">kcal</span>
           </div>
           <div class="target">
@@ -489,6 +489,12 @@ onMounted(async () => {
             <span class="t-unit">天</span>
           </div>
         </div>
+        <p class="target-note">
+          区间口径：热量 -10%~+5%（训练日上限按额外消耗的 40% 回补）；蛋白按下限~上限；
+          饮水体重×30~×40 ml；睡眠 7~9 h；运动消耗下限取热量缺口的 50%，上限为 1.8 倍。
+          打卡判定用区间 + 浮动容忍（热量 ±5%、饮水 -10%、睡眠 -0.5h、运动 -15%），
+          落在容忍内也算达标，不会因为差一点判失败。
+        </p>
 
         <!-- 超限处理偏好：改菜后热量超上限时，弹窗默认选中哪一项 -->
         <div class="policy-card">
@@ -790,9 +796,10 @@ onMounted(async () => {
 .block-title :deep(.el-tag) { margin-left: 6px; font-weight: 400; }
 .block-title { font-size: 14px; font-weight: 600; color: #303133; margin: 2px 2px 8px; }
 .targets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.target { background: #fff; border-radius: 10px; padding: 10px 8px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
+.target { background: #fff; border-radius: 10px; padding: 10px 6px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
 .t-label { font-size: 11px; color: #909399; }
-.target b { font-size: 15px; color: #2f6620; margin-top: 2px; }
+.target b { font-size: 14px; color: #2f6620; margin-top: 2px; white-space: nowrap; }
+.target-note { font-size: 11px; line-height: 1.7; color: #a8abb2; margin: 8px 0 0; }
 .t-unit { font-size: 10px; color: #a8abb2; }
 .day-card { background: #fff; border-radius: 12px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); overflow: hidden; }
 .day-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; gap: 8px; }

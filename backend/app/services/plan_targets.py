@@ -7,14 +7,16 @@
   也不会拖慢生成速度（云端 7 天方案本来就慢）
 
 口径说明（写进方案摘要，答辩时可直接讲）：
-- 热量区间：目标值 ±5% / -10%，下限不低于基础代谢 BMR × 1.1
-- 蛋白：减脂 1.6 g/kg、维持 1.2、增肌 1.8（与求解器一致）
+- 热量区间：目标值 ±5% / -10%，下限不低于基础代谢 BMR × 1.1；训练日上限按额外消耗的 40% 回补
+- 蛋白：减脂 1.6 g/kg、维持 1.2、增肌 1.8（与求解器一致）；上限 2.0 / 1.6 / 2.2，再多也存不住
 - 脂肪 20~30% 热量、碳水占剩余热量
 - 纤维 25 g（《中国居民膳食指南 2022》25~30 g）
 - 添加糖 < 25 g、钠 < 2000 mg（盐 < 5 g）
-- 饮水：体重 × 30 ml，不低于 1500 ml
-- 睡眠：成人 7~9 h
-- 运动消耗下限：按热量缺口的 50% 估，150~400 kcal 之间
+- 饮水：下限体重 × 30 ml（不低于 1500），上限体重 × 40 ml（不超过 4000）
+- 睡眠：成人 7~9 h（区间判定，6.5 h 起算达标，见 services/metric_bands.py）
+- 运动消耗：下限按热量缺口的 50% 估（150~400 kcal），上限取下限的 1.8 倍（不超过 800）
+- 步数：8000~15000 步
+- 所有指标的「区间 + 浮动容忍 + 判定」统一收在 services/metric_bands.py，前后端不再各写一套阈值
 """
 from __future__ import annotations
 
@@ -27,6 +29,8 @@ logger = logging.getLogger("plan_targets")
 
 # 蛋白系数（与 planner.PROTEIN_FACTORS 保持一致）
 PROTEIN_FACTORS = {"lose": 1.6, "maintain": 1.2, "gain": 1.8}
+# 蛋白上限：吃太多也存不住，按体重给一个「再多吃没必要」的天花板
+PROTEIN_MAX_FACTORS = {"lose": 2.0, "maintain": 1.6, "gain": 2.2}
 
 # 每周训练天数：减脂 5 天、维持 4 天、增肌 5 天（其余为恢复日）
 TRAIN_DAYS_PER_WEEK = {"lose": 5, "maintain": 4, "gain": 5}
@@ -84,12 +88,16 @@ def build_targets(profile_ctx: dict) -> dict:
     calorie_min = min(calorie_min, calorie_max - 100)
 
     protein_g = int(round(weight * PROTEIN_FACTORS[goal])) if weight else 0
+    protein_max_g = int(round(weight * PROTEIN_MAX_FACTORS[goal])) if weight else int(round(protein_g * 1.4))
     fat_min_g = int(round(target * 0.20 / 9))
     fat_max_g = int(round(target * 0.30 / 9))
     carb_min_g = int(round(target * 0.45 / 4))
     carb_max_g = int(round(target * 0.55 / 4))
 
+    # 饮水：下限体重×30 ml；上限体重×40 ml（大量出汗日最多到 4000 ml，再多会稀释电解质）
     water_ml = int(round(max(1500.0, (weight * 30 if weight else 0)) / 50.0)) * 50
+    water_max_ml = int(round(min(4000.0, max(2500.0, (weight * 40 if weight else 0))) / 50.0)) * 50
+    water_max_ml = max(water_max_ml, water_ml + 500)
 
     deficit = max(0.0, tdee - target) if tdee else 0.0
     if goal == "lose":
@@ -98,6 +106,8 @@ def build_targets(profile_ctx: dict) -> dict:
         burn_min = 200
     else:
         burn_min = 180
+    # 运动上限：别把「多练」当目标，超过这个量恢复跟不上，收益反而是负的
+    burn_max = int(min(800, round(burn_min * 1.8 / 10.0) * 10))
 
     bedtime = str(profile_ctx.get("sleep_time") or DEFAULT_BEDTIME)[:5]
     wake_time = str(profile_ctx.get("wake_time") or DEFAULT_WAKE_TIME)[:5]
@@ -107,6 +117,7 @@ def build_targets(profile_ctx: dict) -> dict:
         "calorie_min": calorie_min,
         "calorie_max": calorie_max,
         "protein_min_g": protein_g,
+        "protein_max_g": protein_max_g,
         "fat_min_g": fat_min_g,
         "fat_max_g": fat_max_g,
         "carb_min_g": carb_min_g,
@@ -115,13 +126,16 @@ def build_targets(profile_ctx: dict) -> dict:
         "sugar_max_g": 25,
         "sodium_max_mg": 2000,
         "water_min_ml": water_ml,
+        "water_max_ml": water_max_ml,
         "sleep_min_h": 7.0,
         "sleep_max_h": 9.0,
         "bedtime": bedtime,
         "wake_time": wake_time,
         "exercise_burn_min": burn_min,
+        "exercise_burn_max": burn_max,
         "exercise_days_per_week": TRAIN_DAYS_PER_WEEK[goal],
         "steps_min": 8000,
+        "steps_max": 15000,
         "goal": goal,
         "tdee": int(round(tdee)) if tdee else None,
     }
@@ -191,6 +205,7 @@ def build_exercises(profile_ctx: dict, targets: dict, day_index: int) -> tuple[l
 
     day_targets = dict(targets)
     day_targets["exercise_burn_min"] = day_burn_min
+    day_targets["exercise_burn_max"] = int(min(800, round(day_burn_min * 1.8 / 10.0) * 10))
     day_targets["is_training_day"] = is_train
     day_targets["exercise_burn_target"] = burned + stretch["calories_burned"]
     return [main, stretch], day_targets

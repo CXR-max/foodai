@@ -40,25 +40,38 @@ def active_plan_day(db: Session, user_id: int, day: date) -> PlanDay | None:
     )
 
 
+def profile_targets(db: Session, user_id: int) -> dict:
+    """按档案现算一份完整目标（用于旧方案缺新指标时补上下限）"""
+    profile = db.query(HealthProfile).filter(HealthProfile.user_id == user_id).first()
+    if not profile:
+        return {}
+    ctx = {
+        "height_cm": profile.height_cm, "weight_kg": profile.weight_kg,
+        "age": profile.age, "gender": profile.gender,
+        "activity_level": profile.activity_level or "moderate",
+        "goal": profile.goal or "maintain",
+        "daily_target_calories": profile.daily_calorie_target,
+        "sleep_time": profile.sleep_time, "wake_time": profile.wake_time,
+    }
+    return plan_targets.build_targets(ctx)
+
+
 def targets_for_day(db: Session, user_id: int, day: date) -> dict:
-    """当日目标：计划级 targets + 当日覆盖；没有方案时按档案现算一份兜底"""
+    """当日目标：计划级 targets + 当日覆盖；没有方案时按档案现算一份兜底
+
+    旧方案里可能没有新加的指标（water_max_ml / protein_max_g / exercise_burn_max 等），
+    这里用档案现算的完整目标把缺的键补齐，保证「指标区间」对所有方案都成立。
+    """
     plan_day = active_plan_day(db, user_id, day)
+    merged: dict = {}
     if plan_day:
         plan = db.get(DietPlan, plan_day.plan_id)
         merged = dict(plan.targets or {}) if plan else {}
         merged.update(plan_day.targets or {})
-        if merged:
-            return merged
 
-    profile = db.query(HealthProfile).filter(HealthProfile.user_id == user_id).first()
-    ctx = {}
-    if profile:
-        ctx = {
-            "height_cm": profile.height_cm, "weight_kg": profile.weight_kg,
-            "age": profile.age, "gender": profile.gender,
-            "activity_level": profile.activity_level or "moderate",
-            "goal": profile.goal or "maintain",
-            "daily_target_calories": profile.daily_calorie_target,
-            "sleep_time": profile.sleep_time, "wake_time": profile.wake_time,
-        }
-    return plan_targets.build_targets(ctx) if ctx else {}
+    fallback = profile_targets(db, user_id)
+    if merged:
+        for key, value in fallback.items():
+            merged.setdefault(key, value)
+        return merged
+    return fallback

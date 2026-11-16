@@ -14,7 +14,7 @@ from app.models.check_in import CheckIn
 from app.models.diet_plan import DietPlan
 from app.models.food_record import FoodRecord
 from app.models.user import User
-from app.services import day_context, wellness
+from app.services import day_context, metric_bands, wellness
 
 router = APIRouter(prefix="/day", tags=["每日汇总"])
 
@@ -60,8 +60,22 @@ def day_summary(
     water_target = int(targets.get("water_min_ml") or 2000)
     sleep = wellness.sleep_dict(wellness.day_sleep(db, user.id, day))
 
+    # 指标区间：热量按当日运动量浮动（训练日上限回补），其余按目标区间 + 浮动容忍判定
+    band_targets = metric_bands.effective_calorie_band(targets)
+    bands = metric_bands.build_bands(
+        band_targets,
+        {
+            "calorie": intake["calories"] or None,
+            "protein": intake["protein_g"] or None,
+            "water": total_water or None,
+            "sleep": (sleep or {}).get("duration_h"),
+            "exercise": burn["exercise_kcal"] or None,
+        },
+        keys=["calorie", "protein", "water", "sleep", "exercise"],
+    )
+
     calorie_min = targets.get("calorie_min")
-    calorie_max = targets.get("calorie_max")
+    calorie_max = band_targets.get("calorie_max")   # 训练日上限已按消耗回补
     calorie_status = None
     if calorie_max:
         if intake["calories"] > calorie_max:
@@ -86,13 +100,16 @@ def day_summary(
             "water_ml": plan_day.water_ml if plan_day else None,
         },
         "targets": targets,
+        "bands": bands,
+        "band_note": band_targets.get("calorie_band_note"),
         "intake": {**intake, "calorie_status": calorie_status},
         "burn": burn,
         "water": {
             "total_ml": total_water,
             "target_ml": water_target,
+            "max_ml": targets.get("water_max_ml"),
             "pct": _pct(total_water, water_target),
-            "achieved": total_water >= water_target,
+            "achieved": metric_bands.achieved(targets, "water", total_water or None)[0],
         },
         "sleep": sleep,
         "tasks": {
