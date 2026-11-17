@@ -444,7 +444,10 @@ def normalize_generated_day(
             builder_flags.setdefault("duplicate_dishes", duplicates[:5])
 
     nutrition = _meals_nutrition(meals)
-    if not nutrition_check.check(nutrition, targets)["ok"]:
+    if not nutrition_check.check(
+        nutrition, targets,
+        soft_keys=frozenset(builder_flags.get("soft") or ()),
+    )["ok"]:
         _rebuild("七项营养越界")
         nutrition = _meals_nutrition(meals)
 
@@ -454,7 +457,12 @@ def normalize_generated_day(
         day_targets["calorie_source"] = "solver_calibrated"
 
     # 最后一道闸：七项自检（重排后仍不过 → 拒绝这一天的方案）
-    verdict = nutrition_check.check(nutrition, targets)
+    # 求解器降级留痕的软化项（fiber/sodium/sugar）要同步给复核：求解器侧是
+    # 「2 倍硬帽」语义，复核还按原区间硬卡的话，慢机器上限内没收敛到原区间的
+    # 解会被误判越界、整份拒收（CI 上实测发生）。用重排后的 flags，不是旧的。
+    verdict = nutrition_check.check(
+        nutrition, targets, soft_keys=frozenset(builder_flags.get("soft") or ()),
+    )
     if not verdict["ok"]:
         raise PlannerError(
             f"第 {day_index} 天餐食营养超出区间：" + "；".join(

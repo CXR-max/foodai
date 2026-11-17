@@ -819,7 +819,14 @@ def _swap_item(item: dict, meal_type: str, kind: str, avoid: set[str]) -> dict |
 
 
 def _seven_totals(meals: list[dict]) -> dict:
-    """七项合计（PlanDay.nutrition 是七项口径，只更四项会和详情页对不上）"""
+    """七项合计（PlanDay.nutrition 是七项口径，只更四项会和详情页对不上）
+
+    必须含全日烹调油（+225 kcal/+25 g 脂肪）：求解器排的方案天（planner
+    _day_nutrients）和 plans._meals_nutrition 都含油，唯独这里漏了——
+    重排后的天会比求解器实际卡的区间低 225 kcal，复核判定和展示全错位。
+    """
+    from app.services.planner import OIL_NUTRIENTS
+
     keys = ("calories", "protein_g", "fat_g", "carb_g", "fiber_g", "sodium_mg", "sugar_g")
     total = {key: 0.0 for key in keys}
     for meal in meals:
@@ -829,6 +836,8 @@ def _seven_totals(meals: list[dict]) -> dict:
                                                    item.get("category") or "")
             for key in keys:
                 total[key] += _num(values.get(key))
+    for key, value in OIL_NUTRIENTS.items():
+        total[key] = total.get(key, 0.0) + value
     return {key: round(value, 1) for key, value in total.items()}
 
 
