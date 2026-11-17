@@ -15,3 +15,5 @@ opencc-python-reimplemented>=0.1.7
 ortools>=9.10
 # 排行榜 ZSet（可选组件：装了才启用，没装自动降级 SQLite）
 redis>=5.0
+# 测试（CI 的「后端测试」步骤直接跑 pytest）
+pytest>=8.0
