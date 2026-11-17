@@ -40,5 +40,7 @@ class PlanDay(Base):
     targets = Column(JSON, nullable=True)      # 当日目标覆盖（热量上下限/运动消耗下限）
     estimated_calories = Column(Float, nullable=True)
     theme = Column(String(50), nullable=True)
+    nutrition = Column(JSON, nullable=True)      # 这天餐食实排的七项营养（生成时算好存下）
+    day_flags = Column(JSON, nullable=True)      # 生成留痕：降级/越界/数据缺失
     edit_count = Column(Integer, nullable=True, default=0)          # 用户改过几次（餐食/运动/睡眠都算）
     last_edited_at = Column(DateTime, nullable=True)                # 最后一次修改时间（评价里算调整质量）

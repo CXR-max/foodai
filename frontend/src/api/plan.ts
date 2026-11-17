@@ -78,11 +78,48 @@ export interface PlanDay {
   targets?: PlanTargets | null
   water_ml?: number | null
   estimated_calories: number
+  /** 这天餐食实排的七项营养（生成时已按七项区间校验过） */
+  nutrition?: PlanNutrition | null
+  /** 生成留痕：结构项降级 / 跨天重复放宽 / 处置后的调整 */
+  day_flags?: {
+    verified?: boolean
+    soft?: string[]
+    relaxed?: { key: string; label: string; value: number | null; range_text: string }[]
+    unverified?: string[]
+    variety_relaxed?: boolean
+    /** 处置缩份量/换菜留痕 */
+    adjusted?: DayAdjustment | null
+    /** 处置下调区间后整天的重排留痕 */
+    replanned?: DayAdjustment | null
+  } | null
+}
+
+export interface DayAdjustment {
+  reason?: string
+  meals?: string[]
+  trim_kcal?: number
+  calorie_min?: number
+  calorie_max?: number
+  /** 改了什么：from 为空表示新增，to 为空表示去掉 */
+  changed?: { meal: string; from?: string | null; to?: string | null; why?: string }[]
+  at?: string
+}
+
+export interface PlanNutrition {
+  calories: number
+  protein_g: number
+  fat_g: number
+  carb_g: number
+  fiber_g: number
+  sodium_mg: number
+  sugar_g: number
 }
 export interface Plan {
   id: number
   title: string
   status: string
+  /** active 但还没到开始日 → scheduled（提前排的下周方案，等它到点再顶上「进行中」） */
+  phase?: 'active' | 'scheduled' | 'archived' | 'draft' | string
   summary: string
   start_date?: string
   daily_target_calories: number
@@ -94,6 +131,21 @@ export interface Plan {
   reactivate_count?: number | null
   /** 顺延前的最初起始日 */
   original_start_date?: string | null
+  /** 档案变了（体重/诉求）：判定区间已按最新档案，但餐食还是旧目标排的 */
+  targets_drift?: {
+    changed: boolean
+    old_target: number
+    new_target: number
+    /** 快照区间 / 现算区间，前端可直接用来说明"哪个是餐食口径、哪个是判定口径" */
+    old_range?: [number, number] | null
+    new_range?: [number, number] | null
+    ratio: number
+    weight_delta: number
+    goal_changed: boolean
+    old_intent?: string | null
+    new_intent?: string | null
+    message: string
+  } | null
   provider: string
   days?: PlanDay[]
   // 列表卡片用的汇总（后端 plan_stats 算好）
@@ -315,6 +367,17 @@ export const updatePlanDay = (
 ) => put<PlanDay & { nutrition?: PlanNutrition }>(`/plans/${planId}/days/${dayIndex}`, data)
 
 /** 改菜试算结果：不落库，用于边改边看 */
+export interface DayAdjustment {
+  reason?: string
+  meals?: string[]
+  trim_kcal?: number
+  calorie_min?: number
+  calorie_max?: number
+  /** 改了什么：from 为空表示新增，to 为空表示去掉 */
+  changed?: { meal: string; from?: string | null; to?: string | null; why?: string }[]
+  at?: string
+}
+
 export interface PlanNutrition {
   meals: PlanMeal[]
   total: { calories: number; protein_g: number; fat_g: number; carb_g: number }

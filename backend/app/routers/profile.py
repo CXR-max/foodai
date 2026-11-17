@@ -10,15 +10,34 @@ from app.models.health_profile import HealthProfile
 from app.models.user import User
 from app.models.weight_log import WeightLog
 from app.schemas.profile import ProfileIn, WeightIn
-from app.services import nutrition, points
+from app.services import nutrition, plan_targets, points
 
 router = APIRouter(prefix="/profile", tags=["健康档案"])
 
 
+def profile_targets_ctx(p: HealthProfile) -> dict:
+    """档案 → 目标计算上下文（档案页、方案生成、每日区间共用同一份口径）"""
+    return {
+        "height_cm": p.height_cm, "weight_kg": p.weight_kg,
+        "body_fat_pct": p.body_fat_pct,
+        "age": p.age, "gender": p.gender,
+        "activity_level": p.activity_level or "moderate",
+        "goal": p.goal or "maintain",
+        "daily_target_calories": p.daily_calorie_target,
+        "sleep_time": p.sleep_time, "wake_time": p.wake_time,
+    }
+
+
 def profile_dict(p: HealthProfile, user: User) -> dict:
-    """档案序列化 + 实时计算的身体指标"""
+    """档案序列化 + 实时计算的身体指标 + 处方（为什么给你这个数）"""
     bmi = nutrition.calc_bmi(p.weight_kg, p.height_cm)
     bmr = nutrition.calc_bmr(p.weight_kg, p.height_cm, p.age, p.gender)
+    complete = bool(p.height_cm and p.weight_kg and p.age)
+    prescription = targets = None
+    if complete:
+        ctx = profile_targets_ctx(p)
+        prescription = plan_targets.build_prescription(ctx)
+        targets = plan_targets.build_targets(ctx)
     return {
         "height_cm": p.height_cm, "weight_kg": p.weight_kg,
         "body_fat_pct": p.body_fat_pct,
@@ -37,6 +56,10 @@ def profile_dict(p: HealthProfile, user: User) -> dict:
         "bmi": bmi,
         "bmi_level": nutrition.bmi_level(bmi),
         "bmr": bmr,
+        # 处方：诉求 → 策略（赤字/盈余、预期速度、重点、提醒），前端渲染成处方卡
+        "prescription": prescription,
+        # 每日目标区间 + 每个数字的依据（_source）
+        "targets": targets,
         "nickname": user.nickname or user.username,
     }
 
@@ -54,6 +77,7 @@ def get_profile(user: User = Depends(get_current_user), db: Session = Depends(ge
             "sleep_time": None, "wake_time": None, "water_target_ml": None,
             "over_limit_policy": "ask",
             "updated_at": None, "bmi": None, "bmi_level": "未知", "bmr": None,
+            "prescription": None, "targets": None,
             "nickname": user.nickname or user.username, "profile_completed": False,
         }
     result = profile_dict(p, user)
@@ -71,9 +95,10 @@ def save_profile(data: ProfileIn, user: User = Depends(get_current_user), db: Se
     # 只更新客户端传来的字段（支持分次填写）
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(p, field, value)
-    # 服务端统一计算每日热量目标（不信任前端算的）
+    # 服务端统一计算每日热量目标（不信任前端算的；诉求 + BMI 决定赤字）
     p.daily_calorie_target = nutrition.calc_daily_target(
-        p.weight_kg, p.height_cm, p.age, p.gender, p.activity_level or "moderate", p.goal or "maintain",
+        p.weight_kg, p.height_cm, p.age, p.gender, p.activity_level or "moderate",
+        p.goal or "maintain", p.body_fat_pct,
     )
     db.commit()
     db.refresh(p)
@@ -101,7 +126,8 @@ def add_weight(data: WeightIn, user: User = Depends(get_current_user), db: Sessi
     if p:
         p.weight_kg = data.weight_kg
         p.daily_calorie_target = nutrition.calc_daily_target(
-            p.weight_kg, p.height_cm, p.age, p.gender, p.activity_level or "moderate", p.goal or "maintain",
+            p.weight_kg, p.height_cm, p.age, p.gender, p.activity_level or "moderate",
+            p.goal or "maintain", p.body_fat_pct,
         )
     pts = points.award(db, user, "log_weight", once_per_day=True,
                        description=f"记录体重 {data.weight_kg}kg")

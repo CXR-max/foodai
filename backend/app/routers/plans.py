@@ -21,14 +21,17 @@ from app.schemas.plan import (
     PlanImportIn, ReusePlanIn,
 )
 from app.services import (
-    meal_recalc, nutrition, plan_lifecycle, plan_review, plan_targets, points, schedule_import,
+    meal_recalc, nutrition, nutrition_check, plan_lifecycle, plan_review, plan_targets,
+    points, schedule_import,
 )
 from app.services.achievements import unlock_all
-from app.services.day_context import active_plan_day, profile_targets
-from app.services.llm.prompts import PLAN_CHAT_SYSTEM
+from app.services.day_context import active_plan_day, profile_targets, targets_drift
+from app.services.llm import foods_data
+from app.services.llm.prompts import build_chat_system
 from app.services.llm.provider import get_llm_provider
 from app.services.plan_intent import extract_plan_intent, merge_plan_intent
 from app.services.planner import THEMES as PLAN_THEMES
+from app.services.planner import PlannerError
 
 logger = logging.getLogger("plans")
 
@@ -39,11 +42,35 @@ MEAL_ORDER = {"breakfast": 0, "lunch": 1, "dinner": 2, "snack": 3}
 MAX_CHAT_HISTORY = 20  # 聊天模型带最近 20 条；方案约束抽取另读持久化全量/最近 60 条
 
 
-def build_chat_messages(history) -> list[dict]:
-    """system + 最近若干条历史（裁剪旧消息，保证首字延迟稳定）"""
+def build_chat_messages(history, profile_ctx: dict | None = None,
+                        targets: dict | None = None, round_no: int = 0) -> list[dict]:
+    """system + 最近若干条历史（裁剪旧消息，保证首字延迟稳定）
+
+    system 里带上档案与当前目标：模型有数就不会靠反问来凑信息。
+    """
     recent = history[-MAX_CHAT_HISTORY:]
-    return ([{"role": "system", "content": PLAN_CHAT_SYSTEM}]
+    system = build_chat_system(profile_ctx, targets, round_no)
+    return ([{"role": "system", "content": system}]
             + [{"role": m.role, "content": m.content} for m in recent])
+
+
+def chat_context(db: Session, user: User) -> tuple[dict, dict]:
+    """聊天用的档案 + 当前目标（没有档案就给空，让提示词去引导补全）"""
+    profile = db.query(HealthProfile).filter(HealthProfile.user_id == user.id).first()
+    if not profile:
+        return {}, {}
+    ctx = {
+        "height_cm": profile.height_cm, "weight_kg": profile.weight_kg,
+        "body_fat_pct": profile.body_fat_pct,
+        "age": profile.age, "gender": profile.gender,
+        "activity_level": profile.activity_level or "moderate",
+        "goal": profile.goal or "maintain",
+        "taste_preferences": profile.taste_preferences or [],
+        "dietary_restrictions": profile.dietary_restrictions or [],
+        "exercise_preferences": profile.exercise_preferences or [],
+        "bmi": nutrition.calc_bmi(profile.weight_kg, profile.height_cm),
+    }
+    return ctx, plan_targets.build_targets(ctx)
 
 
 def _last_user_content(messages) -> str:
@@ -213,6 +240,22 @@ def normalize_meals(meals: list[dict]) -> list[dict]:
     return sorted(meals, key=lambda m: MEAL_ORDER.get(m.get("meal_type", "snack"), 9))
 
 
+def repeated_dishes(meals: list[dict]) -> list[str]:
+    """同一天里出现在两个及以上餐次的菜（同一餐多吃两份不算，跨餐才算重复）。
+
+    求解器侧有「同一道菜一天只出现一次」的硬约束，但走大模型的方案没有：
+    模型很容易把「水煮鱼、馒头」原样塞进午餐和晚餐，用户拿到手的是一天吃两顿一样的。
+    """
+    meal_types: dict[str, set[str]] = {}
+    for meal in meals or []:
+        meal_type = str(meal.get("meal_type") or "")
+        for item in meal.get("items") or []:
+            name = str(item.get("name") or "").strip()
+            if name:
+                meal_types.setdefault(name, set()).add(meal_type)
+    return [name for name, types in meal_types.items() if len(types) > 1]
+
+
 def plan_day_dict(d: PlanDay) -> dict:
     exercises = d.exercises or ([d.exercise] if d.exercise else [])
     return {
@@ -225,6 +268,9 @@ def plan_day_dict(d: PlanDay) -> dict:
         "targets": d.targets,
         "water_ml": d.water_ml,
         "estimated_calories": d.estimated_calories,
+        # 这天实排的七项营养 + 生成留痕（降级/放宽），详情页据此显示「这天纤维只有 22 g」
+        "nutrition": d.nutrition,
+        "day_flags": d.day_flags,
     }
 
 
@@ -243,6 +289,9 @@ def plan_dict(
             targets.setdefault(key, value)
     result = {
         "id": p.id, "title": p.title, "status": p.status,
+        # 派生态：active 但还没到开始日 → scheduled（提前排的下周方案，不该抢"进行中"的位置）
+        "phase": ("scheduled" if (p.status == "active" and p.start_date
+                                  and p.start_date > date.today()) else p.status),
         "start_date": str(p.start_date), "summary": p.summary,
         "daily_target_calories": p.daily_target_calories,
         "targets": targets or p.targets,
@@ -263,6 +312,11 @@ def plan_dict(
         result["review_headline"] = review.get("headline")
         result["review_status"] = review.get("status")
         result["review_task_rate"] = (review.get("stats") or {}).get("task_rate")
+    # 档案变了（体重/诉求）→ 提示「当前方案还是按旧目标排的，建议重新生成」
+    if db is not None and (p.targets or {}):
+        drift = targets_drift(db, p.user_id, p)
+        if drift:
+            result["targets_drift"] = drift
     if stats:
         result.update(stats)
     if with_days and db is not None:
@@ -299,10 +353,12 @@ def build_profile_ctx(profile: HealthProfile, data: GeneratePlanIn) -> dict:
         "age": profile.age, "gender": profile.gender,
         "activity_level": profile.activity_level or "moderate",
         "goal": profile.goal or "maintain",
-        "daily_target_calories": profile.daily_calorie_target
-        or nutrition.calc_daily_target(profile.weight_kg, profile.height_cm,
-                                       profile.age, profile.gender,
-                                       profile.activity_level, profile.goal),
+        "body_fat_pct": profile.body_fat_pct,
+        # 现算优先（诉求+BMI 决定赤字），档案旧值只在算不出 TDEE 时兜底
+        "daily_target_calories": nutrition.calc_daily_target(
+            profile.weight_kg, profile.height_cm, profile.age, profile.gender,
+            profile.activity_level, profile.goal, profile.body_fat_pct,
+        ) or profile.daily_calorie_target,
         "taste_preferences": profile.taste_preferences or [],
         "dietary_restrictions": profile.dietary_restrictions or [],
         "exercise_preferences": profile.exercise_preferences or [],
@@ -342,9 +398,10 @@ def normalize_generated_day(
     模型只负责「吃什么」；运动处方、睡眠方案、当日目标一律由本地目标体系补，
     这样云端模型与本地求解器产出的结构完全一致，前端不用写两套逻辑。
 
-    热量校准：模型给出的份量经常明显偏离目标（实测 1 天只有 760 kcal，目标 2000）。
-    偏离超过 15% 时用本地求解器重排这一天的餐食，保证「计划里写的上限」和实际餐单对得上；
-    求解失败则保留模型结果，不阻断生成。
+    两道校准：
+    1. 热量明显偏离目标（>15%）→ 用本地求解器重排
+    2. 七项营养有一项越界 → 也用求解器重排（模型凑热量时蛋白经常顶到 2 g/kg 以上）
+    重排后仍越界就报错，不交付「按方案吃完就超标」的方案。
     """
     meals = normalize_meals([m.model_dump() for m in day.meals])
     meals = meal_recalc.recalc_meals(meals)["meals"]
@@ -353,22 +410,58 @@ def normalize_generated_day(
     cal_min = float(targets.get("calorie_min") or 0)
     cal_max = float(targets.get("calorie_max") or 0)
     calibrated = False
-    if meals and cal_min and (total < cal_min * 0.85 or total > cal_max * 1.05):
-        try:
-            from app.services import planner
+    builder_flags: dict = {}
 
+    def _rebuild(reason: str) -> bool:
+        nonlocal meals, calibrated, builder_flags
+        from app.services import planner
+
+        try:
             fallback = planner.build_day(profile_ctx, day_index, 7, prior_days or [])
             meals = normalize_meals([m.model_dump() for m in fallback.meals])
             meals = meal_recalc.recalc_meals(meals)["meals"]
             calibrated = True
-            logger.info("第 %d 天模型餐食 %.0f kcal 偏离目标，已用求解器重排", day_index, total)
-        except Exception as exc:  # noqa: BLE001 —— 校准失败不影响生成
-            logger.warning("第 %d 天热量校准失败，保留模型餐食：%s", day_index, exc)
+            # 求解器的降级留痕（纤维/钠转软、跨天不重复放宽）不能被覆盖掉，
+            # 否则用户看不到「这天纤维只排到 22 g」这种诚实说明
+            builder_flags = dict(fallback.day_flags or {})
+            logger.info("第 %d 天模型餐食%s，已用求解器重排", day_index, reason)
+            return True
+        except Exception as exc:  # noqa: BLE001 —— 重排失败交给下面统一报错
+            logger.warning("第 %d 天求解器重排失败：%s", day_index, exc)
+            return False
+
+    if meals and cal_min and (total < cal_min * 0.85 or total > cal_max * 1.05):
+        _rebuild(f" {total:.0f} kcal 偏离目标")
+
+    # 同一道菜不能同时出现在午餐和晚餐：老模型 / 老方案最常犯这个错，
+    # 一天吃两顿一样的既执行不下去，也不再是「一天一道菜只出现一次」。
+    # 先拿求解器换掉，换不动（极窄忌口池）才降级保留并留痕，不整份拒收。
+    duplicates = repeated_dishes(meals)
+    if duplicates:
+        if _rebuild(f"菜品跨餐重复（{'、'.join(duplicates[:3])}）"):
+            total = sum((m.get("calories") or 0) for m in meals)
+        else:
+            builder_flags.setdefault("duplicate_dishes", duplicates[:5])
+
+    nutrition = _meals_nutrition(meals)
+    if not nutrition_check.check(nutrition, targets)["ok"]:
+        _rebuild("七项营养越界")
+        nutrition = _meals_nutrition(meals)
 
     extra = plan_targets.enrich_day(profile_ctx, targets, day_index)
     day_targets = dict(extra["targets"])
     if calibrated:
         day_targets["calorie_source"] = "solver_calibrated"
+
+    # 最后一道闸：七项自检（重排后仍不过 → 拒绝这一天的方案）
+    verdict = nutrition_check.check(nutrition, targets)
+    if not verdict["ok"]:
+        raise PlannerError(
+            f"第 {day_index} 天餐食营养超出区间：" + "；".join(
+                nutrition_check.violation_text(item) for item in verdict["violations"]
+            )
+        )
+
     return {
         "day_index": day_index,
         "theme": day.theme or PLAN_THEMES[(day_index - 1) % len(PLAN_THEMES)],
@@ -379,7 +472,34 @@ def normalize_generated_day(
         "targets": day_targets,
         "water_ml": extra["water_ml"],
         "estimated_calories": round(sum((m.get("calories") or 0) for m in meals)),
+        "nutrition": nutrition,
+        "day_flags": {**builder_flags, "verified": True, "solver_rebuilt": calibrated},
     }
+
+
+def _meals_nutrition(meals: list[dict]) -> dict:
+    """按餐食列表算七项（复用 nutrition.match_diet_nutrition，与排餐器同一套换算）
+
+    必须把全日烹调油算进去：食物库的菜只写食材本身，而七项目标按含油算。
+    这里漏掉油，排餐器刚生成的合格方案会被复核判成「热量少 200、脂肪少 25」，
+    于是重排、再判不过、最后整份拒收。
+    """
+    from app.services.planner import OIL_NUTRIENTS
+
+    totals = {key: 0.0 for key in foods_data.DIET_NUTRIENT_KEYS}
+    for meal in meals or []:
+        for item in meal.get("items") or []:
+            name = (item.get("name") or "").strip()
+            if not name:
+                continue
+            values = nutrition.match_diet_nutrition(
+                name, float(item.get("portion_g") or 0), item.get("category"),
+            )
+            for key, value in values.items():
+                totals[key] += float(value or 0)
+    for key, value in OIL_NUTRIENTS.items():
+        totals[key] = totals.get(key, 0.0) + value
+    return {key: round(value, 1) for key, value in totals.items()}
 
 
 @router.post("/generate")
@@ -421,11 +541,20 @@ def generate_plan(
     )
     db.add(plan)
     db.flush()  # 拿到 plan.id
+    built_days: list[dict] = []
     for day in plan_result.days:
-        d = normalize_generated_day(
-            profile_ctx, targets, day.day_index, day,
-            prior_days=plan_result.days[:day.day_index - 1],
-        )
+        try:
+            # prior_days 用「已定下来的天」，不是模型原始输出：
+            # 求解器重排过的那天才是用户真正看到的，跨天不重复要跟它对
+            d = normalize_generated_day(
+                profile_ctx, targets, day.day_index, day,
+                prior_days=built_days,
+            )
+        except PlannerError as exc:
+            # 排不出「按方案吃完必落区间」的餐食：宁可生成失败，也不交付会超标的方案
+            db.rollback()
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        built_days.append(d)
         db.add(PlanDay(
             plan_id=plan.id,
             day_index=d["day_index"],
@@ -437,14 +566,18 @@ def generate_plan(
             targets=d["targets"],
             water_ml=d["water_ml"],
             estimated_calories=d["estimated_calories"],
+            nutrition=d.get("nutrition"),
+            day_flags=d.get("day_flags"),
         ))
     pts = points.award(db, user, "generate_plan", description=f"生成{data.days}天养生方案")
     unlock_all(db, user)   # 生成方案数成就
-    plan_lifecycle.activate_plan(db, user.id, plan)   # 新方案即进行中，旧方案归档
+    # 新方案「到点才生效」：开始日在未来时不动正在执行的方案（见 plan_lifecycle）
+    activated = plan_lifecycle.activate_plan(db, user.id, plan)
     db.commit()
     db.refresh(plan)
     result = plan_dict(plan, with_days=True, db=db)
     result["points_awarded"] = pts or 0
+    result["activated"] = activated
     return result
 
 
@@ -536,6 +669,8 @@ def generate_plan_stream(
                     exercises=d["exercises"], sleep=d["sleep"],
                     targets=d["targets"], water_ml=d["water_ml"],
                     estimated_calories=d["estimated_calories"],
+                    nutrition=d.get("nutrition"),
+                    day_flags=d.get("day_flags"),
                 ))
             u = s.get(User, user_id)
             pts = points.award(s, u, "generate_plan", description=f"生成{data.days}天养生方案") if u else 0
@@ -691,7 +826,10 @@ def reuse_plan(
                 )
                 prior.append(generated)
                 reframed += 1
-            except Exception as exc:  # noqa: BLE001 —— 求解失败就退回原样复制该天
+            except PlannerError as exc:
+                # 「按当前营养库重算」时排不出落区间的餐食：不退回旧餐单（旧餐单可能就是超标的）
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            except Exception as exc:  # noqa: BLE001 —— 其它求解失败就退回原样复制该天
                 logger.warning("沿用方案第 %d 天重算失败，退回复制：%s", day.day_index, exc)
         rebuilt.append(payload)
 
@@ -723,6 +861,8 @@ def reuse_plan(
             targets=payload["targets"],
             water_ml=payload["water_ml"],
             estimated_calories=payload["estimated_calories"],
+            nutrition=payload.get("nutrition"),
+            day_flags=payload.get("day_flags"),
         ))
     activated = plan_lifecycle.activate_plan(db, user.id, plan)
     db.commit()
@@ -730,6 +870,63 @@ def reuse_plan(
     result = plan_dict(plan, with_days=True, db=db)
     result["activated"] = activated
     return result
+
+
+def _day_needs_refresh(day: PlanDay) -> bool:
+    """这一天是不是「过期菜单」：没落七项、没落当日目标，或午餐晚餐是同一道菜"""
+    if not day.targets or not day.nutrition:
+        return True
+    return bool(repeated_dishes(day.meals or []))
+
+
+def _refresh_stale_days(db: Session, plan: DietPlan, days: list[PlanDay]) -> list[int]:
+    """把顺延过来的旧菜单按当前营养库重排，返回重排过的 day_index。
+
+    只动有硬伤的天（缺七项 / 午晚餐同一道菜）；只过期几天的方案原样保留，
+    不能因为「日期过了」就把用户排好的菜整体换掉。
+    """
+    stale = [d for d in days if _day_needs_refresh(d)]
+    if not stale:
+        return []
+    from app.services import planner
+
+    profile_ctx = dict(plan.basis_snapshot or {})
+    targets = dict(plan.targets or plan_targets.build_targets(profile_ctx))
+    plan.targets = targets
+    total_days = len(days)
+    prior: list = []
+    refreshed: list[int] = []
+    for day in days:
+        if not _day_needs_refresh(day):
+            prior.append(day)
+            continue
+        try:
+            generated = planner.build_day(profile_ctx, day.day_index, total_days, prior)
+            payload = normalize_generated_day(
+                profile_ctx, targets, day.day_index, generated, prior_days=prior,
+            )
+        except Exception as exc:  # noqa: BLE001 —— 排不出来就保留原菜单，导入不能失败
+            logger.warning("方案 %s 第 %s 天重排失败，保留原菜单：%s",
+                           plan.id, day.day_index, exc)
+            prior.append(day)
+            continue
+        day.meals = payload["meals"]
+        day.exercise = payload["exercise"]
+        day.exercises = payload["exercises"]
+        day.sleep = payload["sleep"]
+        day.targets = payload["targets"]
+        day.water_ml = payload["water_ml"]
+        day.nutrition = payload["nutrition"]
+        day.day_flags = payload["day_flags"]
+        day.estimated_calories = payload["estimated_calories"]
+        prior.append(generated)
+        refreshed.append(day.day_index)
+
+    if refreshed:
+        plan.plan_version = (plan.plan_version or 1) + 1
+        plan.summary = ((plan.summary or "")
+                        + f"；导入时发现菜单已过期，已按当前营养库重排 {len(refreshed)} 天")
+    return refreshed
 
 
 @router.post("/{plan_id}/import")
@@ -755,9 +952,17 @@ def import_plan_to_schedule(
 
     shifted = plan_lifecycle.shift_to_anchor(db, plan, data.anchor or date.today())
     db.flush()
+    refreshed: list[int] = []
     if shifted["shift_days"]:
         days = (db.query(PlanDay).filter(PlanDay.plan_id == plan.id)
                 .order_by(PlanDay.day_index.asc()).all())
+        # 顺延只挪日期，菜单还是几个月前那一份：先把缺七项 / 午晚餐重复的天按当前营养库重排，
+        # 否则用户导入的是「一份早就过期的单子」，照着吃就是错的。
+        refreshed = _refresh_stale_days(db, plan, days)
+        if refreshed:
+            db.flush()
+            days = (db.query(PlanDay).filter(PlanDay.plan_id == plan.id)
+                    .order_by(PlanDay.day_index.asc()).all())
 
     if data.mode == "day":
         if data.day_index is None:
@@ -777,12 +982,15 @@ def import_plan_to_schedule(
     if shifted["shift_days"]:
         msg = (f"方案日期已过，已顺延 {shifted['shift_days']} 天到 "
                f"{shifted['to_date']} 起；" + msg)
+    if refreshed:
+        msg = (f"{len(refreshed)} 天菜单还是旧版（缺七项营养或午餐晚餐重复），"
+               f"已按当前营养库重排：" + msg)
     if activated["archived_count"]:
         msg += f"；{activated['archived_count']} 份旧方案已归档到历史方案"
     if activated.get("reactivated"):
         msg = "该方案已重新启用为进行中；" + msg
     return {**result, "day_count": day_count, "message": msg,
-            "shift": shifted, "activated": activated}
+            "shift": shifted, "refreshed_days": refreshed, "activated": activated}
 
 
 @router.get("/{plan_id}")
@@ -932,10 +1140,13 @@ def update_plan_day(
 def chat_with_llm(
     data: PlanChatIn,
     user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    """生成方案前的纯文字沟通：前端携带历史消息，后端返回模型回复"""
+    """生成方案前的纯文字沟通：前端携带历史消息，后端返回模型回复（带档案，先答后问）"""
     provider = get_llm_provider()
-    messages = build_chat_messages(data.messages)
+    profile_ctx, targets = chat_context(db, user)
+    round_no = sum(1 for m in data.messages if m.role == "user")
+    messages = build_chat_messages(data.messages, profile_ctx, targets, round_no)
     reply = provider.chat(messages)
     save_chat_exchange(user.id, data.messages, reply)
     return {"reply": reply}
@@ -945,10 +1156,13 @@ def chat_with_llm(
 def chat_stream(
     data: PlanChatIn,
     user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """流式对话（SSE）：逐块推送模型回复，前端边收边显示（体感更快）"""
     provider = get_llm_provider()
-    messages = build_chat_messages(data.messages)
+    profile_ctx, targets = chat_context(db, user)
+    round_no = sum(1 for m in data.messages if m.role == "user")
+    messages = build_chat_messages(data.messages, profile_ctx, targets, round_no)
     user_id = user.id
 
     def sse(event: str, payload: dict) -> str:

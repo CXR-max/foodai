@@ -18,7 +18,7 @@ from app.models.check_in import CheckIn
 from app.models.diet_plan import DietPlan, PlanDay
 from app.models.user import User
 from app.schemas.checkin import FromPlanIn, ManualCheckInIn
-from app.services import day_context, points, schedule_import, wellness
+from app.services import day_context, diet_intake, metric_bands, points, schedule_import, wellness
 from app.services.achievements import calc_streak, unlock_all
 from app.services.llm.prompts import build_checkin_praise_messages
 from app.services.llm.provider import get_llm_provider
@@ -235,7 +235,13 @@ def complete_checkin(
     if not c or c.user_id != user.id:
         raise HTTPException(status_code=404, detail="任务不存在")
     if c.status == "done":
-        raise HTTPException(status_code=400, detail="该任务已完成")
+        # 幂等：这餐可能是拍照打卡自动置完成的，用户再点一次不该报错。
+        # 报「该任务已完成」会让人以为点错了，实际是系统自己先打了。
+        return {
+            "id": c.id, "status": c.status, "points_awarded": 0,
+            "already_done": True,
+            "message": "这个任务已经完成了（拍照打卡会自动置已完成，不用再点一次）",
+        }
     # 防刷分：只能打卡当天，漏打的日子去积分商城用补签卡补
     if c.check_date != date.today():
         raise HTTPException(status_code=400,
@@ -320,6 +326,27 @@ def complete_checkin(
     unlock_all(db, user)   # 打卡可能解锁"连续打卡"类成就
     db.commit()
 
+    # 餐食打卡：顺手把「今天吃了多少」判一遍（热量 + 蛋白），点一下就算完成，
+    # 不要求用户额外记录；蛋白不足只提示，不阻塞、不弹窗
+    # 摄入口径与实际汇总一致：记过就用记录，没记就按这餐的方案菜品折算
+    diet = None
+    intake = None
+    if (c.task_key or "").startswith("meal_"):
+        day_targets = day_context.targets_for_day(db, user.id, c.check_date)
+        intake = diet_intake.day_intake(db, user.id, c.check_date)
+        pending_meals = (db.query(CheckIn)
+                         .filter(CheckIn.user_id == user.id,
+                                 CheckIn.check_date == c.check_date,
+                                 CheckIn.status == "pending",
+                                 CheckIn.task_key.like("meal_%")).count())
+        diet = metric_bands.diet_summary(
+            metric_bands.effective_calorie_band(day_targets),
+            intake["calories"] or None,
+            intake["protein_g"] or None,
+            pending_meals=pending_meals,
+            intake=intake,
+        )
+
     # AI 个性化点评（锦上添花，失败返回 None，不影响打卡结果）
     day_total = db.query(CheckIn).filter(
         CheckIn.user_id == user.id, CheckIn.check_date == c.check_date).count()
@@ -336,6 +363,8 @@ def complete_checkin(
     return {"id": c.id, "status": c.status,
             "points_awarded": pts + bonus, "bonus": bonus,
             "ai_praise": ai_praise,
+            "diet": diet,
+            "intake": intake,
             "message": f"任务完成 +{pts} 分" + (f"，当日全部完成 +{bonus} 分 🎉" if bonus else "")}
 
 

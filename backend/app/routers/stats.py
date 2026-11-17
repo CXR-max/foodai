@@ -8,10 +8,10 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.check_in import CheckIn
-from app.models.food_record import FoodRecord
 from app.models.health_profile import HealthProfile
 from app.models.user import User
 from app.models.weight_log import WeightLog
+from app.services import diet_intake
 
 router = APIRouter(prefix="/stats", tags=["数据统计"])
 
@@ -37,9 +37,9 @@ def calc_streak(db: Session, user_id: int) -> int:
 def overview(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """仪表盘一屏数据：今日热量/目标、连续打卡、积分、排名"""
     today = date.today()
-    # 今日热量摄入
-    today_cal = (db.query(func.coalesce(func.sum(FoodRecord.calories), 0.0))
-                 .filter(FoodRecord.user_id == user.id, FoodRecord.eaten_date == today).scalar())
+    # 今日热量摄入：与日程页同一口径（记了用记录，没记的按方案打卡折算），
+    # 否则会出现"日程 460、概览 0"的矛盾
+    today_cal = diet_intake.day_intake(db, user.id, today)["calories"]
     # 档案里的热量目标
     profile = db.query(HealthProfile).filter(HealthProfile.user_id == user.id).first()
     # 今日打卡情况
@@ -51,10 +51,11 @@ def overview(user: User = Depends(get_current_user), db: Session = Depends(get_d
     today_burn = (db.query(func.sum(CheckIn.calories_burned))
                   .filter(CheckIn.user_id == user.id, CheckIn.check_type == "exercise",
                           CheckIn.status == "done", CheckIn.check_date == today).scalar())
-    # 近 7 天：日均摄入 / 总消耗
+    # 近 7 天：日均摄入（同一口径，打卡过但没记食物的一天也算进当天）
     week_start = today - timedelta(days=6)
-    week_avg_intake = round((db.query(func.coalesce(func.sum(FoodRecord.calories), 0.0))
-                .filter(FoodRecord.user_id == user.id, FoodRecord.eaten_date >= week_start).scalar() or 0) / 7, 1)
+    week_sum = sum(diet_intake.day_intake(db, user.id, week_start + timedelta(days=i))["calories"]
+                   for i in range(7))
+    week_avg_intake = round(week_sum / 7, 1)
     week_burn = (db.query(func.coalesce(func.sum(CheckIn.calories_burned), 0.0))
                  .filter(CheckIn.user_id == user.id, CheckIn.check_type == "exercise",
                          CheckIn.status == "done", CheckIn.check_date >= week_start).scalar())
@@ -83,15 +84,11 @@ def overview(user: User = Depends(get_current_user), db: Session = Depends(get_d
 def calories_trend(days: int = Query(default=14, ge=1, le=90),
                    user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """近 N 天每日热量摄入（没记录的天补 0，方便前端画连续柱状图）"""
-    rows = (db.query(FoodRecord.eaten_date, func.sum(FoodRecord.calories))
-            .filter(FoodRecord.user_id == user.id,
-                    FoodRecord.eaten_date >= date.today() - timedelta(days=days - 1))
-            .group_by(FoodRecord.eaten_date).all())
-    by_date = {d: round(v or 0, 1) for d, v in rows}
     result = []
     for i in range(days):
         d = date.today() - timedelta(days=days - 1 - i)
-        result.append({"date": str(d), "calories": by_date.get(d, 0)})
+        result.append({"date": str(d),
+                       "calories": diet_intake.day_intake(db, user.id, d)["calories"]})
     return result
 
 
@@ -111,15 +108,17 @@ def nutrition_summary(days: int = Query(default=7, ge=1, le=30),
                       user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """近 N 天营养结构均值（蛋白质/脂肪/碳水日均摄入，画饼图）"""
     start = date.today() - timedelta(days=days - 1)
-    # 先按天求和，再除以"有记录的天数"：避免某天记了 4 餐就被加权 4 次，
-    # 也避免把没记录的空白天算进分母（否则 30 天口径会把日均摊薄到 1/4）
-    row = (db.query(func.coalesce(func.sum(FoodRecord.protein_g), 0.0),
-                    func.coalesce(func.sum(FoodRecord.fat_g), 0.0),
-                    func.coalesce(func.sum(FoodRecord.carb_g), 0.0),
-                    func.count(func.distinct(FoodRecord.eaten_date)))
-           .filter(FoodRecord.user_id == user.id, FoodRecord.eaten_date >= start).first())
-    total_p, total_f, total_c, n_days = row
-    n = n_days or 0
+    # 口径与日程/概览一致：记了用记录，没记但打卡过的餐按方案折算；
+    # 分母只算"这天有数据"，避免空白天把日均摊薄
+    total_p = total_f = total_c = 0.0
+    n = 0
+    for i in range(days):
+        intake = diet_intake.day_intake(db, user.id, start + timedelta(days=i))
+        if intake["calories"] > 0 or intake["protein_g"] > 0:
+            n += 1
+            total_p += intake["protein_g"]
+            total_f += intake["fat_g"]
+            total_c += intake["carb_g"]
     return {
         "days_with_data": n,
         "avg_protein_g": round(total_p / n, 1) if n else 0.0,
@@ -149,14 +148,10 @@ def trends(period: str = Query(default="week", alias="range", pattern="^(week|mo
             q = q.filter(extra)
         return {d: v or 0 for d, v in q.group_by(model_date_col).all()}
 
-    cal = daily_sum(FoodRecord.calories, FoodRecord.eaten_date,
-                    FoodRecord.user_id == user.id)
-    protein = daily_sum(FoodRecord.protein_g, FoodRecord.eaten_date,
-                        FoodRecord.user_id == user.id)
-    fat = daily_sum(FoodRecord.fat_g, FoodRecord.eaten_date,
-                    FoodRecord.user_id == user.id)
-    carb = daily_sum(FoodRecord.carb_g, FoodRecord.eaten_date,
-                     FoodRecord.user_id == user.id)
+    # 摄入四项用统一下来的口径（记录 + 已打卡餐次的方案折算），
+    # 否则趋势图会和日程页对不上
+    dates_list = [today - timedelta(days=days - 1 - i) for i in range(days)]
+    intake_by_date = {d: diet_intake.day_intake(db, user.id, d) for d in dates_list}
     burn = daily_sum(CheckIn.calories_burned, CheckIn.check_date,
                      (CheckIn.user_id == user.id) & (CheckIn.check_type == "exercise")
                      & (CheckIn.status == "done"))
@@ -172,15 +167,15 @@ def trends(period: str = Query(default="week", alias="range", pattern="^(week|mo
     target = profile.daily_calorie_target if profile else None
 
     points = []
-    for i in range(days):
-        d = today - timedelta(days=days - 1 - i)
+    for d in dates_list:
+        intake = intake_by_date[d]
         points.append({
             "date": str(d),
-            "calories": round(cal.get(d, 0), 1),
+            "calories": round(intake["calories"], 1),
             "target": target,
-            "protein_g": round(protein.get(d, 0), 1),
-            "fat_g": round(fat.get(d, 0), 1),
-            "carb_g": round(carb.get(d, 0), 1),
+            "protein_g": round(intake["protein_g"], 1),
+            "fat_g": round(intake["fat_g"], 1),
+            "carb_g": round(intake["carb_g"], 1),
             "burn": round(burn.get(d, 0), 1),
             "weight_kg": weight.get(d),
         })

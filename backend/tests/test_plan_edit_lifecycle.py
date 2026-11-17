@@ -149,10 +149,12 @@ def test_reuse_old_plan_starts_today(client, auth, old_plan_id):
     assert plan["start_date"] >= str(date.today())
     assert plan["days"][0]["date"] == plan["start_date"]
     assert plan["status"] == "active"
-    # 被沿用的那份归档，避免两份同时进行中
+    # 新一份排在旧方案结束之后才开始 → 旧方案这几天还在执行，不能提前归档：
+    # 归档会把 11-17~11-23 变成"没有方案天"的日子，打卡后指标全算不出来
     plans = {p["id"]: p for p in client.get("/api/plans", headers=auth).json()}
-    assert plans[old_plan_id]["status"] == "archived"
-    assert plans[plan["id"]]["status"] == "active"
+    assert plans[old_plan_id]["status"] == "active"
+    assert plan["start_date"] > str(date.today())
+    assert plans[plan["id"]]["phase"] == "scheduled"
 
 
 # ---------------- 改菜重算 ----------------
@@ -287,10 +289,11 @@ def test_reimporting_history_plan_marks_reactivated(session_factory, client, aut
     assert card["reactivate_count"] == 1
     assert card["original_start_date"] == str(date.today() - timedelta(days=10))
 
-    # 被新方案顶掉归档后，痕迹仍保留（列表显示「曾重新启用」）
+    # 沿用出的新方案从明天起才生效 → 这一份仍在自己那几天里执行，不归档，
+    # 「曾重新启用」的痕迹也因此还留在卡片上
     client.post(f"/api/plans/{pid}/reuse", headers=auth, json={"mode": "copy"})
     card = {p["id"]: p for p in client.get("/api/plans", headers=auth).json()}[pid]
-    assert card["status"] == "archived"
+    assert card["status"] == "active"
     assert card["reactivated_at"]
 
 

@@ -65,13 +65,14 @@ def build_food_recognition_prompt() -> str:
 
 # ---------- 方案生成 ----------
 
-# 运动每分钟消耗估算表（按 60kg 成年人）——mock 和换算共用
+# 方案生成/运动排期用的参考 MET（按 60kg 成年人）——**经验近似值**，
+# 逐项校准版见 services/met.py（那里带三档强度与来源标注）；此处只用于方案里的粗略估量
 EXERCISE_METABOLIC = {
     "跑步": 10, "跳绳": 11, "游泳": 9, "骑行": 7,
     "力量训练": 6, "球类": 7, "快走": 5, "瑜伽": 3,
 }
 
-GOAL_LABEL = {"lose": "减脂", "maintain": "维持体重", "gain": "增肌"}
+GOAL_LABEL = {"lose": "减脂", "maintain": "维持体重", "gain": "增肌", "healthy": "健康饮食"}
 ACTIVITY_LABEL = {
     "sedentary": "久坐少动", "light": "轻度活动", "moderate": "中度活动",
     "active": "高度活动", "athlete": "运动员级",
@@ -179,13 +180,87 @@ def build_day_messages(profile_ctx: dict, day_index: int, days: int,
 
 # ---------- 生成方案前的纯文字沟通 ----------
 
-PLAN_CHAT_SYSTEM = """你是"识膳智行"的营养健康顾问，正在和用户聊天，了解他想要什么样的饮食+运动方案。
+PLAN_CHAT_SYSTEM = """你是「识膳智行」的营养健康顾问，正在和用户沟通饮食与运动方案。
 
-要求：
-- 用简洁友好的中文像正常聊天一样回复，不要输出 JSON
-- 【务必简短】每次回复不超过 80 字，直接给建议或问 1 个关键问题，不要列长清单、不要长篇大论
-- 围绕口味偏好、饮食禁忌、运动兴趣、作息/就餐条件来了解需求
-- 用户已经说清楚的信息不要重复追问"""
+【回答顺序，必须遵守】
+1. 先直接回答问题：优先用下面给的用户数据算出具体数字再回答，**不要开场就反问**
+2. 答完才允许追问，一次最多问 1 个问题
+3. 追问必须自带默认值，例如「我先按清淡、不吃辣、每周 3 次快走排，不合适你再改」
+4. 只有缺关键信息（身高/体重/年龄）时才追问；缺几项就一次问全，别挤牙膏
+5. 已经知道的信息不要重复问
+
+【依据口径】回答营养问题时给一句依据，且按性质区分说法：
+- 指南类（盐<5g、添加糖<25g、蛋白推荐量）：说「按《中国居民膳食指南 2022》」或「按《中国超重/肥胖医学营养治疗指南 2021》」
+- 推算类（热量缺口、每周减重速度）：说「按 TDEE 和 7700 kcal/kg 推算」
+- 经验取值（区间的浮动范围、运动消耗 kcal）：说「按常规取个保守值」，**不要**说「依据指南」
+
+【风格】简洁中文，不超过 90 字；直接说结论和数字，不列长清单、不用 markdown 标题、不写「首先其次最后」。"""
+
+
+def _chat_profile_block(profile_ctx: dict | None, targets: dict | None) -> str:
+    """把档案与当前目标压成几行喂给模型（没有数据就不写，避免模型编）"""
+    p = profile_ctx or {}
+    t = targets or {}
+
+    def val(key, unit="", default="未知"):
+        raw = p.get(key)
+        return f"{raw}{unit}" if raw not in (None, "", 0) else default
+
+    bits = []
+    if p:
+        bits.append(
+            f"身高 {val('height_cm', ' cm')} / 体重 {val('weight_kg', ' kg')} / "
+            f"{val('age', ' 岁')} / "
+            f"{ {'male': '男', 'female': '女'}.get(p.get('gender'), '性别未知')} / "
+            f"{ACTIVITY_LABEL.get(p.get('activity_level') or 'moderate', '中度活动')} / "
+            f"体脂 {val('body_fat_pct', '%')}"
+        )
+        goal = p.get("goal") or "maintain"
+        bmi = p.get("bmi")
+        bits.append(
+            f"诉求：{GOAL_LABEL.get(goal, goal)}"
+            + (f"（BMI {bmi}）" if bmi else "")
+        )
+        for label, key in (("口味偏好", "taste_preferences"), ("饮食禁忌", "dietary_restrictions"),
+                           ("运动偏好", "exercise_preferences")):
+            items = p.get(key) or []
+            if items:
+                bits.append(f"{label}：{'、'.join(str(i) for i in items)}")
+
+    if t:
+        rx = t.get("prescription") or {}
+        if rx:
+            bits.append(f"当前策略：{rx.get('summary') or ''}")
+            if rx.get("warnings"):
+                bits.append("注意事项：" + "；".join(rx["warnings"][:2]))
+        pairs = [
+            ("热量", t.get("calorie_min"), t.get("calorie_max"), "kcal"),
+            ("蛋白", t.get("protein_min_g"), t.get("protein_max_g"), "g"),
+            ("脂肪", t.get("fat_min_g"), t.get("fat_max_g"), "g"),
+            ("碳水", t.get("carb_min_g"), t.get("carb_max_g"), "g"),
+            ("饮水", t.get("water_min_ml"), t.get("water_max_ml"), "ml"),
+        ]
+        shown = [f"{label} {lo}~{hi} {unit}" for label, lo, hi, unit in pairs if lo and hi]
+        if shown:
+            bits.append("当前每日目标：" + "、".join(shown))
+    return "\n".join(bits)
+
+
+def build_chat_system(
+    profile_ctx: dict | None = None,
+    targets: dict | None = None,
+    round_no: int = 0,
+) -> str:
+    """聊天系统提示：基础规则 + 用户档案 + 当前目标（有数据才注入，避免模型空口猜）"""
+    block = _chat_profile_block(profile_ctx, targets)
+    parts = [PLAN_CHAT_SYSTEM]
+    if block:
+        parts.append("【用户档案（已填的不要重复问）】\n" + block)
+    else:
+        parts.append("【用户档案】还没填身高/体重/年龄——这是唯一值得先问的信息，一次问全三项。")
+    if round_no >= 2:
+        parts.append("【本轮】已经聊了 2 轮以上：答完之后可以主动收口，问一句「要不要现在就按这些生成方案」。")
+    return "\n\n".join(parts)
 
 
 # ---------- 打卡 AI 个性化点评 ----------

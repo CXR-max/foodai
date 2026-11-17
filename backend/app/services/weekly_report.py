@@ -13,11 +13,11 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.check_in import CheckIn
-from app.models.food_record import FoodRecord
 from app.models.health_profile import HealthProfile
 from app.models.user import User
 from app.models.weekly_report import WeeklyReportCache
 from app.models.weight_log import WeightLog
+from app.services import diet_intake
 from app.services.llm.base import LLMError, extract_json
 from app.services.llm.provider import get_llm_provider
 
@@ -38,25 +38,18 @@ def collect_week_stats(db: Session, user: User) -> dict:
     today = date.today()
     start = today - timedelta(days=6)
 
-    # 热量摄入：按天
-    cal_rows = (db.query(FoodRecord.eaten_date, func.sum(FoodRecord.calories))
-                .filter(FoodRecord.user_id == user.id,
-                        FoodRecord.eaten_date >= start, FoodRecord.eaten_date <= today)
-                .group_by(FoodRecord.eaten_date).all())
-    cal_by_date = {d: v or 0 for d, v in cal_rows}
+    # 热量摄入：与日程/统计同一口径（记了用记录，没记但打卡过的餐按方案折算）
+    dates_list = [start + timedelta(days=i) for i in range(7)]
+    intake_by_date = {d: diet_intake.day_intake(db, user.id, d) for d in dates_list}
+    cal_by_date = {d: v["calories"] for d, v in intake_by_date.items() if v["calories"] > 0}
     days_with_records = len(cal_by_date)
     total_intake = sum(cal_by_date.values())
     avg_intake = round(total_intake / 7, 1)
 
-    # 营养素日均（全周期口径：有记录天的均值 × 记录天占比）
-    nut = (db.query(func.avg(FoodRecord.protein_g), func.avg(FoodRecord.fat_g),
-                    func.avg(FoodRecord.carb_g))
-           .filter(FoodRecord.user_id == user.id,
-                   FoodRecord.eaten_date >= start, FoodRecord.eaten_date <= today)).first()
-    factor = days_with_records / 7
-    avg_protein = round((nut[0] or 0) * factor, 1)
-    avg_fat = round((nut[1] or 0) * factor, 1)
-    avg_carb = round((nut[2] or 0) * factor, 1)
+    # 营养素日均：全周期口径（7 天总和 ÷ 7，没吃/没打卡的天按 0 摊）
+    avg_protein = round(sum(v["protein_g"] for v in intake_by_date.values()) / 7, 1)
+    avg_fat = round(sum(v["fat_g"] for v in intake_by_date.values()) / 7, 1)
+    avg_carb = round(sum(v["carb_g"] for v in intake_by_date.values()) / 7, 1)
 
     # 运动消耗：按天
     burn_rows = (db.query(CheckIn.check_date, func.sum(CheckIn.calories_burned))

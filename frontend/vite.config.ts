@@ -12,7 +12,9 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    host: '127.0.0.1', // 固定绑定 IPv4，避免某些工具/浏览器访问 127.0.0.1 时连不上
+    // 0.0.0.0 = 监听所有 IPv4 网卡：电脑用 127.0.0.1/localhost 访问，
+    // 手机连同一 Wi-Fi 用局域网 IP（如 http://192.168.4.121:5173）访问
+    host: '0.0.0.0',
     // 允许通过内网穿透的公网域名访问（vite 默认会拦截陌生 Host 头）
     allowedHosts: true,
     proxy: {

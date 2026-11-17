@@ -75,6 +75,8 @@ class PlanDay(BaseModel):
     sleep: dict | None = None                  # 睡眠方案（作息/时长/建议）
     targets: dict | None = None                # 当日目标（热量上下限/饮水/睡眠/运动消耗）
     water_ml: int | None = None                # 当日饮水目标
+    nutrition: dict | None = None              # 这天餐食实排的七项营养（排完即存，不再重算）
+    day_flags: dict | None = None               # 生成留痕：降级项 / 越界项 / 数据缺失项
 
 
 class PlanResult(BaseModel):

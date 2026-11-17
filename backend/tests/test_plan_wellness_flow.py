@@ -15,6 +15,7 @@ import app.models  # noqa: F401  确保所有表都注册到 Base.metadata
 from app.db.session import Base, get_db
 from app.main import app
 from app.models.diet_plan import DietPlan, PlanDay
+from app.services import plan_targets
 
 
 @pytest.fixture(scope="module")
@@ -58,12 +59,13 @@ def auth(client):
     return {"Authorization": f"Bearer {resp.json()['token']}"}
 
 
-TARGETS = {
-    "calorie_target": 2000, "calorie_min": 1800, "calorie_max": 2100,
-    "protein_min_g": 116, "water_min_ml": 2000,
-    "sleep_min_h": 7.0, "exercise_burn_min": 200, "exercise_days_per_week": 5,
-    "bedtime": "23:00", "wake_time": "07:00", "goal": "lose",
+# 目标按档案现算（判定区间跟随档案，不再手写死值）
+PROFILE_CTX = {
+    "height_cm": 175, "weight_kg": 72.5, "age": 26, "gender": "male",
+    "activity_level": "moderate", "goal": "lose",
+    "sleep_time": "23:00", "wake_time": "07:00",
 }
+TARGETS = plan_targets.build_targets(PROFILE_CTX)
 
 MEALS = [
     {"meal_type": "breakfast", "name": "燕麦粥", "items": [{"name": "燕麦", "portion_g": 80}], "calories": 300},
@@ -116,7 +118,7 @@ def test_active_plan_carries_targets(client, auth, plan_id):
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["has_plan"] is True
-    assert body["targets"]["calorie_max"] == 2100
+    assert body["targets"]["calorie_max"] == TARGETS["calorie_max"]
     assert body["day"]["water_ml"] == 2000
     assert len(body["day"]["exercises"]) == 2
     assert body["day"]["sleep"]["target_h"] == 7.0
@@ -173,21 +175,22 @@ def test_short_sleep_keeps_task_pending(client, auth):
 
 
 def test_water_accumulates_and_completes(client, auth):
+    target_ml = TARGETS["water_min_ml"]
     first = client.post("/api/water", headers=auth, json={"ml": 500}).json()
-    assert first["target_ml"] == 2000 and first["achieved"] is False
-    again = client.post("/api/water", headers=auth, json={"ml": 1500}).json()
-    assert again["total_ml"] == 2000
+    assert first["target_ml"] == target_ml and first["achieved"] is False
+    again = client.post("/api/water", headers=auth, json={"ml": target_ml - 500}).json()
+    assert again["total_ml"] == target_ml
     assert again["achieved"] is True
 
     day = client.get(f"/api/day/summary?date={date.today()}", headers=auth).json()
     assert day["water"]["achieved"] is True
-    assert day["water"]["total_ml"] == 2000
+    assert day["water"]["total_ml"] == target_ml
 
 
 def test_day_summary_merges_plan_and_records(client, auth, plan_id):
     body = client.get(f"/api/day/summary?date={date.today()}", headers=auth).json()
     assert body["has_plan"] is True
-    assert body["targets"]["protein_min_g"] == 116
+    assert body["targets"]["protein_min_g"] == TARGETS["protein_min_g"]
     assert body["sleep"]["duration_min"] == 480
     assert body["tasks"]["total"] >= 7
     assert body["tasks"]["done"] >= 2          # 睡眠 + 饮水已达标

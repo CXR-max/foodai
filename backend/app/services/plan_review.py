@@ -3,8 +3,10 @@
 四个维度，合计 100 分，每条都能对用户解释清楚：
 
 - 打卡完成 40：由方案导入到日程的任务里，实际完成的比例
-- 目标达成 35：热量落在区间 / 运动消耗达下限 / 睡眠够 / 饮水够，按有数据的天算达标率
-  （四项内部权重：热量 45%、运动 20%、睡眠 20%、饮水 15%，无数据的维度不参与、权重归一化）
+- 目标达成 35：饮食落在区间 / 运动消耗达下限 / 睡眠够 / 饮水够，按有数据的天算达标率
+  （四项内部权重：饮食 45%、运动 20%、睡眠 20%、饮水 15%，无数据的维度不参与、权重归一化）
+  其中「饮食」= 热量 60% + 蛋白 40%，没记蛋白的天只按热量算
+  饮食数据来源与日程页一致：实际记录优先，已打卡没记的餐次按方案菜品折算
 - 连续坚持 15：最长「当天任务全清」的连续天数 ÷ 有任务的天数
 - 调整质量 10：改过菜的天里，改完仍落在热量区间的比例；一次没改记 8 分（照方案吃也算好）
 
@@ -25,6 +27,7 @@ from app.models.food_record import FoodRecord
 from app.models.sleep_log import SleepLog
 from app.models.water_log import WaterLog
 from app.services import metric_bands
+from app.services.meal_recalc import recalc_meals
 
 logger = logging.getLogger("plan_review")
 
@@ -59,6 +62,21 @@ def _ratio(hit: int, sample: int) -> float | None:
     return round(hit / sample, 3) if sample else None
 
 
+def _plan_meal_nutrition(day: PlanDay) -> dict[str, tuple[float, float]]:
+    """方案某天各餐的 (热量, 蛋白)；口径与 meal_recalc / 改菜预览完全一致"""
+    if day is None or not day.meals:
+        return {}
+    out: dict[str, tuple[float, float]] = {}
+    for meal in recalc_meals(day.meals)["meals"]:
+        meal_type = (meal.get("meal_type") or "snack").strip().lower()
+        items = meal.get("items") or []
+        cal = sum(float(i.get("calories") or 0) for i in items)
+        pro = sum(float(i.get("protein_g") or 0) for i in items)
+        prev = out.get(meal_type)
+        out[meal_type] = (prev[0] + cal, prev[1] + pro) if prev else (cal, pro)
+    return out
+
+
 def _longest_streak(full_days: list[date]) -> int:
     if not full_days:
         return 0
@@ -90,6 +108,8 @@ def build_review(db: Session, plan: DietPlan, final: bool = True) -> dict:
 
     per_day: dict[date, dict] = defaultdict(lambda: {"total": 0, "done": 0})
     by_key: dict[str, dict] = defaultdict(lambda: {"total": 0, "done": 0})
+    # 每天已打卡的餐次（用于"没记食物、但按方案吃了"的折算）
+    done_meals: dict[date, set[str]] = defaultdict(set)
     for c in checkins:
         if c.check_date is None:
             continue
@@ -98,17 +118,31 @@ def build_review(db: Session, plan: DietPlan, final: bool = True) -> dict:
         key = c.task_key or "other"
         by_key[key]["total"] += 1
         by_key[key]["done"] += 1 if c.status == "done" else 0
+        if c.status == "done" and key.startswith("meal_"):
+            done_meals[c.check_date].add(key.replace("meal_", ""))
 
     # ---- 实际记录（摄入 / 睡眠 / 饮水）----
     food_by_date: dict[date, float] = {}
+    protein_by_date: dict[date, float] = {}
+    recorded_meals: dict[date, set[str]] = defaultdict(set)   # 当天有记录的餐次
+    unclear_meal_dates: set[date] = set()   # 当天存在"没写餐次"的记录，无法按餐补算（防重复）
     sleep_by_date: dict[date, int] = {}
     water_by_date: dict[date, int] = {}
     if dates:
-        for eaten, cal in (db.query(FoodRecord.eaten_date, func.sum(FoodRecord.calories))
-                           .filter(FoodRecord.user_id == plan.user_id,
-                                   FoodRecord.eaten_date.in_(dates))
-                           .group_by(FoodRecord.eaten_date).all()):
-            food_by_date[eaten] = float(cal or 0)
+        for eaten, meal_type, cal, pro in (
+            db.query(FoodRecord.eaten_date, FoodRecord.meal_type,
+                     func.sum(FoodRecord.calories), func.sum(FoodRecord.protein_g))
+            .filter(FoodRecord.user_id == plan.user_id, FoodRecord.eaten_date.in_(dates))
+            .group_by(FoodRecord.eaten_date, FoodRecord.meal_type).all()
+        ):
+            food_by_date[eaten] = food_by_date.get(eaten, 0.0) + float(cal or 0)
+            if pro:
+                protein_by_date[eaten] = protein_by_date.get(eaten, 0.0) + float(pro)
+            mt = (meal_type or "").strip().lower()
+            if mt in ("breakfast", "lunch", "dinner", "snack"):
+                recorded_meals[eaten].add(mt)
+            else:
+                unclear_meal_dates.add(eaten)
         for sdate, dur in (db.query(SleepLog.sleep_date, SleepLog.duration_min)
                            .filter(SleepLog.user_id == plan.user_id,
                                    SleepLog.sleep_date.in_(dates)).all()):
@@ -121,13 +155,18 @@ def build_review(db: Session, plan: DietPlan, final: bool = True) -> dict:
             water_by_date[wdate] = int(ml or 0)
 
     has_record = bool(total or food_by_date or sleep_by_date or water_by_date)
-    if not has_record:
+    # 还没到开始日就被替换掉：这一期根本没跑过，不能打 D（否则「提前排下周」
+    # 再生成新方案时，上一份还没开始就被判 8 分，用户看到会以为自己做得很差）
+    never_started = bool(plan.start_date and plan.start_date > date.today())
+    if not has_record or never_started:
         return {
             "plan_id": plan.id, "title": plan.title, "status": "not_started",
             "final": final, "score": None, "grade": None,
             "period": {"start": str(dates[0]) if dates else None,
                        "end": str(dates[-1]) if dates else None, "days": len(days)},
-            "headline": "这一期没有执行记录：没把方案导入日程，也没记录饮食/睡眠/饮水。",
+            "headline": ("这一期还没开始就被新方案替换了，所以没有执行评价。"
+                         if never_started else
+                         "这一期没有执行记录：没把方案导入日程，也没记录饮食/睡眠/饮水。"),
             "dimensions": [], "stats": {"days": len(days)},
             "highlights": [], "suggestions": ["下一期生成后先点「导入日程」，每天顺手打卡，才能看出执行情况。"],
             "generated_at": datetime.now().isoformat(timespec="seconds"),
@@ -144,7 +183,9 @@ def build_review(db: Session, plan: DietPlan, final: bool = True) -> dict:
     # ---- 2) 目标达成 35 ----
     # 口径统一交给 metric_bands：区间内满分、浮动带内 75%、明显偏离 0 分，
     # 不再由各页面各自写死阈值（例如睡眠从「差 20 分钟算过」改成「区间 + 0.5h 容忍」）
+    # 饮食维度 = 热量 60% + 蛋白 40%（蛋白不单列：少吃一天不重要，连续一周才重要）
     cal_sum = cal_sample = cal_hit = 0
+    pro_days = pro_hit = 0
     ex_sum = ex_sample = ex_hit = 0
     sleep_sum = sleep_sample = sleep_hit = 0
     water_sum = water_sample = water_hit = 0
@@ -161,12 +202,34 @@ def build_review(db: Session, plan: DietPlan, final: bool = True) -> dict:
         t = metric_bands.effective_calorie_band(_targets(plan, day))
 
         eaten = food_by_date.get(day.date)
+        protein = protein_by_date.get(day.date)
+        # 已打卡但没记食物的餐次 → 按方案菜品折算，和日程页同一口径
+        # 当天有"没写餐次"的记录时不补算：判断不了哪餐记过了，宁可少算也不能重复算
+        missing = (set() if day.date in unclear_meal_dates
+                   else done_meals.get(day.date, set()) - recorded_meals.get(day.date, set()))
+        if missing:
+            for meal_type, (cal, pro) in _plan_meal_nutrition(day).items():
+                if meal_type in missing:
+                    eaten = (eaten or 0) + cal
+                    protein = (protein or 0) + pro
         if eaten:
-            band = metric_bands.build_band(t, "calorie", eaten)
-            if band and band["factor"] is not None:
+            factor = None
+            calories_band = metric_bands.build_band(t, "calorie", eaten)
+            if calories_band:
+                factor = calories_band["factor"]
+            if protein:
+                protein_band = metric_bands.build_band(t, "protein", protein)
+                pro_days += 1
+                if protein_band and protein_band["factor"] is not None:
+                    pro_hit += 1 if protein_band["factor"] >= 0.75 else 0
+                    if factor is not None:
+                        # 有蛋白记录才按 60/40 合并；没记蛋白就只用热量，避免判 0 冤枉
+                        factor = (factor * metric_bands.DIET_WEIGHTS["calorie"]
+                                  + protein_band["factor"] * metric_bands.DIET_WEIGHTS["protein"])
+            if factor is not None:
                 cal_sample += 1
-                cal_sum += band["factor"]
-                cal_hit += 1 if band["factor"] >= 0.75 else 0
+                cal_sum += factor
+                cal_hit += 1 if factor >= 0.75 else 0
 
         if t.get("exercise_burn_min") and (day.exercises or day.exercise):
             burned = ex_kcal_by_date.get(day.date) or 0
@@ -197,7 +260,7 @@ def build_review(db: Session, plan: DietPlan, final: bool = True) -> dict:
                 water_hit += 1 if band["factor"] >= 0.75 else 0
 
     parts = [
-        ("热量", cal_sum, cal_hit, cal_sample, 0.45),
+        ("饮食", cal_sum, cal_hit, cal_sample, 0.45),
         ("运动", ex_sum, ex_hit, ex_sample, 0.20),
         ("睡眠", sleep_sum, sleep_hit, sleep_sample, 0.20),
         ("饮水", water_sum, water_hit, water_sample, 0.15),
@@ -257,7 +320,7 @@ def build_review(db: Session, plan: DietPlan, final: bool = True) -> dict:
     if total and done / total >= 0.8:
         highlights.append(f"打卡完成率 {round(done / total * 100)}%，执行很自觉")
     if cal_sample >= 2 and cal_hit / cal_sample >= 0.7:
-        highlights.append(f"{cal_hit}/{cal_sample} 天热量落在目标区间")
+        highlights.append(f"{cal_hit}/{cal_sample} 天饮食落在目标区间（热量+蛋白）")
     if longest >= max(2, streak_base // 2) and streak_base:
         highlights.append(f"最长连续 {longest} 天清零全部任务")
     if sleep_sample and sleep_hit / sleep_sample >= 0.7:
@@ -266,7 +329,7 @@ def build_review(db: Session, plan: DietPlan, final: bool = True) -> dict:
     if total and done / total < 0.6:
         suggestions.append(f"打卡只完成 {done}/{total}，下一期把「导入日程」当天就点开，任务会自己排好")
     if cal_sample and cal_hit / cal_sample < 0.5:
-        suggestions.append("热量偏离目标的天数偏多，改菜后看一眼顶部营养条再保存")
+        suggestions.append("饮食偏离目标的天数偏多，改菜后看一眼顶部营养条再保存")
     if ex_sample and ex_hit / ex_sample < 0.6:
         suggestions.append(f"运动只完成 {ex_hit}/{ex_sample} 天，把运动排在晚饭后立刻做更容易坚持")
     if sleep_sample and sleep_hit / sleep_sample < 0.6:
@@ -304,6 +367,7 @@ def build_review(db: Session, plan: DietPlan, final: bool = True) -> dict:
             "days_with_tasks": len(task_days),
             "full_days": len(full_days), "longest_streak": longest,
             "calorie_days": cal_sample, "calorie_hit_days": cal_hit,
+            "protein_days": pro_days, "protein_hit_days": pro_hit,
             "exercise_days": ex_sample, "exercise_hit_days": ex_hit,
             "sleep_days": sleep_sample, "sleep_hit_days": sleep_hit,
             "water_days": water_sample, "water_hit_days": water_hit,

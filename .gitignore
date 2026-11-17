@@ -62,6 +62,8 @@ _compare.ps1
 # 本地服务日志
 backend/server.log
 backend/server.err.log
+.uvicorn.log
+.vite.log
 frontend/vite.log
 frontend/vite.err.log
 
@@ -89,3 +91,8 @@ frontend/android/app/src/main/res/xml/config.xml
 *.jks
 *.keystore
 frontend/android/app/release/
+
+# 数据库快照备份与临时导出
+backend/foodai.db.bak-*
+backend/foodai.db.snap-*
+backend/gen_out.json

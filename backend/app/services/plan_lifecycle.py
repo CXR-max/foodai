@@ -19,18 +19,34 @@ from app.services import plan_review, plan_targets
 logger = logging.getLogger("plan_lifecycle")
 
 
+def first_day(db: Session, plan: DietPlan) -> date | None:
+    """方案的第一天（没有明细时退回 start_date）"""
+    row = (db.query(PlanDay.date).filter(PlanDay.plan_id == plan.id)
+           .order_by(PlanDay.date.asc()).first())
+    return (row[0] if row else None) or plan.start_date
+
+
 def activate_plan(db: Session, user_id: int, plan: DietPlan) -> dict:
     """把某份方案置为「进行中」，其余进行中的归档为历史方案（不提交事务）。
 
     若这份方案此前已归档（= 从历史方案重新启用），在 basis_snapshot 里记一笔
     reactivated_at / reactivate_count，列表据此显示「已重新启用」。
+
+    例外：这份方案还没到开始日（用户提前排下周的方案）时，不动正在执行的那一份。
+    否则「生成下周计划」这个动作会把本周还在跑的方案判死——被打上一份"没跟上"的停用评价，
+    今天/明天的日程还会找不到自己的方案天（打卡后指标算不出来）。
     """
     was_archived = plan.status == "archived"
-    others = (
-        db.query(DietPlan)
-        .filter(DietPlan.user_id == user_id, DietPlan.status == "active", DietPlan.id != plan.id)
-        .all()
-    )
+    starts_on = first_day(db, plan)
+    starts_later = bool(starts_on and starts_on > date.today())
+    others = []
+    if not starts_later:
+        others = (
+            db.query(DietPlan)
+            .filter(DietPlan.user_id == user_id, DietPlan.status == "active",
+                    DietPlan.id != plan.id)
+            .all()
+        )
     for old in others:
         old.status = "archived"
         # 停用的方案留一份执行评价，历史方案里能看这一期做得怎么样
@@ -60,6 +76,9 @@ def activate_plan(db: Session, user_id: int, plan: DietPlan) -> dict:
         "archived_titles": [p.title for p in others][:5],
         "reactivated": was_archived,
         "reactivated_at": reactivated_at,
+        # 未到开始日 → 没有归档任何旧方案，调用方据此提示"下周起生效"
+        "starts_later": starts_later,
+        "starts_on": str(starts_on) if starts_on else None,
     }
 
 

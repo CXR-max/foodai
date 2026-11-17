@@ -17,9 +17,16 @@ const detailId = ref<number | null>(null)
 const busyId = ref<number | null>(null)
 const activeReview = ref<PlanReview | null>(null)
 
-const STATUS_LABEL: Record<string, string> = { active: '进行中', archived: '历史方案', draft: '草稿' }
+const STATUS_LABEL: Record<string, string> = {
+  active: '进行中', scheduled: '待开始', archived: '历史方案', draft: '草稿',
+}
 
-const currentPlans = computed(() => plans.value.filter((p) => p.status === 'active'))
+// 进行中 = 已到开始日、正在执行的那一份
+const currentPlans = computed(() =>
+  plans.value.filter((p) => p.status === 'active' && p.phase !== 'scheduled'))
+// 待开始 = 提前排好的下一期，到点自动接上，期间不抢当前方案的位子（也不会把它归档）
+const scheduledPlans = computed(() =>
+  plans.value.filter((p) => p.status === 'active' && p.phase === 'scheduled'))
 const historyPlans = computed(() => plans.value.filter((p) => p.status !== 'active'))
 
 const now = new Date()
@@ -37,7 +44,7 @@ async function load() {
   try {
     plans.value = await planApi.getPlans()
     // 进行中的方案实时算一次执行进度（通常只有一份）
-    const active = plans.value.find((p) => p.status === 'active')
+    const active = plans.value.find((p) => p.status === 'active' && p.phase !== 'scheduled')
     activeReview.value = active
       ? await planApi.getPlanReview(active.id).catch(() => null)
       : null
@@ -161,6 +168,26 @@ onMounted(load)
             </div>
           </section>
 
+          <!-- 待开始：提前排好的下一期，到开始日自动接上 -->
+          <section v-if="scheduledPlans.length" class="group">
+            <h3 class="group-title">待开始</h3>
+            <div v-for="p in scheduledPlans" :key="p.id" class="plan-card scheduled" @click="openDetail(p)">
+              <div class="pc-head">
+                <b>{{ p.title }}</b>
+                <el-tag size="small" type="warning" effect="plain" round>待开始</el-tag>
+              </div>
+              <div class="pc-range">
+                {{ p.start_date }} 起 → {{ p.end_date || '—' }} · 共 {{ p.days_count || 0 }} 天
+              </div>
+              <p class="scheduled-tip">
+                {{ p.start_date }} 到点自动接手，期间仍按「进行中」那份方案执行，不会被归档。
+              </p>
+              <div class="pc-foot">
+                <span class="pc-more">查看 / 改菜 ›</span>
+              </div>
+            </div>
+          </section>
+
           <!-- 历史方案 -->
           <section class="group">
             <h3 class="group-title">
@@ -248,6 +275,8 @@ onMounted(load)
 .group-hint { font-size: 12px; color: #a8abb2; margin: 0 2px 4px; }
 .plan-card.active { border: 1px solid #dceecd; }
 .plan-card.history { opacity: 0.96; }
+.plan-card.scheduled { border: 1px dashed #f0d9b5; background: #fffdf8; }
+.scheduled-tip { margin: 7px 0 0; font-size: 11px; line-height: 1.5; color: #a68a5b; }
 .pc-actions { display: flex; gap: 6px; margin-top: 10px; }
 .pc-actions :deep(.el-button) { flex: 1; margin-left: 0; }
 .expired-flag { margin-left: 6px; font-size: 11px; color: #c45656; background: #fdf2f2; border-radius: 4px; padding: 1px 5px; }

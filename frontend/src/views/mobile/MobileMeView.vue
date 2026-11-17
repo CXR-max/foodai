@@ -104,7 +104,7 @@ onMounted(() => {
             <div class="stat-value">{{ Math.round(day?.intake.calories || 0) }}</div>
             <div class="stat-label">摄入 kcal</div>
             <div class="stat-sub">
-              目标 {{ day?.targets.calorie_min || '—' }}~{{ day?.targets.calorie_max || '—' }}
+              目标 {{ bandText('calorie') || `${day?.targets.calorie_min || '—'}~${day?.targets.calorie_max || '—'}` }}
             </div>
           </div>
           <div class="stat">

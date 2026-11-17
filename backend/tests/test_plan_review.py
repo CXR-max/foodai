@@ -23,10 +23,19 @@ TARGETS = {
     "bedtime": "23:00", "wake_time": "07:00", "goal": "lose",
 }
 MEALS = [
-    {"meal_type": "breakfast", "name": "早餐", "items": [{"name": "燕麦", "portion_g": 80}], "calories": 325},
-    {"meal_type": "lunch", "name": "午餐", "items": [{"name": "米饭", "portion_g": 200}], "calories": 430},
-    {"meal_type": "dinner", "name": "晚餐", "items": [{"name": "米饭", "portion_g": 150}], "calories": 300},
+    {"meal_type": "breakfast", "name": "早餐", "items": [
+        {"name": "燕麦", "portion_g": 80}, {"name": "牛奶", "portion_g": 250},
+        {"name": "鸡蛋", "portion_g": 100}], "calories": 604},
+    {"meal_type": "lunch", "name": "午餐", "items": [
+        {"name": "米饭", "portion_g": 250}, {"name": "鸡胸肉", "portion_g": 200},
+        {"name": "西兰花", "portion_g": 200}], "calories": 628},
+    {"meal_type": "dinner", "name": "晚餐", "items": [
+        {"name": "米饭", "portion_g": 200}, {"name": "牛肉", "portion_g": 200},
+        {"name": "西兰花", "portion_g": 150}, {"name": "红薯", "portion_g": 200}], "calories": 614},
 ]
+# 这套餐按营养库实算约 1846 kcal / 蛋白 131 g，正好落在 TARGETS 的 1800~2100 / 116~145 内。
+# 原来写的是燕麦80+米饭200+米饭150（实算 731 kcal / 蛋白 18 g），
+# 一打卡就按方案折算后必然判「吃太少」，"执行到位"的用例会假性低分。
 EXERCISES = [{"type": "快走", "duration_min": 40, "calories_burned": 240, "tips": "", "intensity": "moderate"}]
 SLEEP = {"target_h": 7.0, "planned_h": 8.0, "bedtime": "23:00", "wake_at": "07:00"}
 TASKS = {"meal_breakfast": "diet", "meal_lunch": "diet", "meal_dinner": "diet",

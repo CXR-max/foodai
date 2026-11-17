@@ -26,7 +26,14 @@ const busy = ref(false)
 const targets = computed(() => plan.value?.targets || {})
 const days = computed(() => plan.value?.days || [])
 const todayStr = fmt(new Date())
-const expired = computed(() => !!days.value[0]?.date && days.value[0].date < todayStr)
+// 只有整份方案都过期（最后一天也过了）才叫"日期已过"；
+// 按第一天判断会把"昨天开始、今天还在进行"的方案误报成过期
+const expired = computed(() => {
+  const list = days.value
+  if (!list.length) return false
+  const last = list[list.length - 1]?.date
+  return !!last && last < todayStr
+})
 
 const MEAL_LABELS: Record<string, string> = {
   breakfast: '🌅 早餐', lunch: '☀️ 午餐', dinner: '🌙 晚餐', snack: '🍎 加餐',
@@ -47,6 +54,22 @@ function fmt(d: Date) {
 function exercisesOf(day: PlanDay): PlanExercise[] {
   if (day.exercises && day.exercises.length) return day.exercises
   return day.exercise ? [day.exercise] : []
+}
+
+/** 处置/动态调整的留痕：必须说清「变了什么」和「为什么」，只给一个数字用户看不懂 */
+function adjustText(day: PlanDay): string {
+  const replan = day.day_flags?.replanned
+  const info = replan || day.day_flags?.adjusted
+  if (!info) return ''
+  const moves = (info.changed || [])
+    .filter((c) => c.to)
+    .slice(0, 3)
+    .map((c) => `${c.meal}${c.from ? `${c.from}→${c.to}` : `加了${c.to}`}`)
+  // 理由跟事实走：处置重排和动态调整各有自己的原因，别写死「因前面几天超了」
+  const head = replan
+    ? (replan.reason || '这天已按新目标重排')
+    : `这天已按用户选择的处置下调${info.trim_kcal ? ` ${info.trim_kcal} kcal` : ''}`
+  return moves.length ? `${head}：${moves.join('、')}` : head
 }
 
 function shortDate(d?: string) {
@@ -380,7 +403,9 @@ onMounted(async () => {
         <div class="hero-title">{{ plan.title }}</div>
         <div class="hero-sub">
           {{ plan.start_date }} 起 · {{ days.length }} 天 · {{ PROVIDER_LABEL[plan.provider] || plan.provider }}
-          <el-tag v-if="plan.status === 'active'" size="small" effect="dark" round style="margin-left: 6px">进行中</el-tag>
+          <el-tag v-if="plan.status === 'active' && plan.phase === 'scheduled'" size="small"
+                  effect="plain" type="warning" round style="margin-left: 6px">待开始</el-tag>
+          <el-tag v-else-if="plan.status === 'active'" size="small" effect="dark" round style="margin-left: 6px">进行中</el-tag>
           <el-tag v-else size="small" effect="plain" type="info" round style="margin-left: 6px">历史方案</el-tag>
         </div>
         <div v-if="plan.summary" class="hero-summary">{{ plan.summary }}</div>
@@ -394,11 +419,18 @@ onMounted(async () => {
         这份方案的日期已过（{{ days[0]?.date }} 起），导入时会自动顺延到今天，任务才不会落空。
       </div>
 
+      <!-- 档案变了：判定区间已按最新体重/诉求重算，但餐食仍是旧目标排的 -->
+      <div v-if="plan.targets_drift" class="drift-bar">
+        <div class="drift-text">📐 {{ plan.targets_drift.message }}</div>
+        <button class="drift-btn" @click="router.push('/m/plan')">去生成新方案</button>
+      </div>
+
       <!-- 本期评价：停用（归档）后是最终分，进行中给实时进度 -->
       <section v-if="review" class="block">
         <h3 class="block-title">
           本期评价
           <el-tag v-if="review.status === 'not_started'" size="small" type="info" effect="plain">未执行</el-tag>
+          <el-tag v-else-if="plan?.phase === 'scheduled'" size="small" type="warning" effect="plain" round>未开始</el-tag>
           <el-tag v-else-if="review.final" size="small" effect="dark" round>{{ review.grade }} · {{ review.score }} 分</el-tag>
           <el-tag v-else size="small" type="info" effect="plain" round>进行中 · 计分中</el-tag>
         </h3>
@@ -430,7 +462,12 @@ onMounted(async () => {
             </template>
           </div>
           <p v-if="!review.final" class="review-tip">
-            方案还在进行中，这里只显示进度；停用（归档）后会给这一期算最终评价，并留在「历史方案」里。
+            <template v-if="plan?.phase === 'scheduled'">
+              这份方案 {{ plan.start_date }} 才开始，还没进入执行期；到点后自动接手，期间仍按「进行中」那份执行。
+            </template>
+            <template v-else>
+              方案还在进行中，这里只显示进度；停用（归档）后会给这一期算最终评价，并留在「历史方案」里。
+            </template>
           </p>
 
           <!-- 分项得分与评语只在停用后出现，避免刚开头就下结论 -->
@@ -456,7 +493,10 @@ onMounted(async () => {
       </section>
 
       <section class="block">
-        <h3 class="block-title">每日目标</h3>
+        <h3 class="block-title">
+          每日目标
+          <em v-if="plan.targets_drift" class="title-note">生成时口径</em>
+        </h3>
         <div class="targets">
           <div class="target">
             <span class="t-label">热量</span>
@@ -540,6 +580,22 @@ onMounted(async () => {
           </div>
 
           <div v-if="openDays.has(day.day_index)" class="day-body">
+            <!-- 这天的七项实排值：按这份菜吃完，就是这几组数（生成时已校验落在区间内） -->
+            <div v-if="day.nutrition" class="day-nutrition">
+              <span><em>蛋白</em> {{ Math.round(day.nutrition.protein_g) }} g</span>
+              <span><em>脂肪</em> {{ Math.round(day.nutrition.fat_g) }} g</span>
+              <span><em>碳水</em> {{ Math.round(day.nutrition.carb_g) }} g</span>
+              <span><em>纤维</em> {{ Math.round(day.nutrition.fiber_g) }} g</span>
+              <span><em>钠</em> {{ Math.round(day.nutrition.sodium_mg) }} mg</span>
+            </div>
+            <p v-if="adjustText(day)" class="day-flag adjust">{{ adjustText(day) }}</p>
+            <p v-if="day.day_flags?.relaxed?.length" class="day-flag">
+              这天{{ day.day_flags.relaxed.map((r) => `${r.label}放宽到 ${r.value}${r.label === '钠' ? ' mg' : ' g'}（目标 ${r.range_text}）`).join('、') }}
+              ——菜库数据不全，这里的值是估算，不是你没吃对
+            </p>
+            <p v-else-if="day.day_flags?.variety_relaxed" class="day-flag">
+              为保证这天菜品能排出七项都达标的组合，没有强制换菜
+            </p>
             <div class="meal" v-for="(meal, mi) in day.meals" :key="mi">
               <div class="meal-head">
                 <span>{{ MEAL_LABELS[meal.meal_type] || meal.meal_type }}</span>
@@ -759,6 +815,22 @@ onMounted(async () => {
 .hero-sub { font-size: 12px; opacity: 0.9; margin-top: 4px; }
 .hero-summary { font-size: 12px; line-height: 1.6; margin-top: 8px; opacity: 0.95; }
 .expired-bar { font-size: 12px; line-height: 1.6; color: #a06000; background: #fdf6ec; border: 1px solid #faecd8; border-radius: 10px; padding: 9px 12px; }
+/* 档案偏离提示：只提示不自动改餐食 */
+.drift-bar {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px; line-height: 1.55; color: #2b6cd4;
+  background: #eef4ff; border: 1px solid #d6e4fb; border-radius: 10px; padding: 9px 12px;
+}
+.drift-text { flex: 1; }
+.drift-btn {
+  flex: none; border: none; background: #2b6cd4; color: #fff;
+  font-size: 11.5px; padding: 5px 10px; border-radius: 8px; cursor: pointer;
+}
+.drift-btn:active { background: #245cb2; }
+.title-note {
+  font-style: normal; font-size: 11px; font-weight: 400;
+  color: #8a94a6; margin-left: 6px;
+}
 .reactivate-bar {
   margin-top: 8px; font-size: 11.5px; line-height: 1.5; color: #2f7bbf;
   background: #eef7ff; border: 1px solid #cfe6fb; border-radius: 8px; padding: 5px 9px;
@@ -809,6 +881,16 @@ onMounted(async () => {
 .day-right { display: flex; align-items: center; gap: 6px; }
 .chev { font-size: 12px; color: #4f9d2f; }
 .day-body { padding: 0 14px 12px; border-top: 1px solid #f2f3f5; }
+/* 七项实排值：一眼看到"按这份菜吃完是几克"，不用自己加 */
+.day-nutrition {
+  display: flex; flex-wrap: wrap; gap: 4px 12px;
+  margin: 8px 0 2px; padding: 7px 9px; border-radius: 8px;
+  background: #f7f9fc; font-size: 11.5px; color: #606266; font-variant-numeric: tabular-nums;
+}
+.day-nutrition em { font-style: normal; color: #a0a6b3; margin-right: 2px; }
+.day-flag { margin: 4px 0 6px; font-size: 11px; line-height: 1.5; color: #a06000; }
+/* 处置调整是「做过的事」，不是「问题」：用中性蓝，别和降级警告混成一片橙 */
+.day-flag.adjust { color: #3a6ea5; background: #f2f6fb; border-radius: 4px; padding: 4px 6px; }
 .meal { padding: 8px 0; border-bottom: 1px dashed #f0f1f3; }
 .meal-head { display: flex; justify-content: space-between; font-size: 13px; color: #606266; }
 .meal-head b { color: #303133; font-size: 12px; }

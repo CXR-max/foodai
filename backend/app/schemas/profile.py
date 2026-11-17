@@ -9,7 +9,10 @@ class ProfileIn(BaseModel):
     age: int | None = Field(default=None, gt=0, lt=120)
     gender: str | None = Field(default=None, pattern="^(male|female)$")
     activity_level: str | None = Field(default=None, pattern="^(sedentary|light|moderate|active|athlete)$")
-    goal: str | None = Field(default=None, pattern="^(lose|maintain|gain)$")
+    goal: str | None = Field(
+        default=None, pattern="^(lose|maintain|gain|healthy)$",
+        description="诉求：lose=减脂 / maintain=维持 / gain=增肌 / healthy=健康饮食（不设赤字）",
+    )
     target_weight_kg: float | None = None
     taste_preferences: list[str] | None = None       # 口味偏好
     dietary_restrictions: list[str] | None = None    # 饮食禁忌

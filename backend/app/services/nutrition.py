@@ -46,19 +46,77 @@ def calc_bmr(weight_kg, height_cm, age, gender) -> float | None:
     return round(bmr)
 
 
+# 减脂赤字按 BMI 分档：(BMI 上限, 赤字比例)；BMI<18.5 不设赤字（劝阻）
+DEFICIT_BANDS = ((28.0, 0.20), (24.0, 0.15), (0.0, 0.10))
+# 体脂参考线（行业分级，只作提示触发，不作诊断）：男≥20%、女≥30% 视为偏高
+BODY_FAT_HIGH = {"male": 20.0, "female": 30.0}
+# 增肌盈余：常规 10%，超重（BMI≥28）收到 5%
+SURPLUS_NORMAL = 0.10
+SURPLUS_OVERWEIGHT = 0.05
+
+
+def body_fat_high(body_fat_pct, gender) -> bool:
+    """体脂是否偏高（参考线，不是诊断标准；WHO 判肥胖为男>25%、女>35%）"""
+    try:
+        value = float(body_fat_pct)
+    except (TypeError, ValueError):
+        return False
+    if value <= 0:
+        return False
+    return value >= BODY_FAT_HIGH.get((gender or "").lower(), BODY_FAT_HIGH["male"])
+
+
+def goal_adjustment(
+    weight_kg, height_cm, goal: str = "maintain", body_fat_pct=None, gender=None
+) -> dict:
+    """诉求 → 热量策略（赤字/盈余百分比）
+
+    这是全站唯一的口径：档案保存、方案生成、每日区间都从这里取，
+    不按 BMI 一刀切——**诉求决定策略，BMI / 体脂只决定强度与劝阻**。
+    """
+    goal = (goal or "maintain").strip().lower()
+    if goal not in ("lose", "maintain", "gain", "healthy"):
+        goal = "maintain"
+    bmi = calc_bmi(weight_kg, height_cm) or 0.0
+    deficit = 0.0
+    surplus = 0.0
+    effective = goal
+
+    if goal == "lose":
+        if bmi and bmi < 18.5:
+            effective = "maintain"          # 劝阻：低体重不减
+        else:
+            deficit = next(rate for ceil, rate in DEFICIT_BANDS if bmi >= ceil)
+            if bmi < 24 and body_fat_high(body_fat_pct, gender):
+                deficit = 0.15             # 体重正常但体脂偏高，强度提一档
+    elif goal == "gain":
+        surplus = SURPLUS_OVERWEIGHT if bmi >= 28 else SURPLUS_NORMAL
+    # healthy / maintain：不设赤字，吃够 TDEE
+
+    return {
+        "bmi": round(bmi, 1) if bmi else None,
+        "deficit_pct": round(deficit, 3),
+        "surplus_pct": round(surplus, 3),
+        "effective_goal": effective,
+    }
+
+
 def calc_daily_target(
-    weight_kg, height_cm, age, gender, activity_level: str = "moderate", goal: str = "maintain"
+    weight_kg, height_cm, age, gender, activity_level: str = "moderate", goal: str = "maintain",
+    body_fat_pct=None,
 ) -> int | None:
-    """每日热量目标 = BMR × 活动系数 ± 目标调整（减脂-400 / 增肌+300），下限 1200"""
+    """每日热量目标 = TDEE × (1 − 赤字 + 盈余)
+
+    下限取 BMR×1.1（低于基础代谢的减脂不可持续），再兜底 1200 kcal。
+    """
     bmr = calc_bmr(weight_kg, height_cm, age, gender)
     if bmr is None:
         return None
     tdee = bmr * ACTIVITY_FACTORS.get(activity_level, 1.55)
-    if goal == "lose":
-        tdee -= 400
-    elif goal == "gain":
-        tdee += 300
-    return max(int(tdee), 1200)
+    adj = goal_adjustment(weight_kg, height_cm, goal, body_fat_pct, gender)
+    target = tdee * (1 - adj["deficit_pct"] + adj["surplus_pct"])
+    target = max(target, bmr * 1.1)
+    return max(int(round(target / 10.0) * 10), 1200)
 
 
 # ================= 识别 → 营养换算 =================
@@ -116,3 +174,16 @@ def match_and_calc(dish_name: str, portion_g: float, category: str | None = None
         "nutrition_source": "category_average",
         "note": "菜品暂未收录营养库，按通用估算值记录",
     }
+
+
+def match_diet_nutrition(dish_name: str, portion_g: float, category: str | None = None) -> dict:
+    """菜名 + 克重 → 七项营养（与排餐器同一套换算，供方案自检用）
+
+    命中营养库用库值（纤维/钠/糖缺失按同类中位数补）；未命中按类目均值估算。
+    """
+    match = foods_data.match_entry(dish_name)
+    if match:
+        return foods_data.calc_diet_nutrients(match["entry"], portion_g)
+    avg = foods_data.category_average_diet(category or None)
+    factor = max(portion_g, 0) / 100.0
+    return {key: round(value * factor, 1) for key, value in avg.items()}

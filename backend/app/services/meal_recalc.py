@@ -111,7 +111,7 @@ def evaluate(total: dict, targets: dict) -> dict:
     if protein_min and protein < protein_min * 0.9:
         warnings.append({
             "code": "protein_low", "level": "info",
-            "message": f"蛋白 {round(protein)} g，低于目标 {round(protein_min)} g，可加一份鸡蛋/鸡胸/豆制品",
+            "message": f"蛋白 {round(protein)} g，低于目标 {round(protein_min)} g，可把其中一道换成高蛋白的菜",
             "actions": [],
         })
 

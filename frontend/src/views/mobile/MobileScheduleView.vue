@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as checkinApi from '@/api/checkin'
 import type { CheckInItem, DayStat } from '@/api/checkin'
+import * as dayApi from '@/api/day'
 import * as foodApi from '@/api/food'
 import * as planApi from '@/api/plan'
 import * as wellnessApi from '@/api/wellness'
@@ -45,10 +46,121 @@ const heroBands = computed(() =>
     .map((k) => bands.value.find((b) => b.key === k))
     .filter(Boolean) as NonNullable<DaySummary['bands']>,
 )
-const bandCls = (status?: string) =>
-  status === 'in_range' ? 'ok' : status === 'low' || status === 'high' ? 'warn' : status === 'under' || status === 'over' ? 'bad' : ''
+// 蛋白不足不算「错误」：菜已经在方案里排好，按方案吃完就够，只在汇总里灰字提示，不标红
+const bandCls = (status?: string, key?: string) => {
+  // 还有餐没打卡：只是没吃完，用中性灰，不用红色
+  if (status === 'in_progress') return 'muted'
+  if (key === 'protein' && status === 'under') return 'muted'
+  return status === 'in_range' ? 'ok'
+    : status === 'low' || status === 'high' ? 'warn'
+      : status === 'under' || status === 'over' ? 'bad' : ''
+}
+// 方案排错不是用户的错：用中性提示色，别跟着一起标红
+const dietCls = computed(() => {
+  const d = summary.value?.diet
+  if (!d) return ''
+  if (d.status === 'plan_over') return 'notice'
+  if (d.ok) return 'ok'
+  if (d.status === 'in_progress') return 'progress'
+  return 'warn'
+})
+// 结构项折叠一行：脂肪/碳水/纤维/钠/糖，只展示不卡打卡
+const structureText = computed(() =>
+  (summary.value?.diet?.structure || [])
+    .map((i) => `${i.label} ${i.value ?? '—'}${i.unit}${i.status === 'in_range' ? ' ✓' : ` ${i.status_text}`}`)
+    .join(' · '),
+)
 const waterBand = computed(() => bands.value.find((b) => b.key === 'water'))
 const sleepBand = computed(() => bands.value.find((b) => b.key === 'sleep'))
+
+// ---- 偏离处置 / 当日模式 ----
+// 结论跟时间走：上午不判（还没吃完）、21:30 后只调明天，所以选项必须由后端按当前时刻算
+const dayState = ref<dayApi.DayState | null>(null)
+const applyingKind = ref<string | null>(null)
+const modePickerOpen = ref(false)
+const selfReview = ref<dayApi.SelfReview | null>(null)
+const selfReviewOpen = ref(false)
+const recalcBusy = ref(false)
+
+const settlementInfo = computed(() => dayState.value?.point)
+const openDeviations = computed(() => dayState.value?.deviations || [])
+const currentMode = computed(() =>
+  dayState.value?.mode && dayState.value.mode.mode !== 'normal' ? dayState.value.mode : null,
+)
+
+async function loadDayState() {
+  try {
+    dayState.value = await dayApi.getDayState(selected.value)
+  } catch {
+    dayState.value = null
+  }
+}
+
+async function chooseMode(mode: string) {
+  try {
+    const r = await dayApi.setDayMode(mode, { date: selected.value })
+    ElMessage.success(r.message)
+    modePickerOpen.value = false
+    await Promise.all([load(), loadDayState()])
+  } catch {
+    /* 拦截器已提示 */
+  }
+}
+
+async function runOption(devId: number, opt: dayApi.DispositionOption) {
+  applyingKind.value = `${devId}:${opt.kind}`
+  try {
+    const r = await dayApi.applyDisposition(devId, opt.kind, opt.payload)
+    ElMessage.success(r.detail.join('；') || '已处理')
+    await Promise.all([load(), loadDayState()])
+  } catch {
+    /* 拦截器已提示 */
+  } finally {
+    applyingKind.value = null
+  }
+}
+
+async function toggleSelfReview() {
+  selfReviewOpen.value = !selfReviewOpen.value
+  if (selfReviewOpen.value && !selfReview.value) {
+    try {
+      selfReview.value = await dayApi.getSelfReview()
+    } catch {
+      /* 拦截器已提示 */
+    }
+  }
+}
+
+async function doRecalc() {
+  recalcBusy.value = true
+  try {
+    const r = await dayApi.applyRecalc()
+    ElMessage.success(r.message)
+    selfReview.value = null
+    await Promise.all([load(), loadDayState()])
+  } catch {
+    /* 拦截器已提示 */
+  } finally {
+    recalcBusy.value = false
+  }
+}
+
+// ---- 动态调整卡片：系统自动改了方案什么（改了什么/为什么 + 一键撤销）----
+// 与「超限应对」分开：那是用户选的处置，这是系统自己做的调整，要透明可回滚
+const adaptApplied = computed(() => summary.value?.adapt?.applied || [])
+const revertingDay = ref<string | null>(null)
+async function doRevert(day: string) {
+  revertingDay.value = day
+  try {
+    await wellnessApi.revertAdapt(day)
+    ElMessage.success('已撤销该天的动态调整，方案恢复原样')
+    await load()
+  } catch {
+    /* 拦截器已提示 */
+  } finally {
+    revertingDay.value = null
+  }
+}
 
 async function load() {
   loading.value = true
@@ -66,7 +178,7 @@ async function load() {
     summary.value = sum
     water.value = w
     sleep.value = s.sleep
-    await loadMonth()
+    await Promise.all([loadMonth(), loadDayState()])
   } catch {
     // 拦截器已统一提示
   } finally {
@@ -271,7 +383,7 @@ onMounted(load)
       </div>
       <el-progress :percentage="pct" :stroke-width="8" :show-text="false" color="#fff" />
       <div class="hero-targets">
-        <div v-for="b in heroBands" :key="b.key" class="ht" :class="bandCls(b.status)">
+        <div v-for="b in heroBands" :key="b.key" class="ht" :class="bandCls(b.status, b.key)">
           <span>{{ b.label }}</span>
           <b>{{ b.actual != null ? b.actual : '—' }}</b>
           <em>{{ b.min }}~{{ b.max }}{{ b.unit === 'h' ? 'h' : '' }}</em>
@@ -287,7 +399,91 @@ onMounted(load)
         <em>{{ bands.filter((b) => b.status === 'in_range' || b.status === 'low' || b.status === 'high').length }}/{{ bands.length }} 达标</em>
       </h3>
       <div class="card bands-card">
-        <div v-for="b in bands" :key="b.key" class="band-row" :class="bandCls(b.status)">
+        <!-- 饮食一行汇总：七项判完给一条结论。方案排错不怪用户，额外加餐给出口不指责 -->
+        <div v-if="summary?.diet?.line" class="diet-line" :class="dietCls">
+          <span class="diet-text">{{ summary.diet.line }}</span>
+          <span class="diet-tag">{{ summary.diet.status_text }}</span>
+        </div>
+        <p v-if="summary?.diet?.hint" class="diet-hint">{{ summary.diet.hint }}</p>
+
+        <!-- 当日模式：聚餐/生病/出差…只改今天的判定口径，第二天自动恢复 -->
+        <div class="mode-bar">
+          <span v-if="currentMode" class="mode-tag">
+            {{ currentMode.label }}
+            <em v-if="currentMode.note_text">{{ currentMode.note_text }}</em>
+          </span>
+          <span v-else class="mode-idle">今天一切正常</span>
+          <span class="mode-action" @click="modePickerOpen = true">
+            {{ currentMode ? '换' : '今天有特殊情况？' }}
+          </span>
+        </div>
+
+        <!-- 结算时点：为什么现在不判/还能做什么，先讲清楚再看数字 -->
+        <p v-if="settlementInfo" class="settle-hint" :class="settlementInfo.point">
+          {{ settlementInfo.message }}
+        </p>
+
+        <!-- 动态调整：系统自动改了方案什么（每条带为什么，可单独撤销） -->
+        <div v-if="adaptApplied.length" class="adapt-wrap">
+          <div v-for="item in adaptApplied" :key="item.day" class="adapt-card">
+            <div class="adapt-head">
+              <span class="adapt-tag">方案已自动调整</span>
+              <span class="adapt-day">{{ item.day }}</span>
+              <button
+                class="adapt-revert"
+                :disabled="revertingDay === item.day"
+                @click="doRevert(item.day)"
+              >
+                撤销
+              </button>
+            </div>
+            <p v-for="(r, i) in item.reasons" :key="i" class="adapt-reason">
+              <b>{{ r.action }}</b>——{{ r.reason }}
+            </p>
+          </div>
+        </div>
+
+        <!-- 超限应对：每个选项都是算好的动作，点了才落地；「不处置」永远可选 -->
+        <div v-if="openDeviations.length" class="disp-wrap">
+          <div v-for="group in openDeviations" :key="group.deviation.id" class="disp-card">
+            <div class="disp-head">
+              <span class="disp-name">
+                {{ group.deviation.label }}
+                {{ group.deviation.kind === 'over' ? '超' : '少' }}
+                {{ Math.abs(group.deviation.delta || 0) }}{{ group.deviation.nutrient === 'calorie' ? ' kcal' : ' g' }}
+              </span>
+              <span class="disp-tag" :class="group.deviation.attribution">
+                {{
+                  group.deviation.attribution === 'plan' ? '方案排错'
+                  : group.deviation.attribution === 'extra' ? '额外摄入'
+                  : group.deviation.attribution === 'intake' ? '没吃完'
+                  : '偏差'
+                }}
+              </span>
+            </div>
+            <div class="disp-opts">
+              <button
+                v-for="opt in group.options"
+                :key="opt.kind"
+                class="disp-opt"
+                :class="{ rec: opt.recommended, unsafe: !opt.safe }"
+                :disabled="applyingKind === `${group.deviation.id}:${opt.kind}`"
+                @click="runOption(group.deviation.id, opt)"
+              >
+                <b>{{ opt.label }}<i v-if="opt.recommended">推荐</i></b>
+                <span>{{ opt.detail }}</span>
+                <em v-for="(s, i) in opt.safety" :key="i" class="safety">{{ s }}</em>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="structureText" class="diet-struct">结构：{{ structureText }}</div>
+        <!-- 打卡即按方案折算，得说清楚这是估算，别让人以为系统知道他吃没吃 -->
+        <div v-if="summary?.intake?.estimated" class="diet-est">
+          {{ summary.intake.note }}，记下实际吃了什么会更准
+        </div>
+        <div v-for="b in bands" :key="b.key" class="band-row" :class="bandCls(b.status, b.key)">
           <div class="band-head">
             <span class="band-name">{{ b.label }}</span>
             <span class="band-status">{{ b.status_text }}</span>
@@ -512,6 +708,48 @@ onMounted(load)
         </el-button>
       </div>
     </el-drawer>
+
+    <!-- 系统自省：连续偏离要重算目标（而不是继续压摄入），处置有效性也能看见 -->
+    <section class="block">
+      <div class="review-bar" @click="toggleSelfReview">
+        <span>🩺 系统自查</span>
+        <span class="cal-toggle">{{ selfReviewOpen ? '收起' : '展开' }}</span>
+      </div>
+      <div v-if="selfReviewOpen && selfReview" class="card review-card">
+        <p v-for="(line, i) in selfReview.lines" :key="i" class="review-line">{{ line }}</p>
+        <p v-if="!selfReview.lines.length" class="review-line muted">
+          最近没有连续偏离，也没有挂例外，口径和你的实际吃得对得上。
+        </p>
+        <div v-if="selfReview.proposal" class="recalc-box">
+          <p class="recalc-target">
+            每日目标 {{ selfReview.proposal.old_target }} → {{ selfReview.proposal.new_target }} kcal
+            <em v-if="selfReview.proposal.bmr">（不低于基础代谢 {{ selfReview.proposal.bmr }}）</em>
+          </p>
+          <p class="recalc-why">{{ selfReview.proposal.reason }}</p>
+          <el-button type="success" size="small" :loading="recalcBusy" @click="doRecalc">
+            按实际数据重算
+          </el-button>
+        </div>
+        <p class="review-foot">
+          这是系统的自查，不是你的评分。采纳率低说明建议不实用，会换成「改餐食」而不是「加练」。
+        </p>
+      </div>
+    </section>
+
+    <!-- 当日模式选择 -->
+    <el-dialog v-model="modePickerOpen" title="今天有什么特殊情况？" width="92%" style="max-width: 420px">
+      <p class="mode-tip">只影响今天的判定口径，明天自动恢复；不是给自己找借口，是让标准符合现实。</p>
+      <div class="mode-list">
+        <button v-for="m in dayApi.MODE_OPTIONS" :key="m.value" class="mode-item" @click="chooseMode(m.value)">
+          <b>{{ m.label }}</b>
+          <span>{{ m.desc }}</span>
+        </button>
+        <button class="mode-item normal" @click="chooseMode('normal')">
+          <b>恢复正常</b>
+          <span>按平常的口径判，不做任何放宽</span>
+        </button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -531,6 +769,96 @@ onMounted(load)
 .hero-note { font-size: 11px; line-height: 1.5; margin: 8px 0 0; opacity: 0.9; }
 /* 指标区间卡片 */
 .bands-card { padding: 2px 12px 10px; }
+/* 饮食一行汇总 */
+.diet-line {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin: 9px 0 3px; padding: 8px 10px; border-radius: 8px;
+  background: #f7f9fc; font-size: 12px; color: #606266;
+}
+.diet-line.ok { background: #f2fbef; }
+.diet-line.warn { background: #fdf6ec; }
+/* 还有餐没打卡：只是没吃完，用中性蓝灰，不用警告色 */
+.diet-line.progress { background: #f2f6fd; }
+.diet-line.progress .diet-tag { background: #e6eefc; color: #4a72b8; }
+/* 方案排错：是系统的问题，用中性提示色，不能跟着标红让用户自责 */
+.diet-line.notice { background: #f4f4f7; }
+.diet-line.notice .diet-tag { background: #e8e8ef; color: #6b6b7d; }
+.diet-hint { margin: 2px 2px 4px; font-size: 11.5px; line-height: 1.5; color: #909399; }
+/* 结构项一行：脂肪/碳水/纤维，只展示不卡打卡 */
+.diet-struct { margin: 0 2px 6px; font-size: 11px; color: #a8abb2; line-height: 1.5; }
+.diet-est { margin: 0 0 3px; padding: 0 2px; font-size: 11px; color: #a0a6b3; }
+
+/* ---- 当日模式 ---- */
+.mode-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin: 6px 0 4px; padding: 6px 8px; border-radius: 8px; background: #f7f8fa;
+}
+.mode-tag { font-size: 11.5px; color: #409eff; font-weight: 600; }
+.mode-tag em { font-style: normal; font-weight: 400; color: #909399; margin-left: 4px; }
+.mode-idle { font-size: 11.5px; color: #b0b3b8; }
+.mode-action { font-size: 11.5px; color: #409eff; white-space: nowrap; }
+.mode-tip { margin: 0 0 10px; font-size: 12px; color: #909399; line-height: 1.6; }
+.mode-list { display: flex; flex-direction: column; gap: 8px; }
+.mode-item {
+  text-align: left; border: 1px solid #e4e7ed; background: #fff; border-radius: 10px;
+  padding: 9px 12px; display: flex; flex-direction: column; gap: 2px; cursor: pointer;
+}
+.mode-item b { font-size: 13.5px; color: #303133; }
+.mode-item span { font-size: 11.5px; color: #909399; line-height: 1.5; }
+.mode-item.normal { border-style: dashed; }
+
+/* ---- 结算时点 ---- */
+.settle-hint { margin: 0 0 6px; padding: 5px 8px; border-radius: 6px; font-size: 11px; line-height: 1.5; }
+.settle-hint.open { background: #f4f4f5; color: #909399; }
+.settle-hint.midday { background: #fdf6ec; color: #b88230; }
+.settle-hint.evening { background: #f0f9eb; color: #529b2e; }
+.settle-hint.final { background: #f4f4f5; color: #909399; }
+
+/* ---- 超限应对 ---- */
+.disp-wrap { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 4px; }
+.disp-card { border: 1px solid #f3d19e; background: #fffbf5; border-radius: 10px; padding: 9px 10px; }
+.disp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.disp-name { font-size: 12.5px; font-weight: 600; color: #b88230; }
+.disp-tag { font-size: 10px; padding: 1px 6px; border-radius: 8px; background: #f4f4f5; color: #909399; }
+.disp-tag.plan { background: #f4f4f5; color: #909399; }
+.disp-tag.extra { background: #ecf5ff; color: #409eff; }
+.disp-tag.intake { background: #fdf6ec; color: #b88230; }
+.disp-opts { display: flex; flex-direction: column; gap: 6px; }
+.disp-opt {
+  text-align: left; border: 1px solid #e4e7ed; background: #fff; border-radius: 8px;
+  padding: 7px 9px; display: flex; flex-direction: column; gap: 3px; cursor: pointer;
+}
+.disp-opt b { font-size: 12.5px; color: #303133; display: flex; align-items: center; gap: 4px; }
+.disp-opt b i {
+  font-style: normal; font-size: 9.5px; background: #67c23a; color: #fff;
+  padding: 0 4px; border-radius: 6px; line-height: 14px;
+}
+.disp-opt span { font-size: 11.5px; color: #606266; line-height: 1.55; }
+.disp-opt em.safety { font-style: normal; font-size: 10.5px; color: #e6a23c; line-height: 1.5; }
+.disp-opt.rec { border-color: #b3e19d; background: #fbfef9; }
+.disp-opt.unsafe { opacity: .62; }
+.disp-opt:disabled { opacity: .5; }
+
+/* ---- 自省卡 ---- */
+.review-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 14px 2px 6px; font-size: 12.5px; color: #606266;
+}
+.review-card { padding: 10px 12px; }
+.review-line { margin: 0 0 6px; font-size: 11.5px; line-height: 1.6; color: #606266; }
+.review-line.muted { color: #a8abb2; }
+.recalc-box { margin-top: 8px; padding: 9px 10px; border-radius: 8px; background: #f0f9eb; }
+.recalc-target { margin: 0 0 4px; font-size: 12.5px; font-weight: 600; color: #529b2e; }
+.recalc-target em { font-style: normal; font-weight: 400; font-size: 11px; color: #909399; }
+.recalc-why { margin: 0 0 8px; font-size: 11.5px; color: #606266; line-height: 1.6; }
+.review-foot { margin: 8px 0 0; font-size: 11px; color: #b0b3b8; line-height: 1.5; }
+.diet-text { font-variant-numeric: tabular-nums; }
+.diet-tag {
+  flex: none; padding: 1px 7px; border-radius: 999px;
+  background: #eef1f6; color: #8a94a6; font-size: 11px;
+}
+.diet-line.ok .diet-tag { background: #e2f5da; color: #4a9b23; }
+.diet-line.warn .diet-tag { background: #f8e6c8; color: #a06000; }
 .band-row { padding: 10px 0 9px; border-bottom: 1px solid #f2f3f5; }
 .band-row:last-of-type { border-bottom: none; }
 .band-head { display: flex; align-items: center; justify-content: space-between; }
@@ -546,6 +874,10 @@ onMounted(load)
 .band-row.warn .band-value b { color: #c98a1b; }
 .band-row.bad .band-status { background: #fef0f0; color: #d94a4a; }
 .band-row.bad .band-value b { color: #d94a4a; }
+/* 蛋白不足：灰字即可，不标红（方案里已排好菜） */
+.band-row.muted .band-status { background: #f4f4f6; color: #8a94a6; }
+.band-row.muted .band-value b { color: #8a94a6; }
+.ht.muted b { color: rgba(255, 255, 255, 0.82); }
 .band-hint { font-size: 11.5px; line-height: 1.6; color: #909399; margin: 3px 0 0; }
 .band-foot { font-size: 11px; line-height: 1.7; color: #a8abb2; margin: 6px 0 0; }
 .cal-bar { display: flex; justify-content: space-between; align-items: center; background: #fff; border-radius: 10px; padding: 10px 12px; font-size: 13px; color: #606266; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
@@ -612,4 +944,14 @@ onMounted(load)
 .sf-row { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #606266; }
 .sf-plan { font-size: 12px; color: #909399; background: #f7f8fa; border-radius: 8px; padding: 8px 10px; line-height: 1.6; }
 .skeleton { font-size: 13px; color: #909399; padding: 16px; text-align: center; }
+/* 动态调整：是「系统做过的事」，中性蓝；撤销按钮低调但可点 */
+.adapt-wrap { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.adapt-card { background: #f2f7fc; border: 1px solid #d8e6f3; border-radius: 10px; padding: 9px 11px; }
+.adapt-head { display: flex; align-items: center; gap: 8px; }
+.adapt-tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: #dcebfa; color: #2b6cb0; flex: none; }
+.adapt-day { font-size: 12px; color: #606266; flex: 1; }
+.adapt-revert { font-size: 11.5px; color: #2b6cb0; background: transparent; border: 1px solid #b9d3ec; border-radius: 999px; padding: 1px 10px; cursor: pointer; }
+.adapt-revert:disabled { opacity: 0.5; cursor: default; }
+.adapt-reason { font-size: 12px; line-height: 1.6; color: #4a5568; margin: 6px 0 0; }
+.adapt-reason b { font-weight: 500; color: #2b6cb0; }
 </style>
