@@ -12,11 +12,37 @@ import threading
 from datetime import datetime
 
 import pytest
+from sqlalchemy import inspect
 
+from app.core.config import settings
 from app.db.session import SessionLocal
 from app.models.user import User
 from app.services import points
 from app.services.redis_leaderboard import leaderboard
+
+
+def _app_db_ready() -> bool:
+    """应用库（foodai.db）就绪才能跑：这是真库并发集成测试。
+
+    CI / 干净环境里没有这个库文件，建出来的空库没有 users 表——
+    那种环境直接跳过，测试语义（多线程原子加分）只有连着真库才有意义。
+    """
+    if not settings.DATABASE_URL.startswith("sqlite"):
+        return True
+    db_path = settings.DATABASE_URL.split("///")[-1]
+    if not db_path or db_path == ":memory:":
+        return True
+    from pathlib import Path
+
+    if not Path(db_path).exists():
+        return False
+    engine_inspect = inspect(SessionLocal().bind)
+    return engine_inspect.has_table("users")
+
+
+pytestmark = pytest.mark.skipif(
+    not _app_db_ready(), reason="应用数据库不存在（CI/干净环境），并发集成测试需要真库",
+)
 
 
 @pytest.fixture(scope="module")

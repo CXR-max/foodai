@@ -7,9 +7,17 @@
 各测试模块各自 register 一个账号，全量跑时同一个测试 IP 很容易攒到 5 次触发 429，
 表现为「单独跑通过、全量跑 fixture 报错」，这里统一在每条用例前清零。
 """
+import os
+
 import pytest
 
 from app.core import ratelimit
+
+# 测试一律走 JSON 种子营养库（foods_seed.json，由 scripts/export_food_seed.py
+# 从开发库全量导出 1847 条）。原因：开发机的 SQLite 食物库内容因机器而异，
+# 跟着它跑测试结果不确定；CI / 新装环境本来就只有种子文件。种子和库两条路
+# 数据一致，测试在任何机器上结果相同。
+os.environ.setdefault("FOODAI_FOOD_SOURCE", "json")
 
 
 @pytest.fixture(autouse=True)

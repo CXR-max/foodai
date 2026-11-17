@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import threading
 import time
 from difflib import SequenceMatcher
@@ -110,6 +111,11 @@ def _entry_from_db(food) -> dict:
 
 
 def _load_from_db() -> list[dict] | None:
+    # 测试/CI 必须走 JSON 种子：开发机 SQLite 库有 1.3 万+ 条（USDA/COFiD/MEXT/
+    # TFDA 导入管道灌入，原始数据不进仓库），跟着它跑测试结果因机器而异。
+    # 设 FOODAI_FOOD_SOURCE=json 强制回退种子文件，保证测试确定性。
+    if os.environ.get("FOODAI_FOOD_SOURCE", "").strip().lower() == "json":
+        return None
     try:
         from app.db.session import SessionLocal
         from app.models.food import Food, FoodAlias, FoodRelation
