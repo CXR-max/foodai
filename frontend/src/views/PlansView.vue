@@ -1,17 +1,22 @@
 <script setup lang="ts">
-// 养生方案页：偏好面板 + 纯文字对话 → 合并生成 → 调整(重生成/可视化编辑) → 导入日历
+// 养生方案页：偏好面板 + 纯文字对话 → 合并生成 → 调整(重生成/可视化编辑) → 导入日程
 import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as planApi from '@/api/plan'
 import type { Plan, PlanDay, PlanMeal } from '@/api/plan'
 import * as checkinApi from '@/api/checkin'
+import { isMobile } from '@/composables/useIsMobile'
+
+// generationOnly：移动端「计划 → 生成」tab 只借用生成向导，
+// 历史列表和方案详情由移动端自己的页面（可沿用/导入日程）承担，避免两套重复。
+const props = defineProps<{ generationOnly?: boolean }>()
 
 const plans = ref<Plan[]>([])
 const current = ref<Plan | null>(null)          // 当前展示的方案（含 days）
 const activeDay = ref('1')                      // 当前 tab（第几天）
 const generating = ref(false)
-const MEAL_LABELS: Record<string, string> = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', snack: '加餐' }
-const importedDays = ref<Set<number>>(new Set()) // 已导入日历的 plan_day id
+const MEAL_LABELS: Record<string, string> = { breakfast: '🌅 早餐', lunch: '☀️ 午餐', dinner: '🌙 晚餐', snack: '🍎 加餐' }
+const importedDays = ref<Set<number>>(new Set()) // 已导入日程的 plan_day id
 
 // ---- 定制向导①：偏好面板（引导回忆，可当场改，可跳过）----
 const TASTES = ['清淡', '咸鲜', '香辣', '微辣', '麻辣', '酸辣', '偏甜', '偏酸', '偏咸', '蒜香', '孜然', '酱香', '烧烤', '鲜香']
@@ -128,7 +133,7 @@ async function openPlan(id: number) {
   await refreshImported()
 }
 
-// 标记"已导入日历"的按钮
+// 标记"已导入日程"的按钮
 async function refreshImported() {
   importedDays.value = new Set()
   for (const day of days.value) {
@@ -262,6 +267,12 @@ function addItem(meal: PlanMeal) {
   meal.items.push({ name: '', portion_g: 100 })
 }
 
+/** 运动处方兼容：新数据用 exercises（多条），旧数据只有 exercise（一条） */
+function dayExercises(day: PlanDay) {
+  if (day.exercises && day.exercises.length) return day.exercises
+  return day.exercise ? [day.exercise] : []
+}
+
 async function saveEdit() {
   if (!editForm.value || !current.value) return
   const meals = editForm.value.meals
@@ -274,7 +285,7 @@ async function saveEdit() {
   activeDay.value = String(editForm.value.dayIndex)
 }
 
-// ---- 导入日历 ----
+// ---- 导入日程 ----
 async function importDay(day: PlanDay) {
   const r = await checkinApi.importFromPlan(day.id)
   ElMessage.success(r.message)
@@ -291,30 +302,30 @@ onMounted(async () => {
     <!-- 定制向导：偏好面板 + 文字对话 -->
     <div class="page-card">
       <div>
-        <h3 class="page-title" style="margin-bottom:4px">AI 养生方案定制</h3>
+        <h3 class="page-title" style="margin-bottom:4px">✨ AI 养生方案定制</h3>
         <span class="sub">勾选偏好 + 直接和 AI 聊 → 合并生成 · 生成后可重生成 / 手动编辑</span>
       </div>
 
       <el-row :gutter="16" style="margin-top:14px">
-        <el-col :span="12">
+        <el-col :span="12" :xs="24">
           <div class="wizard-box">
             <div class="wizard-title">① 勾选偏好（帮你回忆，可跳过）</div>
-            <div class="pref-label">口味</div>
+            <div class="pref-label">😋 口味</div>
             <el-checkbox-group v-model="prefs.taste_preferences">
               <el-checkbox v-for="t in TASTES" :key="t" :value="t">{{ t }}</el-checkbox>
             </el-checkbox-group>
-            <div class="pref-label">饮食禁忌</div>
+            <div class="pref-label">🚫 饮食禁忌</div>
             <el-checkbox-group v-model="prefs.dietary_restrictions">
               <el-checkbox v-for="t in RESTRICTIONS" :key="t" :value="t">{{ t }}</el-checkbox>
             </el-checkbox-group>
-            <div class="pref-label">运动兴趣</div>
+            <div class="pref-label">🏃 运动兴趣</div>
             <el-checkbox-group v-model="prefs.exercise_preferences">
               <el-checkbox v-for="t in EXERCISES" :key="t" :value="t">{{ t }}</el-checkbox>
             </el-checkbox-group>
           </div>
         </el-col>
 
-        <el-col :span="12">
+        <el-col :span="12" :xs="24">
           <div class="wizard-box chat-box">
             <div class="wizard-title chat-title">
               <span>② 想说什么，直接和 AI 说（可选）</span>
@@ -352,44 +363,62 @@ onMounted(async () => {
     </div>
 
     <!-- 历史方案切换 -->
-    <div v-if="plans.length" class="page-card">
-      <span style="margin-right:8px;color:#6d7679">历史方案：</span>
+    <div v-if="plans.length && !props.generationOnly" class="page-card">
+      <span style="margin-right:8px;color:#909399">历史方案：</span>
       <el-select :model-value="current?.id" style="width:260px" @change="(v: number) => openPlan(v)">
         <el-option v-for="p in plans" :key="p.id" :value="p.id" :label="p.title" />
       </el-select>
     </div>
 
     <!-- 方案内容 -->
-    <div v-if="current" class="page-card">
+    <div v-if="current && !props.generationOnly" class="page-card">
       <div class="plan-toolbar">
         <el-alert :title="current.summary" type="success" :closable="false" class="summary-alert" />
-        <el-button :disabled="generating" @click="confirmRegenerate">重新生成</el-button>
+        <el-button :disabled="generating" @click="confirmRegenerate">🔄 重新生成</el-button>
       </div>
 
       <el-tabs v-model="activeDay">
         <el-tab-pane v-for="day in days" :key="day.day_index" :name="String(day.day_index)" :label="`第${day.day_index}天`">
-          <div class="day-head">
-            <div>
+          <div class="day-head" :class="{ 'day-head-mobile': isMobile }">
+            <div class="day-head-info">
               <b style="font-size:16px">{{ day.theme || `第${day.day_index}天` }}</b>
               <el-tag size="small" type="info" style="margin-left:8px">{{ day.date }}</el-tag>
               <el-tag size="small" style="margin-left:8px" effect="plain">全日约 {{ day.estimated_calories }} kcal</el-tag>
             </div>
-            <div style="display:flex;gap:8px">
-              <el-button size="small" :disabled="generating" @click="openEdit(day)">编辑这一天</el-button>
+            <div class="day-head-actions">
+              <el-button size="small" :disabled="generating" @click="openEdit(day)">✏️ 编辑这一天</el-button>
               <el-button size="small" type="success" :disabled="generating || importedDays.has(day.id)" @click="importDay(day)">
-                {{ importedDays.has(day.id) ? '已导入日历' : '导入日历' }}
+                {{ importedDays.has(day.id) ? '✓ 已导入日程' : '📥 导入日程' }}
               </el-button>
             </div>
           </div>
 
-          <el-table :data="day.meals" size="default" style="margin-top:10px">
+          <!-- 手机：餐次卡片 -->
+          <div v-if="isMobile" class="meal-cards">
+            <div v-for="(row, mi) in day.meals" :key="mi" class="meal-card">
+              <div class="mc-head">
+                <span class="mc-type">{{ MEAL_LABELS[row.meal_type] || row.meal_type }}</span>
+                <span class="mc-kcal">{{ row.calories }} kcal</span>
+              </div>
+              <div class="mc-items">
+                <div v-for="item in row.items" :key="item.name" class="mc-item">
+                  <span class="mc-item-name">🍽 {{ item.name }}</span>
+                  <span class="mc-item-portion">约{{ item.portion_g }}g</span>
+                </div>
+                <div v-if="!row.items?.length" class="mc-empty">这一餐还没安排</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 桌面：原表格 -->
+          <el-table v-else :data="day.meals" size="default" style="margin-top:10px">
             <el-table-column label="餐次" width="110">
               <template #default="{ row }">{{ MEAL_LABELS[row.meal_type] || row.meal_type }}</template>
             </el-table-column>
             <el-table-column label="内容" min-width="300">
               <template #default="{ row }">
                 <div v-for="item in row.items" :key="item.name" class="meal-item">
-                   {{ item.name }} <span class="portion">约{{ item.portion_g }}g</span>
+                  🍽 {{ item.name }} <span class="portion">约{{ item.portion_g }}g</span>
                 </div>
               </template>
             </el-table-column>
@@ -398,23 +427,27 @@ onMounted(async () => {
             </el-table-column>
           </el-table>
 
-          <el-card v-if="day.exercise" shadow="never" class="exercise-card">
-            <div class="exercise-row">
-              <div class="exercise-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2.5 2.5" /></svg></div>
+          <el-card v-if="dayExercises(day).length" shadow="never" class="exercise-card">
+            <div v-for="(ex, ei) in dayExercises(day)" :key="ei" class="exercise-row">
+              <div class="exercise-icon">{{ ei === 0 ? '🏃' : '🧘' }}</div>
               <div style="flex:1">
-                <b>{{ day.exercise.type }}</b>
-                <span style="color:#6d7679;margin-left:10px">{{ day.exercise.duration_min }} 分钟 · 消耗约 {{ day.exercise.calories_burned }} kcal</span>
-                <div class="tips" v-if="day.exercise.tips">{{ day.exercise.tips }}</div>
+                <b>{{ ex.type }}</b>
+                <span style="color:#909399;margin-left:10px">{{ ex.duration_min }} 分钟 · 消耗约 {{ ex.calories_burned }} kcal</span>
+                <div class="tips" v-if="ex.tips">💡 {{ ex.tips }}</div>
               </div>
             </div>
           </el-card>
+          <div v-if="day.sleep || day.water_ml" class="plan-extra">
+            <span v-if="day.sleep">😴 {{ day.sleep.bedtime }}–{{ day.sleep.wake_at }} · 目标 {{ day.sleep.target_h }} 小时</span>
+            <span v-if="day.water_ml">💧 饮水 {{ day.water_ml }} ml</span>
+          </div>
         </el-tab-pane>
       </el-tabs>
     </div>
-    <el-empty v-else-if="!generating" description="还没有方案，勾选偏好或直接和 AI 聊几句，然后生成" />
+    <el-empty v-else-if="!generating && !props.generationOnly" description="还没有方案，勾选偏好或直接和 AI 聊几句，然后生成" />
 
     <!-- 可视化编辑弹窗 -->
-    <el-dialog v-model="editDialog" title="编辑这一天（热量按营养库自动重算）" width="640px">
+    <el-dialog v-model="editDialog" title="编辑这一天（热量按营养库自动重算）" :width="isMobile ? '100%' : '640px'" :fullscreen="isMobile">
       <div v-for="(meal, mi) in editForm?.meals || []" :key="mi" class="edit-meal">
         <div class="edit-meal-title">{{ MEAL_LABELS[meal.meal_type] }}</div>
         <div v-for="(item, ii) in meal.items" :key="ii" class="edit-item">
@@ -432,7 +465,7 @@ onMounted(async () => {
     </el-dialog>
 
     <!-- 历史对话抽屉：可查看 / 复制 -->
-    <el-drawer v-model="chatDrawer" title="历史对话（可查看 / 复制）" size="460px">
+    <el-drawer v-model="chatDrawer" title="历史对话（可查看 / 复制）" :size="isMobile ? '90%' : '460px'">
       <div v-if="!chatSessions.length" class="chat-empty">暂无历史对话</div>
       <div v-for="(s, si) in chatSessions" :key="si" class="session">
         <div class="session-head">
@@ -451,28 +484,28 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.sub { color: var(--muted); font-size: 13px; }
-.wizard-box { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; height: 100%; background: var(--surface); }
-.wizard-title { font-weight: 600; color: var(--accent); margin-bottom: 8px; }
+.sub { color: #909399; font-size: 13px; }
+.wizard-box { border: 1px solid #ebeef5; border-radius: 8px; padding: 12px 14px; height: 100%; background: #fafcff; }
+.wizard-title { font-weight: 600; color: #409eff; margin-bottom: 8px; }
 .chat-title { display: flex; justify-content: space-between; align-items: center; }
-.pref-label { font-size: 13px; color: var(--ink-2); margin: 10px 0 4px; }
+.pref-label { font-size: 13px; color: #606266; margin: 10px 0 4px; }
 
-.session { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
+.session { border: 1px solid #ebeef5; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
 .session-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.session-time { color: var(--muted); font-size: 12px; }
+.session-time { color: #909399; font-size: 12px; }
 .session-msg { font-size: 13px; line-height: 1.6; margin: 4px 0; white-space: pre-wrap; }
-.session-msg.user b { color: var(--accent); }
-.session-msg.assistant b { color: var(--sage); }
+.session-msg.user b { color: #409eff; }
+.session-msg.assistant b { color: #67c23a; }
 
 .chat-box { display: flex; flex-direction: column; }
 .chat-list { flex: 1; min-height: 180px; max-height: 260px; overflow-y: auto; padding: 4px 2px; }
-.chat-empty { color: var(--muted); font-size: 13px; line-height: 1.6; }
+.chat-empty { color: #c0c4cc; font-size: 13px; line-height: 1.6; }
 .chat-row { display: flex; margin-bottom: 8px; }
 .chat-row.user { justify-content: flex-end; }
 .chat-row.assistant { justify-content: flex-start; }
 .bubble { max-width: 85%; padding: 8px 12px; border-radius: 10px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
-.chat-row.user .bubble { background: var(--accent); color: #fff; }
-.chat-row.assistant .bubble { background: var(--paper-2); color: var(--ink); }
+.chat-row.user .bubble { background: #409eff; color: #fff; }
+.chat-row.assistant .bubble { background: #f0f2f5; color: #303133; }
 .chat-input { display: flex; gap: 8px; margin-top: 8px; }
 
 .gen-actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-top: 14px; }
@@ -482,13 +515,58 @@ onMounted(async () => {
 
 .day-head { display: flex; justify-content: space-between; align-items: center; }
 .meal-item { padding: 2px 0; }
-.meal-item .portion { color: var(--muted); font-size: 12px; margin-left: 6px; }
-.exercise-card { margin-top: 12px; background: #e6f6f3; border: 1px solid #d2dcde; }
+.meal-item .portion { color: #909399; font-size: 12px; margin-left: 6px; }
+.exercise-card { margin-top: 12px; background: #f0f9eb; border: 1px solid #e1f3d8; }
+.plan-extra {
+  display: flex; flex-wrap: wrap; gap: 14px;
+  margin-top: 10px; padding: 10px 12px;
+  background: #f4f8ff; border: 1px solid #e3edff; border-radius: 8px;
+  font-size: 13px; color: #5a6b85;
+}
 .exercise-row { display: flex; align-items: center; gap: 14px; }
-.exercise-icon { width: 30px; height: 30px; display: grid; place-items: center; color: var(--accent); flex: 0 0 30px; }
-.exercise-icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
-.tips { color: var(--muted); font-size: 13px; margin-top: 4px; }
+.exercise-icon { font-size: 30px; }
+.tips { color: #909399; font-size: 13px; margin-top: 4px; }
 .edit-meal { margin-bottom: 18px; }
 .edit-meal-title { font-weight: 600; margin-bottom: 8px; }
 .edit-item { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+
+/* ============ 手机端 ============ */
+.day-head-mobile {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.day-head-info { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.day-head-actions { display: flex; gap: 8px; width: 100%; }
+.day-head-actions .el-button { flex: 1; margin-left: 0; }
+
+/* 餐次卡片 */
+.meal-cards { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.meal-card {
+  border: 1px solid #ebeef5;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fcfcfd;
+}
+.mc-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding-bottom: 7px; border-bottom: 1px solid #f2f3f5;
+}
+.mc-type { font-size: 14px; font-weight: 600; color: #303133; }
+.mc-kcal { font-size: 12px; color: #f56c6c; font-weight: 600; }
+.mc-items { display: flex; flex-direction: column; gap: 5px; padding-top: 7px; }
+.mc-item { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.mc-item-name { color: #303133; overflow: hidden; text-overflow: ellipsis; }
+.mc-item-portion { color: #909399; font-size: 12px; white-space: nowrap; }
+.mc-empty { font-size: 12px; color: #c0c4cc; }
+
+@media (max-width: 768px) {
+  .plan-toolbar { flex-wrap: wrap; }
+  .summary-alert { flex: 1 1 100%; }
+  .gen-actions { flex-wrap: wrap; }
+  .gen-actions .el-button { flex: 1; margin-left: 0; }
+  .edit-item { flex-wrap: wrap; }
+  .edit-item .el-input { flex: 1 1 100% !important; }
+  .chat-list { max-height: 300px; }
+}
 </style>

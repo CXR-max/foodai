@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import { homePath } from '@/router'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -36,7 +37,7 @@ async function submit() {
   try {
     await auth.register(form.username, form.password, form.nickname)
     ElMessage.success('注册成功，欢迎使用！')
-    router.push('/dashboard')
+    router.push(homePath())
   } finally {
     loading.value = false
   }
@@ -45,38 +46,28 @@ async function submit() {
 
 <template>
   <div class="auth-page">
-    <div class="auth-shell">
-      <aside class="auth-brand">
-        <div class="ab-top mono">SHISHAN ZHIXING · EST. 2026</div>
-        <div>
-          <div class="ab-logo">膳</div>
-          <h1 class="ab-title">识膳<br /><em>智行</em></h1>
-          <p class="ab-sub">AI 健康管理平台</p>
-        </div>
-        <ul class="ab-list">
-          <li><span class="no mono">01</span>建立你的健康档案</li>
-          <li><span class="no mono">02</span>获得个性化营养目标</li>
-          <li><span class="no mono">03</span>从今天第一餐开始记录</li>
-        </ul>
-        <div class="ab-foot mono">EAT WELL · LIVE WELL</div>
-      </aside>
-
-      <section class="auth-form">
-        <h2 class="auth-title">注册</h2>
-        <p class="auth-sub">开启你的个性化健康记录。</p>
-
-        <el-form ref="formRef" :model="form" :rules="rules" size="large" @keyup.enter="submit">
-          <el-form-item prop="username"><el-input v-model="form.username" placeholder="用户名" /></el-form-item>
-          <el-form-item prop="nickname"><el-input v-model="form.nickname" placeholder="昵称（可选，排行榜展示）" /></el-form-item>
-          <el-form-item prop="password"><el-input v-model="form.password" type="password" show-password placeholder="密码（至少 6 位）" /></el-form-item>
-          <el-form-item prop="confirm"><el-input v-model="form.confirm" type="password" show-password placeholder="确认密码" /></el-form-item>
-          <el-button type="primary" size="large" style="width: 100%; margin-top: 4px" :loading="loading" @click="submit">
-            注 册
-          </el-button>
-        </el-form>
-
-        <div class="auth-footer">已有账号？<router-link to="/login">去登录</router-link></div>
-      </section>
-    </div>
+    <el-card class="auth-card">
+      <h2 class="auth-title">注册账号</h2>
+      <p class="auth-sub">开启你的个性化健康之旅</p>
+      <el-form ref="formRef" :model="form" :rules="rules" size="large" @keyup.enter="submit">
+        <el-form-item prop="username"><el-input v-model="form.username" placeholder="用户名" /></el-form-item>
+        <el-form-item prop="nickname"><el-input v-model="form.nickname" placeholder="昵称（可选，排行榜展示）" /></el-form-item>
+        <el-form-item prop="password"><el-input v-model="form.password" type="password" show-password placeholder="密码（至少6位）" /></el-form-item>
+        <el-form-item prop="confirm"><el-input v-model="form.confirm" type="password" show-password placeholder="确认密码" /></el-form-item>
+        <el-button type="success" size="large" style="width: 100%" :loading="loading" @click="submit">注 册</el-button>
+      </el-form>
+      <div class="auth-footer">已有账号？<router-link to="/login">去登录</router-link></div>
+    </el-card>
   </div>
 </template>
+
+<style scoped>
+.auth-page {
+  height: 100%; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #1d2530 0%, #2c3a2f 100%);
+}
+.auth-card { width: 380px; padding: 12px 8px; }
+.auth-title { text-align: center; margin: 8px 0 4px; }
+.auth-sub { text-align: center; color: #909399; font-size: 13px; margin-bottom: 24px; }
+.auth-footer { text-align: center; margin-top: 16px; font-size: 13px; color: #909399; }
+</style>

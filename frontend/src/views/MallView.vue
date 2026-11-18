@@ -5,6 +5,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import * as rewardsApi from '@/api/rewards'
 import type { Reward } from '@/api/rewards'
 import { useAuthStore } from '@/stores/auth'
+import { isMobile } from '@/composables/useIsMobile'
 
 const auth = useAuthStore()
 const rewards = ref<Reward[]>([])
@@ -14,19 +15,13 @@ const drawer = ref(false)
 
 const CATEGORIES = [
   { key: 'all', label: '全部' },
-  { key: 'privilege', label: '产品权益' },
-  { key: 'goods', label: '实物好券' },
+  { key: 'privilege', label: '⚡ 产品权益' },
+  { key: 'goods', label: '🎁 实物好券' },
 ]
 
 const filtered = computed(() =>
   tab.value === 'all' ? rewards.value : rewards.value.filter((r) => r.category === tab.value),
 )
-
-// 每件物品自己的颜色：按 id 稳定分配，避免整页一个色
-const TONES = ['indigo', 'teal', 'ochre', 'sage', 'plum', 'clay']
-function toneOf(r: Reward) {
-  return TONES[r.id % TONES.length]
-}
 
 // ---- 使用补签卡 ----
 const makeupDialog = ref(false)
@@ -96,15 +91,15 @@ onMounted(load)
           <el-tab-pane v-for="c in CATEGORIES" :key="c.key" :name="c.key" :label="c.label" />
         </el-tabs>
         <div class="right">
-          <el-tag type="warning" effect="dark" size="large" round>我的积分：{{ auth.user?.points_total ?? 0 }}</el-tag>
+          <el-tag type="warning" effect="dark" size="large" round>💰 我的积分：{{ auth.user?.points_total ?? 0 }}</el-tag>
           <el-button @click="drawer = true">我的兑换（{{ redemptions.length }}）</el-button>
         </div>
       </div>
 
       <el-row :gutter="14">
-        <el-col v-for="r in filtered" :key="r.id" :span="6">
-          <el-card shadow="hover" class="reward" :class="`tone-${toneOf(r)}`">
-            <div class="icon-wrap"><span class="icon">{{ r.icon }}</span></div>
+        <el-col v-for="r in filtered" :key="r.id" :span="6" :xs="12">
+          <el-card shadow="hover" class="reward">
+            <div class="icon">{{ r.icon }}</div>
             <div class="name">{{ r.name }}</div>
             <div class="desc">{{ r.description }}</div>
             <div class="foot">
@@ -125,7 +120,7 @@ onMounted(load)
     </div>
 
     <!-- 我的兑换抽屉 -->
-    <el-drawer v-model="drawer" title="我的兑换（凭核销码领取）" size="380px">
+    <el-drawer v-model="drawer" title="我的兑换（凭核销码领取）" :size="isMobile ? '88%' : '380px'">
       <el-empty v-if="!redemptions.length" description="还没有兑换记录" />
       <div v-for="r in redemptions" :key="r.id" class="redeem-item">
         <div class="row1">
@@ -145,8 +140,8 @@ onMounted(load)
     </el-drawer>
 
     <!-- 使用补签卡弹窗 -->
-    <el-dialog v-model="makeupDialog" title="使用补签卡" width="360px">
-      <p style="margin-top:0;color:var(--muted)">选择要补签的日期（补签后该天记为已打卡，并奖励积分）</p>
+    <el-dialog v-model="makeupDialog" title="使用补签卡" :width="isMobile ? '100%' : '360px'" :fullscreen="isMobile">
+      <p style="margin-top:0;color:#909399">选择要补签的日期（补签后该天记为已打卡，并奖励积分）</p>
       <el-date-picker
         v-model="makeupDate"
         type="date"
@@ -164,31 +159,32 @@ onMounted(load)
 </template>
 
 <style scoped>
-.head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.head { display: flex; justify-content: space-between; align-items: center; }
 .head :deep(.el-tabs) { flex: 1; }
 .head :deep(.el-tabs__header) { margin-bottom: 0; }
 .right { display: flex; gap: 10px; align-items: center; padding-bottom: 8px; }
-.reward { text-align: center; margin-bottom: 14px; border-top: 3px solid var(--tone, var(--accent)); }
-.reward .icon-wrap {
-  width: 56px;
-  height: 56px;
-  margin: 10px auto 8px;
-  border-radius: 50%;
-  background: var(--tone-soft, var(--paper-2));
-  display: grid;
-  place-items: center;
-  font-size: 28px;
-  line-height: 1;
-}
-.reward .icon { filter: none; opacity: 1; }
+.reward { text-align: center; margin-bottom: 14px; }
+.reward .icon { font-size: 40px; margin: 6px 0; }
 .reward .name { font-weight: 700; }
-.reward .desc { color: var(--muted); font-size: 12px; height: 34px; margin: 6px 0; }
-.reward .foot { display: flex; justify-content: space-between; margin-bottom: 8px; align-items: baseline; }
-.cost { color: var(--tone-deep, var(--ochre-deep)); font-weight: 800; font-size: 17px; font-family: var(--mono); }
-.stock { color: var(--muted); font-size: 12px; }
-.redeem-item { border: 1px dashed var(--line-2); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+.reward .desc { color: #909399; font-size: 12px; height: 34px; margin: 6px 0; }
+.reward .foot { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.cost { color: #e6a23c; font-weight: 800; font-size: 17px; }
+.stock { color: #c0c4cc; font-size: 12px; }
+.redeem-item { border: 1px dashed #ddd; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
 .redeem-item .row1 { display: flex; justify-content: space-between; font-weight: 600; }
-.redeem-item .code { margin-top: 6px; color: var(--sage-deep); letter-spacing: 1px; }
-.redeem-item .time { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.redeem-item .code { margin-top: 6px; color: #67c23a; letter-spacing: 1px; }
+.redeem-item .time { color: #c0c4cc; font-size: 12px; margin-top: 4px; }
 .use-row { margin-top: 8px; display: flex; justify-content: flex-end; }
+
+/* ============ 手机端 ============ */
+@media (max-width: 768px) {
+  .head { flex-direction: column; align-items: stretch; gap: 8px; }
+  .right { flex-wrap: wrap; padding-bottom: 0; gap: 8px; }
+  .right .el-tag { flex: 1; text-align: center; }
+  .reward { margin-bottom: 10px; }
+  .reward .icon { font-size: 30px; margin: 2px 0; }
+  .reward .name { font-size: 13px; }
+  .reward .desc { font-size: 11px; height: 30px; margin: 4px 0; }
+  .cost { font-size: 15px; }
+}
 </style>
