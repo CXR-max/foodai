@@ -2,7 +2,9 @@
 
 第一层　基础消耗：MET × 体重(kg) × 时长(分钟) ÷ 60
         MET 不再是单一值，每种运动分"轻松/适中/吃力"三档，
-        取值参考 Compendium of Physical Activities 常用近似值。
+        数值以 Compendium of Physical Activities（2024 第三版）的常见活动值为锚点，
+        再按「轻松 / 适中 / 吃力」拆成三档——**分档系数是本项目的工程处理，不是原文数值**。
+        查表值属 heuristic：Compendium 2024 限定 19~59 岁，个体差异较大，输出给 ±10% 区间。
 
 第二层　个体化系数（全部来自健康档案，系数都限制在合理区间，保证可解释）：
         - 性别：同强度下女性净消耗约低 5%（体成分/血红蛋白差异）→ ×0.95
@@ -16,6 +18,12 @@
 """
 INTENSITY_LABELS = {"light": "轻松", "moderate": "适中", "intense": "吃力"}
 INTENSITY_ORDER = ("light", "moderate", "intense")
+
+# MET 值来源标注：查表值 = 以 Compendium 2024 为锚点的工程分档（kind=heuristic）
+MET_SOURCE = {
+    "id": "L08", "kind": "heuristic", "version": "Compendium 2024 (3rd ed.) 锚点",
+    "note": "三档系数为工程拆分；Compendium 原表限定 19~59 岁，个体差异以 ±10% 区间体现",
+}
 
 # 每种运动的 MET 三档：(轻松, 适中, 吃力)
 MET_LEVELS: dict[str, tuple[float, float, float]] = {
@@ -155,6 +163,7 @@ def personalized_burn(exercise_type: str | None, duration_min: int,
         "intensity_label": INTENSITY_LABELS.get(intensity, "适中"),
         "met": met,
         "met_known": met_known(exercise_type),
+        "met_source": MET_SOURCE,
         "weight_kg": round(weight, 1),
         "base": base,
         "factors": factors,

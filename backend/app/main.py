@@ -14,8 +14,8 @@ from app.core.config import settings
 from app.db.session import SessionLocal
 from app.models.reward import Reward
 from app.routers import (
-    achievements, auth, checkins, food_records, foods, plans, points, profile,
-    recognitions, rewards, stats,
+    achievements, auth, checkins, daily, food_records, foods, plans, points, profile,
+    recognitions, rewards, stats, wellness,
 )
 from app.services.achievement_seed import seed_achievements
 from app.services.food_seed import seed_foods_if_empty
@@ -54,6 +54,11 @@ def seed_rewards():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用启动/关闭钩子"""
+    if settings.JWT_SECRET == "dev-secret-please-change" or len(settings.JWT_SECRET) < 24:
+        logger.warning(
+            "JWT_SECRET 仍是默认值或过短，任何人可伪造登录凭证；"
+            "请在 backend/.env 里换成随机字符串（>=32 位）后重启"
+        )
     seed_rewards()
     seed_achievements(SessionLocal())
     seed_foods_if_empty()
@@ -79,9 +84,10 @@ async def log_rejected_writes(request, call_next):
     return await call_next(request)
 
 # CORS 兜底（开发时前端走 vite proxy，一般用不到；演示直连 8000 时需要）
+# 白名单在 .env 的 CORS_ORIGINS 配置，逗号分隔；部署到域名/手机 App 时改配置即可
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=settings.cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -90,7 +96,8 @@ app.add_middleware(
 app.mount("/uploads", StaticFiles(directory=str(settings.UPLOAD_DIR)), name="uploads")
 
 # 业务路由，统一挂 /api 前缀
-for r in (auth, profile, recognitions, food_records, foods, plans, checkins, stats, points, rewards, achievements):
+for r in (auth, profile, recognitions, food_records, foods, plans, checkins, daily,
+          wellness, stats, points, rewards, achievements):
     app.include_router(r.router, prefix="/api")
 
 

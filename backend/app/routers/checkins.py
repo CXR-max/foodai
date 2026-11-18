@@ -18,7 +18,7 @@ from app.models.check_in import CheckIn
 from app.models.diet_plan import DietPlan, PlanDay
 from app.models.user import User
 from app.schemas.checkin import FromPlanIn, ManualCheckInIn
-from app.services import points
+from app.services import day_context, diet_intake, metric_bands, points, schedule_import, wellness
 from app.services.achievements import calc_streak, unlock_all
 from app.services.llm.prompts import build_checkin_praise_messages
 from app.services.llm.provider import get_llm_provider
@@ -30,7 +30,40 @@ router = APIRouter(prefix="/check-ins", tags=["健康打卡"])
 TASK_LABELS = {
     "meal_breakfast": "早餐", "meal_lunch": "午餐",
     "meal_dinner": "晚餐", "meal_snack": "加餐", "exercise": "运动",
+    "sleep": "睡眠", "water": "饮水",
+    "manual_exercise": "运动记录", "manual_food": "饮食记录",
 }
+
+# 月历里任务 chip 的固定顺序（早→午→晚→加→运动→饮水→睡眠）
+TASK_ORDER = {
+    "meal_breakfast": 0, "meal_lunch": 1, "meal_dinner": 2, "meal_snack": 3,
+    "exercise": 4, "water": 5, "sleep": 6,
+}
+
+
+def task_short(c: CheckIn, plan_day: PlanDay | None) -> str:
+    """一句话说清这项任务要做什么（月历/简约打卡计划用，长度压在 22 字内）"""
+    if plan_day is None or not c.task_key:
+        return ""
+    key = c.task_key
+    if key.startswith("meal_"):
+        meal_type = key.replace("meal_", "")
+        meal = next((m for m in (plan_day.meals or []) if m.get("meal_type") == meal_type), None)
+        if not meal:
+            return ""
+        names = [i.get("name") for i in (meal.get("items") or []) if i.get("name")]
+        return "、".join(names)[:18]
+    if key == "exercise":
+        items = plan_day.exercises or ([plan_day.exercise] if plan_day.exercise else [])
+        return " + ".join(
+            f"{e.get('type')} {e.get('duration_min')}分" for e in items if e.get("type")
+        )[:22]
+    if key == "sleep":
+        s = plan_day.sleep or {}
+        return f"{s.get('bedtime') or ''}–{s.get('wake_at') or ''}".strip("–")
+    if key == "water":
+        return f"{plan_day.water_ml or 0} ml"
+    return ""
 
 
 def checkin_dict(c: CheckIn, plan_day: PlanDay | None = None) -> dict:
@@ -41,7 +74,11 @@ def checkin_dict(c: CheckIn, plan_day: PlanDay | None = None) -> dict:
             meal_type = c.task_key.replace("meal_", "")
             detail = next((m for m in (plan_day.meals or []) if m.get("meal_type") == meal_type), None)
         elif c.task_key == "exercise":
-            detail = plan_day.exercise
+            detail = plan_day.exercises or plan_day.exercise
+        elif c.task_key == "sleep":
+            detail = plan_day.sleep
+        elif c.task_key == "water":
+            detail = {"water_ml": plan_day.water_ml}
     return {
         "id": c.id, "check_date": str(c.check_date), "check_type": c.check_type,
         "task_key": c.task_key, "label": TASK_LABELS.get(c.task_key, "手动记录"),
@@ -103,12 +140,43 @@ def list_checkins(
         rows = (db.query(CheckIn)
                 .filter(CheckIn.user_id == user.id, CheckIn.check_date >= start, CheckIn.check_date < end)
                 .all())
+        # 月历上标出「这一天有方案」和方案第几天，方便一眼看出计划覆盖
+        plan_rows = (db.query(PlanDay)
+                     .join(DietPlan, DietPlan.id == PlanDay.plan_id)
+                     .filter(DietPlan.user_id == user.id,
+                             PlanDay.date >= start, PlanDay.date < end)
+                     .order_by(PlanDay.day_index.asc()).all())
+        plan_by_date: dict[str, dict] = {}
+        plan_day_by_id: dict[int, PlanDay] = {}
+        for pd in plan_rows:
+            if pd.date is None:
+                continue
+            plan_day_by_id[pd.id] = pd
+            plan_by_date.setdefault(str(pd.date), {
+                "plan_day_id": pd.id, "plan_id": pd.plan_id, "day_index": pd.day_index,
+                "theme": pd.theme, "plan_calories": round(pd.estimated_calories or 0),
+            })
+
         by_date: dict[str, dict] = {}
         for c in rows:
             key = str(c.check_date)
-            stat = by_date.setdefault(key, {"date": key, "total": 0, "done": 0})
+            stat = by_date.setdefault(key, {"date": key, "total": 0, "done": 0, "tasks": []})
             stat["total"] += 1
             stat["done"] += 1 if c.status == "done" else 0
+            stat["tasks"].append({
+                "id": c.id,
+                "key": c.task_key,
+                "label": TASK_LABELS.get(c.task_key, "记录"),
+                "status": c.status,
+                "short": task_short(c, plan_day_by_id.get(c.plan_day_id)),
+            })
+        for key, plan in plan_by_date.items():
+            stat = by_date.setdefault(key, {"date": key, "total": 0, "done": 0, "tasks": []})
+            stat.update({"has_plan": True, **plan})
+        for stat in by_date.values():
+            stat.setdefault("has_plan", False)
+            stat["tasks"].sort(key=lambda t: TASK_ORDER.get(t["key"], 9))
+            stat["pct"] = round(stat["done"] / stat["total"] * 100) if stat["total"] else 0
         return {"month": month, "days": sorted(by_date.values(), key=lambda d: d["date"])}
 
     # 单日视图
@@ -149,43 +217,11 @@ def import_from_plan(
         raise HTTPException(status_code=404, detail="方案不存在")
 
     day = plan_day.date or date.today()
-    desired: dict[str, str] = {}
-    for meal in plan_day.meals or []:
-        desired[f"meal_{meal.get('meal_type', 'snack')}"] = "diet"
-    if plan_day.exercise:
-        desired["exercise"] = "exercise"
-
-    # 该日期上已有的任务（来自任意方案），按 task_key 归并
-    existing = (db.query(CheckIn)
-                .filter(CheckIn.user_id == user.id, CheckIn.check_date == day).all())
-    by_key = {c.task_key: c for c in existing if c.task_key}
-
-    created, updated, kept = [], [], []
-    for key, ctype in desired.items():
-        c = by_key.get(key)
-        if c is None:
-            db.add(CheckIn(user_id=user.id, check_date=day, check_type=ctype,
-                           task_key=key, status="pending", plan_day_id=plan_day.id))
-            created.append(key)
-        elif c.status == "done":
-            kept.append(key)          # 已打卡，保留
-        else:
-            c.plan_day_id = plan_day.id   # pending → 覆盖为本次方案
-            c.check_type = ctype
-            updated.append(key)
-
-    # 删除该日期上、方案里已不存在且仍是 pending 的方案任务（done 一律保留）
-    removed = 0
-    for key, c in by_key.items():
-        if key not in desired and c.status == "pending" and c.plan_day_id:
-            db.delete(c)
-            removed += 1
-
-    db.commit()
-    msg = (f"已导入 {len(created) + len(updated)} 项任务到日历"
-           f"（新增 {len(created)}、更新 {len(updated)}、保留已打卡 {len(kept)}、清理 {removed}）")
-    return {"created": created, "updated": updated, "kept": kept,
-            "removed": removed, "message": msg}
+    result = schedule_import.import_plan_days(db, user.id, [plan_day])
+    msg = (f"已导入 {len(result['created']) + len(result['updated'])} 项任务到日程"
+           f"（新增 {len(result['created'])}、更新 {len(result['updated'])}、"
+           f"保留已打卡 {len(result['kept'])}、清理 {result['removed']}）")
+    return {**result, "date": str(day), "message": msg}
 
 
 @router.post("/{checkin_id}/complete")
@@ -199,11 +235,56 @@ def complete_checkin(
     if not c or c.user_id != user.id:
         raise HTTPException(status_code=404, detail="任务不存在")
     if c.status == "done":
-        raise HTTPException(status_code=400, detail="该任务已完成")
+        # 幂等：这餐可能是拍照打卡自动置完成的，用户再点一次不该报错。
+        # 报「该任务已完成」会让人以为点错了，实际是系统自己先打了。
+        return {
+            "id": c.id, "status": c.status, "points_awarded": 0,
+            "already_done": True,
+            "message": "这个任务已经完成了（拍照打卡会自动置已完成，不用再点一次）",
+        }
     # 防刷分：只能打卡当天，漏打的日子去积分商城用补签卡补
     if c.check_date != date.today():
         raise HTTPException(status_code=400,
                             detail="只能打卡今天；之前漏打的可在「积分商城」用补签卡补签")
+
+    # 睡眠 / 饮水：不是「点一下就算」，要先落到记录，再由记录判定是否达标
+    if c.task_key in ("sleep", "water"):
+        targets = day_context.targets_for_day(db, user.id, c.check_date)
+        plan_day = db.get(PlanDay, c.plan_day_id) if c.plan_day_id else None
+        if c.task_key == "sleep":
+            sleep_plan = (plan_day.sleep or {}) if plan_day else {}
+            bedtime = sleep_plan.get("bedtime") or targets.get("bedtime") or "23:00"
+            wake_at = sleep_plan.get("wake_at") or targets.get("wake_time") or "07:00"
+            try:
+                log, _ = wellness.upsert_sleep(
+                    db, user.id, sleep_date=c.check_date, bedtime=bedtime, wake_at=wake_at,
+                    note="一键按计划打卡", source="manual", plan_day_id=c.plan_day_id,
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            min_h = float(sleep_plan.get("target_h") or targets.get("sleep_min_h") or 7)
+            result = wellness.sync_sleep_checkin(db, user, log, min_h, targets)
+            db.commit()
+            db.refresh(c)
+            hours = round((log.duration_min or 0) / 60, 1)
+            band_text = (result.get("band") or {}).get("range_text") or f"{min_h:g} h"
+            return {
+                "id": c.id, "status": c.status, "points_awarded": c.points_awarded or 0,
+                "sleep": wellness.sleep_dict(log), "checkin": result,
+                "message": f"已记录睡眠 {hours} 小时（推荐 {band_text}）" if result["achieved"]
+                else f"睡眠 {hours} 小时，低于推荐 {band_text}",
+            }
+
+        target_ml = int(targets.get("water_min_ml") or 2000)
+        remaining = max(0, target_ml - wellness.water_total(db, user.id, c.check_date))
+        result = wellness.add_water(db, user, c.check_date, remaining, target_ml, targets=targets)
+        db.commit()
+        db.refresh(c)
+        band_text = (result.get("band") or {}).get("range_text") or f"{target_ml} ml"
+        return {
+            "id": c.id, "status": c.status, "points_awarded": c.points_awarded or 0,
+            "water": result, "message": f"今日饮水 {result['total_ml']} ml（推荐 {band_text}）",
+        }
 
     c.status = "done"
     # 运动任务没记录消耗时，从方案详情取类型/时长，再按个性化模型补算
@@ -245,6 +326,27 @@ def complete_checkin(
     unlock_all(db, user)   # 打卡可能解锁"连续打卡"类成就
     db.commit()
 
+    # 餐食打卡：顺手把「今天吃了多少」判一遍（热量 + 蛋白），点一下就算完成，
+    # 不要求用户额外记录；蛋白不足只提示，不阻塞、不弹窗
+    # 摄入口径与实际汇总一致：记过就用记录，没记就按这餐的方案菜品折算
+    diet = None
+    intake = None
+    if (c.task_key or "").startswith("meal_"):
+        day_targets = day_context.targets_for_day(db, user.id, c.check_date)
+        intake = diet_intake.day_intake(db, user.id, c.check_date)
+        pending_meals = (db.query(CheckIn)
+                         .filter(CheckIn.user_id == user.id,
+                                 CheckIn.check_date == c.check_date,
+                                 CheckIn.status == "pending",
+                                 CheckIn.task_key.like("meal_%")).count())
+        diet = metric_bands.diet_summary(
+            metric_bands.effective_calorie_band(day_targets),
+            intake["calories"] or None,
+            intake["protein_g"] or None,
+            pending_meals=pending_meals,
+            intake=intake,
+        )
+
     # AI 个性化点评（锦上添花，失败返回 None，不影响打卡结果）
     day_total = db.query(CheckIn).filter(
         CheckIn.user_id == user.id, CheckIn.check_date == c.check_date).count()
@@ -261,6 +363,8 @@ def complete_checkin(
     return {"id": c.id, "status": c.status,
             "points_awarded": pts + bonus, "bonus": bonus,
             "ai_praise": ai_praise,
+            "diet": diet,
+            "intake": intake,
             "message": f"任务完成 +{pts} 分" + (f"，当日全部完成 +{bonus} 分 🎉" if bonus else "")}
 
 

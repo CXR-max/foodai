@@ -9,11 +9,21 @@ class ProfileIn(BaseModel):
     age: int | None = Field(default=None, gt=0, lt=120)
     gender: str | None = Field(default=None, pattern="^(male|female)$")
     activity_level: str | None = Field(default=None, pattern="^(sedentary|light|moderate|active|athlete)$")
-    goal: str | None = Field(default=None, pattern="^(lose|maintain|gain)$")
+    goal: str | None = Field(
+        default=None, pattern="^(lose|maintain|gain|healthy)$",
+        description="诉求：lose=减脂 / maintain=维持 / gain=增肌 / healthy=健康饮食（不设赤字）",
+    )
     target_weight_kg: float | None = None
     taste_preferences: list[str] | None = None       # 口味偏好
     dietary_restrictions: list[str] | None = None    # 饮食禁忌
     exercise_preferences: list[str] | None = None    # 运动兴趣
+    sleep_time: str | None = Field(default=None, max_length=5, description="习惯入睡时间 HH:MM")
+    wake_time: str | None = Field(default=None, max_length=5, description="习惯起床时间 HH:MM")
+    water_target_ml: int | None = Field(default=None, ge=0, le=6000, description="自定义饮水目标")
+    over_limit_policy: str | None = Field(
+        default=None, pattern="^(ask|portion|exercise)$",
+        description="改菜后热量超上限的默认处理：ask=手动选择 / portion=按比例缩份量 / exercise=加运动抵消",
+    )
 
 
 class WeightIn(BaseModel):

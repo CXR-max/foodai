@@ -1,9 +1,71 @@
 // 养生方案接口
 import { del, get, post, put } from './http'
 
-export interface PlanMealItem { name: string; portion_g: number }
-export interface PlanMeal { meal_type: string; name: string; items: PlanMealItem[]; calories: number }
-export interface PlanExercise { type: string; duration_min: number; calories_burned: number; tips: string }
+export interface PlanMealItem {
+  name: string
+  portion_g: number
+  category?: string | null
+  calories?: number      // 后端按营养库重算后回填
+  protein_g?: number
+  fat_g?: number
+  carb_g?: number
+  matched?: boolean
+  note?: string | null
+}
+export interface PlanMeal {
+  meal_type: string
+  name: string
+  items: PlanMealItem[]
+  calories: number
+  protein_g?: number
+  fat_g?: number
+  carb_g?: number
+}
+export interface PlanExercise {
+  type: string
+  duration_min: number
+  calories_burned: number
+  tips: string
+  intensity?: 'light' | 'moderate' | 'intense'
+}
+/** 睡眠方案：由计划下发，日程据此生成睡眠打卡 */
+export interface PlanSleep {
+  target_h: number
+  planned_h?: number
+  bedtime: string
+  wake_at: string
+  intensity_day?: boolean
+  tips?: string
+}
+/** 当日目标（热量上下限 / 三大营养素 / 饮水 / 睡眠 / 运动消耗） */
+export interface PlanTargets {
+  calorie_target?: number
+  calorie_min?: number
+  calorie_max?: number
+  protein_min_g?: number
+  protein_max_g?: number
+  fat_min_g?: number
+  fat_max_g?: number
+  carb_min_g?: number
+  carb_max_g?: number
+  fiber_min_g?: number
+  sugar_max_g?: number
+  sodium_max_mg?: number
+  water_min_ml?: number
+  water_max_ml?: number
+  sleep_min_h?: number
+  sleep_max_h?: number
+  exercise_burn_min?: number
+  exercise_burn_max?: number
+  exercise_burn_target?: number
+  exercise_days_per_week?: number
+  is_training_day?: boolean
+  bedtime?: string
+  wake_time?: string
+  steps_min?: number
+  steps_max?: number
+  [key: string]: any
+}
 export interface PlanDay {
   id: number
   day_index: number
@@ -11,16 +73,140 @@ export interface PlanDay {
   theme: string
   meals: PlanMeal[]
   exercise: PlanExercise | null
+  exercises?: PlanExercise[]
+  sleep?: PlanSleep | null
+  targets?: PlanTargets | null
+  water_ml?: number | null
   estimated_calories: number
+  /** 这天餐食实排的七项营养（生成时已按七项区间校验过） */
+  nutrition?: PlanNutrition | null
+  /** 生成留痕：结构项降级 / 跨天重复放宽 / 处置后的调整 */
+  day_flags?: {
+    verified?: boolean
+    soft?: string[]
+    relaxed?: { key: string; label: string; value: number | null; range_text: string }[]
+    unverified?: string[]
+    variety_relaxed?: boolean
+    /** 处置缩份量/换菜留痕 */
+    adjusted?: DayAdjustment | null
+    /** 处置下调区间后整天的重排留痕 */
+    replanned?: DayAdjustment | null
+  } | null
+}
+
+export interface DayAdjustment {
+  reason?: string
+  meals?: string[]
+  trim_kcal?: number
+  calorie_min?: number
+  calorie_max?: number
+  /** 改了什么：from 为空表示新增，to 为空表示去掉 */
+  changed?: { meal: string; from?: string | null; to?: string | null; why?: string }[]
+  at?: string
+}
+
+export interface PlanNutrition {
+  calories: number
+  protein_g: number
+  fat_g: number
+  carb_g: number
+  fiber_g: number
+  sodium_mg: number
+  sugar_g: number
 }
 export interface Plan {
   id: number
   title: string
   status: string
+  /** active 但还没到开始日 → scheduled（提前排的下周方案，等它到点再顶上「进行中」） */
+  phase?: 'active' | 'scheduled' | 'archived' | 'draft' | string
   summary: string
+  start_date?: string
   daily_target_calories: number
+  targets?: PlanTargets | null
+  reused_from?: number | null
+  plan_version?: number
+  /** 从历史方案重新启用的时间（ISO），有值即说明这份被重新启用过 */
+  reactivated_at?: string | null
+  reactivate_count?: number | null
+  /** 顺延前的最初起始日 */
+  original_start_date?: string | null
+  /** 档案变了（体重/诉求）：判定区间已按最新档案，但餐食还是旧目标排的 */
+  targets_drift?: {
+    changed: boolean
+    old_target: number
+    new_target: number
+    /** 快照区间 / 现算区间，前端可直接用来说明"哪个是餐食口径、哪个是判定口径" */
+    old_range?: [number, number] | null
+    new_range?: [number, number] | null
+    ratio: number
+    weight_delta: number
+    goal_changed: boolean
+    old_intent?: string | null
+    new_intent?: string | null
+    message: string
+  } | null
   provider: string
   days?: PlanDay[]
+  // 列表卡片用的汇总（后端 plan_stats 算好）
+  days_count?: number
+  end_date?: string
+  avg_calories?: number
+  total_burn?: number
+  latest_day_index?: number
+  created_at?: string
+  // 停用评价摘要（归档时生成，列表卡片直接显示）
+  review_score?: number | null
+  review_grade?: string | null
+  review_headline?: string | null
+  review_status?: string | null
+  review_task_rate?: number | null
+  review?: PlanReview | null
+}
+
+/** 方案执行评价：停用后写进历史方案 */
+export interface PlanReviewDimension {
+  key: 'checkin' | 'adherence' | 'streak' | 'adjust'
+  label: string
+  score: number
+  max: number
+  detail: string
+}
+export interface PlanReview {
+  plan_id: number
+  title?: string
+  status: 'final' | 'ongoing' | 'not_started' | 'empty'
+  final: boolean
+  score: number | null
+  grade: string | null
+  headline: string
+  period: { start: string | null; end: string | null; days: number }
+  dimensions: PlanReviewDimension[]
+  stats: {
+    days: number
+    tasks_total?: number
+    tasks_done?: number
+    task_rate?: number | null
+    days_with_tasks?: number
+    full_days?: number
+    longest_streak?: number
+    calorie_days?: number
+    calorie_hit_days?: number
+    exercise_days?: number
+    exercise_hit_days?: number
+    sleep_days?: number
+    sleep_hit_days?: number
+    water_days?: number
+    water_hit_days?: number
+    edited_days?: number
+    avg_intake?: number | null
+    avg_water_ml?: number | null
+    avg_sleep_h?: number | null
+    by_task?: Record<string, { label: string; total: number; done: number; rate: number | null }>
+  }
+  highlights: string[]
+  suggestions: string[]
+  generated_at: string
 }
 
 export interface ChatMsg { role: 'user' | 'assistant'; content: string }
@@ -35,6 +221,9 @@ export const clearChatHistory = () =>
 export const getPlans = () => get<Plan[]>('/plans')
 
 export const getPlan = (id: number) => get<Plan>(`/plans/${id}`)
+
+/** 这一期的执行评价（进行中只给进度，归档后给最终评分） */
+export const getPlanReview = (id: number) => get<PlanReview>(`/plans/${id}/review`)
 
 /** 生成方案（LLM 较慢，单独 120s 超时）；偏好面板 + 聊天文本合并提交 */
 export const generatePlan = (data: {
@@ -160,11 +349,82 @@ export async function chatPlanStream(
   }
 }
 
-/** 编辑方案某一天（meals/exercise 可改，热量后端自动重算） */
+/** 编辑方案某一天（meals/exercises/sleep/targets/water_ml 可改，热量后端自动重算） */
 export const updatePlanDay = (
   planId: number,
   dayIndex: number,
-  data: { meals?: PlanMeal[]; exercise?: PlanExercise; theme?: string },
-) => put<PlanDay>(`/plans/${planId}/days/${dayIndex}`, data)
+  data: {
+    meals?: PlanMeal[]
+    exercise?: PlanExercise
+    exercises?: PlanExercise[]
+    sleep?: Record<string, any>
+    targets?: Record<string, any>
+    water_ml?: number
+    theme?: string
+    /** 热量超上限的处置：portion=缩份量，exercise=加运动 */
+    rebalance?: 'portion' | 'exercise'
+  },
+) => put<PlanDay & { nutrition?: PlanNutrition }>(`/plans/${planId}/days/${dayIndex}`, data)
+
+/** 改菜试算结果：不落库，用于边改边看 */
+export interface DayAdjustment {
+  reason?: string
+  meals?: string[]
+  trim_kcal?: number
+  calorie_min?: number
+  calorie_max?: number
+  /** 改了什么：from 为空表示新增，to 为空表示去掉 */
+  changed?: { meal: string; from?: string | null; to?: string | null; why?: string }[]
+  at?: string
+}
+
+export interface PlanNutrition {
+  meals: PlanMeal[]
+  total: { calories: number; protein_g: number; fat_g: number; carb_g: number }
+  coverage: { matched_items: number; total_items: number }
+  status: 'ok' | 'low' | 'high'
+  warnings: { code: string; level: string; message: string; actions?: string[] }[]
+  portion_factor: number
+  target: { calorie_min?: number; calorie_max?: number; protein_min_g?: number }
+  exercise_added?: { added_min: number; duration_min?: number; calories_burned?: number; type?: string } | null
+  exercise_suggestion?: { added_min: number; type?: string; calories_per_min?: number }
+}
+
+/** 改菜试算（不落库） */
+export const previewPlanDay = (
+  planId: number,
+  dayIndex: number,
+  data: { meals: PlanMeal[]; rebalance?: 'portion' | 'exercise' },
+) => post<PlanNutrition>(`/plans/${planId}/days/${dayIndex}/preview`, data)
 
 export const archivePlan = (id: number) => put(`/plans/${id}/archive`)
+
+/** 当天生效的方案天 + 当日目标（日程 / 我的 都读它） */
+export const getActivePlan = (date?: string) =>
+  get<{
+    has_plan: boolean
+    date: string
+    plan?: Plan
+    day?: PlanDay
+    targets: PlanTargets
+  }>('/plans/active', date ? { date } : undefined)
+
+/** 沿用历史方案排下一周：copy 原样复制 / reframe 保留框架重算餐食 */
+export const reusePlan = (id: number, data: { mode?: 'copy' | 'reframe'; start_date?: string }) =>
+  post<Plan>(`/plans/${id}/reuse`, { mode: 'reframe', ...data }, { timeout: 180000 })
+
+/** 导入日程：mode=day 导入某一天 / mode=week 一次导入整周；导入即生效（该方案置为进行中） */
+export const importPlanToSchedule = (
+  id: number,
+  data: { mode: 'day' | 'week'; day_index?: number; anchor?: string },
+) =>
+  post<{
+    created: string[]
+    updated: string[]
+    kept: string[]
+    removed: number
+    day_count: number
+    message: string
+    shift?: { shift_days: number; from_date: string | null; to_date: string | null }
+    activated?: { archived_count: number; archived_titles: string[] }
+  }>(`/plans/${id}/import`, data)

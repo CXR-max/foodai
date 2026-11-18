@@ -19,7 +19,7 @@ from app.models.health_profile import HealthProfile
 from app.models.recognition import Recognition
 from app.models.user import User
 from app.schemas.food_record import CorrectRecognitionIn, SaveRecognitionIn
-from app.services import nutrition, points, recognition
+from app.services import diet_intake, nutrition, photo_intake, points, recognition
 from app.services.achievements import unlock_all
 from app.services.images import compress_for_vision, validate_image
 from app.services.llm import foods_data
@@ -133,6 +133,33 @@ def _analyze_image(image_bytes: bytes, content_type: str, profile_ctx: dict):
     return vision, dishes, totals, (dishes[0]["portion_g_raw"] if dishes else (vision.portion_g or 0)), provider
 
 
+def _apply_overrides(dishes: list[dict], overrides: list) -> list[dict]:
+    """保存前按用户改的克数重算营养（不改识别记录本身，只改这次落库的口径）
+
+    视觉模型估克重误差常有 ±30%。不让改就等于用错数字给用户定罪：
+    明明是 150 g，识别成 220 g，系统就会判「份量超标」并推处置。
+    """
+    by_index = {o.index: float(o.portion_g) for o in (overrides or [])}
+    if not by_index:
+        return list(dishes)
+    out: list[dict] = []
+    for idx, dish in enumerate(dishes):
+        new_g = by_index.get(idx)
+        if not new_g:
+            out.append(dish)
+            continue
+        name = dish.get("dish_name") or ""
+        nut = nutrition.match_and_calc(name, new_g, dish.get("category"))
+        out.append({
+            **dish,
+            "portion_g": new_g,
+            "portion_desc": f"按实际修正：{name} {new_g:g}g"[:50],
+            "nutrition": nut or dish.get("nutrition") or {},
+            "corrected": True,
+        })
+    return out
+
+
 def _build_profile_ctx(db: Session, user_id: int) -> dict:
     profile = db.query(HealthProfile).filter(HealthProfile.user_id == user_id).first()
     if not profile:
@@ -146,6 +173,8 @@ def _build_profile_ctx(db: Session, user_id: int) -> dict:
 @router.post("")
 async def create_recognition(
     file: UploadFile,
+    usage: str | None = Query(default=None, description="plan/extra/inspect，不传则按菜名自动建议"),
+    meal_type: str | None = Query(default=None, description="这餐属于哪一顿，不传按时间猜"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -219,7 +248,17 @@ async def create_recognition(
     db.refresh(rec)
     unlock_all(db, user)   # 累计识别次数成就
     db.commit()
-    return recognition_dict(rec)
+
+    # 三用途建议：照片是方案里的那餐，还是额外吃的？按菜名与方案比对给出默认值，
+    # 默认值错了归因就错（方案错 vs 自己多吃，处置方向完全不同），所以要让用户看到对比
+    resolved = photo_intake.resolve_usage(
+        db, user.id, dishes, meal_type or photo_intake.suggest_meal_type(), date.today(),
+    )
+    if usage in photo_intake.USAGES:
+        resolved["suggested_usage"] = usage
+        resolved["suggested_label"] = photo_intake.USAGE_LABELS[usage]
+        resolved["user_chosen"] = True
+    return {**recognition_dict(rec), **resolved}
 
 
 @router.get("")
@@ -382,6 +421,31 @@ def correct_recognition(
     return recognition_dict(rec)
 
 
+@router.get("/{recognition_id}/plan-check")
+def plan_check(
+    recognition_id: int,
+    meal_type: str | None = Query(default=None, description="要打卡的餐次，不传按时间猜"),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """这道菜能不能算方案内的这一餐（保存前先问一次）
+
+    前端切餐次、切用途都要重新调：比对结果跟餐次绑死，用午餐的结论去打卡晚餐，
+    结果一定是错的。识别响应里那份是「拍照那一刻」的快照，不能复用。
+    """
+    rec = db.get(Recognition, recognition_id)
+    if not rec or rec.user_id != user.id:
+        raise HTTPException(status_code=404, detail="识别记录不存在")
+    dishes = (rec.result or {}).get("dishes") or []
+    if not dishes:
+        vision = (rec.result or {}).get("vision") or {}
+        dishes = [{"dish_name": rec.dish_name or "", "portion_g": vision.get("portion_g") or 0,
+                   "category": vision.get("category") or "",
+                   "nutrition": (rec.result or {}).get("nutrition") or {}}]
+    target = meal_type or photo_intake.suggest_meal_type()
+    return photo_intake.judge_plan_check(db, user.id, date.today(), target, dishes)
+
+
 @router.post("/{recognition_id}/save")
 def save_as_food_record(
     recognition_id: int,
@@ -389,7 +453,12 @@ def save_as_food_record(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """把识别结果保存为饮食记录（+2 分）。重复保存返回 409"""
+    """把识别结果保存为饮食记录（+2 分）
+
+    方案内打卡先做菜品判定：对不上就**什么都不做**（不落记录、不发分、不打卡），
+    把原因和出口返回给前端。放行错菜会把用户额外吃的东西记成方案内，
+    第二天归因就是「方案排错了」——等于让系统用自己的错误背锅，再让他少吃一顿。
+    """
     rec = db.get(Recognition, recognition_id)
     if not rec or rec.user_id != user.id:
         raise HTTPException(status_code=404, detail="识别记录不存在")
@@ -400,30 +469,80 @@ def save_as_food_record(
 
     result = dict(rec.result or {})
     vision = dict(result.get("vision") or {})
-    dishes = result.get("dishes") or []
+    dishes = list(result.get("dishes") or [])
     now = datetime.now()
+    today = now.date()
+    # 归属：plan=方案内打卡（会自动打卡）/ extra=额外加餐（不打卡）
+    usage = data.usage if data.usage in ("plan", "extra") else "extra"
+    origin = "plan" if usage == "plan" else "extra"
+    label = photo_intake.MEAL_LABELS.get(data.meal_type, data.meal_type)
+
+    # 用户改过克数：按新克数重算，不然后面判份量、算摄入全是错的
+    if data.overrides and dishes:
+        dishes = _apply_overrides(dishes, data.overrides)
+        result["dishes"] = dishes
+        totals = _totals(dishes)
+        result["nutrition"] = totals
+        rec.calories = totals["calories"]
+
+    # ---- 闸门：方案内打卡先判菜品 ----
+    judge = None
+    if usage == "plan":
+        judge = photo_intake.judge_plan_check(db, user.id, today, data.meal_type, dishes)
+        if judge["status"] == "fail":
+            # 判定失败零写入：不落记录、不发分、不置完成，任务保持 pending
+            # （用户仍可手动点完成——手动打卡按方案记账，是另一条正当路径）
+            return {
+                **judge,
+                "saved": False,
+                "usage": usage,
+                "message": judge["reason"],
+            }
+
     ids: list[int] = []
+    plan_map = {m["dish_name"]: m for m in (judge or {}).get("matches", [])}
+    corrected = bool(data.overrides)
+
+    # 一餐一账：方案内打卡先作废旧记录（同源重复拍照 / 用户确认替换的手动记录）
+    voided: list[int] = []
+    if usage == "plan":
+        voided = photo_intake.void_meal_records(
+            db, user.id, today, data.meal_type,
+            reason="replaced_by_new_photo", include_manual=data.replace_manual)
 
     if dishes:
         # 多菜：一道菜一条饮食记录（统计口径按菜品算），积分仍按「每张照片」只给一次
         for dish in dishes:
             nut = dish.get("nutrition") or {}
+            name = dish.get("dish_name") or "未知食物"
+            # 七项一起落库：少了纤维/钠/糖，当天判定会显示"数据缺失"，等于这张照片白拍
+            diet_nut = nutrition.match_diet_nutrition(
+                name, float(dish.get("portion_g") or 0), dish.get("category"))
+            hit = plan_map.get(dish.get("dish_name") or "")
             record = FoodRecord(
                 user_id=user.id,
                 recognition_id=rec.id,
                 source="photo",
-                dish_name=dish.get("dish_name") or "未知食物",
+                origin=origin,
+                dish_name=name,
                 ingredients=dish.get("ingredients") or [],
                 portion_g=dish.get("portion_g") or 0,
                 portion_desc=dish.get("portion_desc") or "",
-                calories=nut.get("calories", 0),
-                protein_g=nut.get("protein_g", 0),
-                fat_g=nut.get("fat_g", 0),
-                carb_g=nut.get("carb_g", 0),
+                calories=nut.get("calories") or diet_nut.get("calories") or 0,
+                protein_g=nut.get("protein_g") or diet_nut.get("protein_g") or 0,
+                fat_g=nut.get("fat_g") or diet_nut.get("fat_g") or 0,
+                carb_g=nut.get("carb_g") or diet_nut.get("carb_g") or 0,
+                fiber_g=diet_nut.get("fiber_g"),
+                sodium_mg=diet_nut.get("sodium_mg"),
+                sugar_g=diet_nut.get("sugar_g"),
                 meal_type=data.meal_type,
                 image_path=rec.image_path,
                 eaten_at=now,
-                eaten_date=now.date(),
+                eaten_date=today,
+                # 份量留痕：结算时靠这两个数区分「方案排多了」和「你盛多了」
+                plan_portion_g=(hit or {}).get("plan_portion_g"),
+                portion_delta_g=(hit or {}).get("portion_delta_g"),
+                portion_source=("photo_corrected" if corrected else "photo") if usage == "plan" else None,
             )
             db.add(record)
             db.flush()
@@ -431,10 +550,14 @@ def save_as_food_record(
     else:
         # 兼容旧识别记录：整张图一条记录
         nut = result.get("nutrition", {})
+        diet_nut = nutrition.match_diet_nutrition(
+            rec.dish_name or "", float(vision.get("portion_g") or 0), vision.get("category"))
+        hit = plan_map.get(rec.dish_name or "")
         record = FoodRecord(
             user_id=user.id,
             recognition_id=rec.id,
             source="photo",
+            origin=origin,
             dish_name=rec.dish_name or "未知食物",
             ingredients=vision.get("ingredients"),
             portion_g=vision.get("portion_g") or 0,
@@ -443,24 +566,114 @@ def save_as_food_record(
             protein_g=nut.get("protein_g", 0),
             fat_g=nut.get("fat_g", 0),
             carb_g=nut.get("carb_g", 0),
+            fiber_g=diet_nut.get("fiber_g"),
+            sodium_mg=diet_nut.get("sodium_mg"),
+            sugar_g=diet_nut.get("sugar_g"),
             meal_type=data.meal_type,
             image_path=rec.image_path,
             eaten_at=now,
-            eaten_date=now.date(),
+            eaten_date=today,
+            plan_portion_g=(hit or {}).get("plan_portion_g"),
+            portion_delta_g=(hit or {}).get("portion_delta_g"),
+            portion_source=("photo_corrected" if corrected else "photo") if usage == "plan" else None,
         )
         db.add(record)
         db.flush()
         ids.append(record.id)
 
+    # partial + 「都吃了，只是没拍到」：方案缺的那几道按方案克重补记。
+    # 这样这餐摄入 = 方案该餐，判定不会因为"少拍了两道"说用户吃不够；
+    # 用的是方案自己的值（portion_source=plan_fill），和照片记录的来源可区分。
+    filled: list[str] = []
+    if usage == "plan" and judge and judge["status"] == "partial" and data.missing == "plan":
+        gap_names = [g["dish_name"] for g in (judge.get("only_plan") or [])]
+        for item in photo_intake.fill_plan_items(db, user.id, today, data.meal_type, gap_names):
+            record = FoodRecord(
+                user_id=user.id,
+                recognition_id=rec.id,
+                source="plan",
+                origin="plan",
+                dish_name=item["dish_name"],
+                portion_g=item["portion_g"],
+                portion_desc="按方案补记（照片没拍到）",
+                calories=item["calories"],
+                protein_g=item["protein_g"],
+                fat_g=item["fat_g"],
+                carb_g=item["carb_g"],
+                fiber_g=item["fiber_g"],
+                sodium_mg=item["sodium_mg"],
+                sugar_g=item["sugar_g"],
+                meal_type=data.meal_type,
+                eaten_at=now,
+                eaten_date=today,
+                plan_portion_g=item["plan_portion_g"],
+                portion_delta_g=0,          # 补记的就是方案那份，没有份量偏离
+                portion_source="plan_fill",
+            )
+            db.add(record)
+            db.flush()
+            ids.append(record.id)
+            filled.append(item["dish_name"])
+
+    # 方案内打卡 → 对应餐次任务自动置「已完成」（拍了照就是吃了，不该再让用户点一遍）
+    checked = None
+    if usage == "plan":
+        checked = photo_intake.mark_meal_done(db, user, today, data.meal_type)
+
     result["food_record_ids"] = ids
+    result["usage"] = usage
+    if usage == "plan":
+        result["missing"] = data.missing
+        if filled:
+            result["filled_items"] = filled
+    if voided:
+        result["voided_ids"] = voided
+    if checked:
+        result["meal_checked"] = checked
+    if judge:
+        result["plan_check"] = {"status": judge["status"], "code": judge["code"],
+                                "matched": judge["matched_count"], "plan_count": judge["plan_count"]}
     rec.result = result
     rec.food_record_id = ids[0]
     pts = points.award(db, user, "save_recognition",
                        description=f"保存识别记录：{rec.dish_name}", ref_type="food_record", ref_id=ids[0])
     unlock_all(db, user)   # 累计保存饮食记录成就
     db.commit()
-    return {"food_record_id": ids[0], "food_record_ids": ids, "points_awarded": pts or 0}
 
+    intake = diet_intake.day_intake(db, user.id, today)
+    if usage == "plan":
+        state = (checked or {}).get("state")
+        if state == "done":
+            message = f"已记为方案内，{label}已自动打卡"
+        elif state == "already_done":
+            message = f"已记为方案内；{label}之前已经打过卡，这次只更新摄入明细"
+        else:
+            message = f"已记为方案内（今天没有{label}任务，不自动打卡）"
+        if filled:
+            message += f"；没拍到的「{'、'.join(filled)}」按方案补上了"
+        elif judge and judge["status"] == "partial":
+            gap = "、".join(g["dish_name"] for g in (judge.get("only_plan") or []))
+            message += f"；没算「{gap}」，今天热量会按实际偏少"
+        if voided:
+            message += f"，替换掉原来的 {len(voided)} 条记录"
+    else:
+        message = "已记为额外加餐，不计入方案内摄入"
+
+    return {
+        "ok": True,
+        "saved": True,
+        "food_record_id": ids[0], "food_record_ids": ids, "points_awarded": pts or 0,
+        "usage": usage,
+        "missing": data.missing if usage == "plan" else None,
+        "filled_items": filled,
+        "meal_checked": checked,
+        "voided_ids": voided,
+        "portion": (judge or {}).get("portion"),
+        "plan_check": result.get("plan_check"),
+        "intake": {k: intake.get(k) for k in
+                   ("calories", "protein_g", "plan", "extra", "plan_baseline")},
+        "message": message,
+    }
 
 @router.post("/{recognition_id}/rerun")
 def rerun_recognition(

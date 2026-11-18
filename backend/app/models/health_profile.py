@@ -23,4 +23,9 @@ class HealthProfile(Base):
     taste_preferences = Column(JSON, nullable=True)
     dietary_restrictions = Column(JSON, nullable=True)
     exercise_preferences = Column(JSON, nullable=True)
+    sleep_time = Column(String(5), nullable=True)      # 习惯入睡时间 HH:MM（排睡眠方案用）
+    wake_time = Column(String(5), nullable=True)       # 习惯起床时间 HH:MM
+    water_target_ml = Column(Integer, nullable=True)   # 自定义饮水目标（空则由体重推算）
+    # 热量超限默认处理偏好：ask=手动选择（默认）/ portion=按比例缩份量 / exercise=加运动抵消
+    over_limit_policy = Column(String(16), nullable=True, server_default="ask")
     updated_at = Column(DateTime, nullable=True, default=datetime.now)

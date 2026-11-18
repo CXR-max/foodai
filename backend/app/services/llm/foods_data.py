@@ -1,9 +1,11 @@
 import json
 import logging
+import os
 import threading
 import time
 from difflib import SequenceMatcher
 from pathlib import Path
+from statistics import median
 
 from app.services.food_text import normalize_name
 
@@ -109,6 +111,11 @@ def _entry_from_db(food) -> dict:
 
 
 def _load_from_db() -> list[dict] | None:
+    # 测试/CI 必须走 JSON 种子：开发机 SQLite 库有 1.3 万+ 条（USDA/COFiD/MEXT/
+    # TFDA 导入管道灌入，原始数据不进仓库），跟着它跑测试结果因机器而异。
+    # 设 FOODAI_FOOD_SOURCE=json 强制回退种子文件，保证测试确定性。
+    if os.environ.get("FOODAI_FOOD_SOURCE", "").strip().lower() == "json":
+        return None
     try:
         from app.db.session import SessionLocal
         from app.models.food import Food, FoodAlias, FoodRelation
@@ -190,6 +197,28 @@ def _build_indexes(foods: list[dict], relations: list[dict]) -> list[dict]:
     return foods
 
 
+def _simplify_names(foods: list[dict]) -> list[dict]:
+    """台湾食药署条目的菜名是「中脂鮮羊乳」「紅心芭樂」这种繁体写法，端给用户没法看。
+
+    在加载出口统一转简体：排菜、营养结算、拍照比对、前端显示用的都是同一个
+    名字，不会出现「库里叫 A、查询叫 B」的断裂。原名保留进 aliases，旧数据
+    （历史方案里存的繁体名）仍能通过别名匹配回来。name_norm 本来就过
+    normalize_name（含 t2s），不需要重算。
+    """
+    from app.services.food_text import _simplify
+
+    for food in foods:
+        name = str(food.get("name") or "")
+        simple = _simplify(name)
+        if simple != name:
+            food["name"] = simple
+            aliases = list(food.get("aliases") or [])
+            if name not in aliases:
+                aliases.insert(0, name)
+            food["aliases"] = aliases
+    return foods
+
+
 def _load() -> list[dict]:
     global _cache, _cache_at
     with _lock:
@@ -199,6 +228,7 @@ def _load() -> list[dict]:
         foods = _load_from_db()
         if foods is None:
             foods = _load_from_json()
+        foods = _simplify_names(foods)
         _cache = foods
         _cache_at = now
         return foods
@@ -224,7 +254,7 @@ def load_all_foods() -> list[dict]:
         try:
             rows = session.query(Food).order_by(Food.id.asc()).all()
             if not rows:
-                return _load_from_json()
+                return _simplify_names(_load_from_json())
             foods = [_entry_from_db(row) for row in rows]
             by_id = {food["id"]: food for food in foods if food.get("id") is not None}
             by_norm = {food["name_norm"]: food for food in foods}
@@ -246,11 +276,11 @@ def load_all_foods() -> list[dict]:
                         "priority": relation.priority,
                         "source": relation.source,
                     })
-            return foods
+            return _simplify_names(foods)
         finally:
             session.close()
     except Exception:
-        return _load_from_json()
+        return _simplify_names(_load_from_json())
 
 
 def get_library_stats() -> dict:
@@ -466,3 +496,96 @@ def category_average(category: str | None = None) -> dict:
         "fat_g": round(sum((f["per_100g"].get("fat_g") or 0) for f in pool) / n, 1),
         "carb_g": round(sum((f["per_100g"].get("carb_g") or 0) for f in pool) / n, 1),
     }
+
+
+# ---------------- 七项营养：按克重换算 + 缺失按同类中位数补 ----------------
+
+DIET_NUTRIENT_KEYS: tuple[str, ...] = (
+    "calories", "protein_g", "fat_g", "carb_g", "fiber_g", "sodium_mg", "sugar_g",
+)
+
+# 需要补缺的三项（能量/蛋白/脂肪/碳水覆盖率高，缺了也不该猜）
+IMPUTED_KEYS: tuple[str, ...] = ("fiber_g", "sodium_mg", "sugar_g")
+
+_reference_cache: dict[str, dict[str, float]] | None = None
+_reference_at = 0.0
+
+
+def _reference_values() -> dict[str, dict[str, float]]:
+    """各「类目 × 营养素」每 100 g 的中位数。
+
+    为什么补缺而不是按 0 算：纤维覆盖 63.9%、糖 58.6%，缺失按 0 会系统性低估，
+    排出来的方案看着「纤维 25 g 达标」，实际连 15 g 都不到。按同类中位数补，
+    误差方向和量级都更接近真实值，也不至于把「没录数据」判成「不合格」。
+    """
+    global _reference_cache, _reference_at
+    with _lock:
+        if _reference_cache is not None and time.time() - _reference_at < CACHE_TTL_SECONDS:
+            return _reference_cache
+        buckets: dict[tuple[str, str], list[float]] = {}
+        overall: dict[str, list[float]] = {}
+        for food in load_foods():
+            category = str(food.get("category") or "其他")
+            per = food.get("per_100g") or {}
+            for key in IMPUTED_KEYS:
+                raw = per.get(key)
+                if raw is None:
+                    continue
+                buckets.setdefault((category, key), []).append(float(raw))
+                overall.setdefault(key, []).append(float(raw))
+
+        reference: dict[str, dict[str, float]] = {}
+        for (category, key), values in buckets.items():
+            reference.setdefault(category, {})[key] = round(median(values), 2)
+        reference["__all__"] = {key: round(median(values), 2) for key, values in overall.items()}
+        _reference_cache, _reference_at = reference, time.time()
+        return reference
+
+
+def reference_per_100g(food: dict, key: str) -> float | None:
+    """某道菜某营养素的每 100 g 值：有实测用实测，没有用同类中位数"""
+    per = food.get("per_100g") or {}
+    raw = per.get(key)
+    if raw is not None:
+        return float(raw)
+    reference = _reference_values()
+    category = str(food.get("category") or "其他")
+    value = reference.get(category, {}).get(key)
+    if value is None:
+        value = reference.get("__all__", {}).get(key)
+    return value
+
+
+def calc_diet_nutrients(food: dict, portion_g: float, *, impute: bool = True) -> dict:
+    """按实际克重算七项营养
+
+    impute=False 时缺失项返回 None（用于「这一项到底有没有实测数据」的诚实展示）；
+    impute=True 时缺失按同类中位数补（用于总量与区间判定）。
+    """
+    factor = max(float(portion_g or 0), 0) / 100.0
+    out: dict[str, float | None] = {}
+    for key in DIET_NUTRIENT_KEYS:
+        raw = (food.get("per_100g") or {}).get(key)
+        if raw is None and impute:
+            raw = reference_per_100g(food, key)
+        out[key] = round(float(raw) * factor, 1) if raw is not None else None
+    return out
+
+
+def category_average_diet(category: str | None = None) -> dict:
+    """未收录菜品按类目均值估算七项（纤维/钠/糖用中位数，怕被极端值拉偏）"""
+    foods = _load()
+    pool = [f for f in foods if category and f.get("category") == category] or foods
+    out: dict[str, float] = {}
+    for key in DIET_NUTRIENT_KEYS:
+        values = [
+            float(f["per_100g"][key]) for f in pool
+            if (f.get("per_100g") or {}).get(key) is not None
+        ]
+        if not values:
+            out[key] = 0.0
+        elif key in IMPUTED_KEYS:
+            out[key] = round(median(values), 2)
+        else:
+            out[key] = round(sum(values) / len(values), 2)
+    return out
