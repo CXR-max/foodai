@@ -1,0 +1,12 @@
+
+> frontend@0.0.0 dev
+> vite
+
+Port 5173 is in use, trying another one...
+
+  [32m[1mVITE[22m v8.3.0[39m  [2mready in [0m[1m487[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5174[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://172.20.10.7:[1m5174[22m/[39m   [2mWLAN[22m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.5.1:[1m5174[22m/[39m   [2mVMware Network Adap…[22m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.11.1:[1m5174[22m/[39m  [2mVMware Network Adap…[22m

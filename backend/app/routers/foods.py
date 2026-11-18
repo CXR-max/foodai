@@ -65,6 +65,45 @@ def list_foods(
     ]
 
 
+@router.get("/alternatives")
+def alternatives(
+    name: str = Query(..., description="想换掉的菜名"),
+    meal_type: str | None = Query(default=None, description="早/午/晚/加餐，按适吃餐段过滤"),
+    limit: int = Query(default=6, ge=1, le=20),
+    user: User = Depends(get_current_user),
+):
+    """换一道：给同热量档、同餐段的候选菜，方便用户直接替换"""
+    entry = foods_data.find_food(name)
+    base = float((entry or {}).get("per_100g", {}).get("calories") or 0)
+    if not base:
+        return []
+
+    lo, hi = base * 0.8, base * 1.2
+    rows = []
+    for food in foods_data.load_foods():
+        if food.get("name") == name:
+            continue
+        nutrition = food.get("per_100g") or {}
+        calories = float(nutrition.get("calories") or 0)
+        if not lo <= calories <= hi:
+            continue
+        if meal_type and meal_type not in (food.get("suitable_meals") or []):
+            continue
+        portion = float(food.get("common_portion_g") or 100)
+        rows.append({
+            "name": food["name"],
+            "category": food.get("category") or "",
+            "calories": round(calories),
+            "protein_g": round(float(nutrition.get("protein_g") or 0), 1),
+            "common_portion_g": round(portion),
+            "portion_calories": round(calories * portion / 100),
+            "taste_tags": food.get("taste_tags") or [],
+        })
+
+    rows.sort(key=lambda r: (abs(r["calories"] - base), r["name"]))
+    return rows[:limit]
+
+
 @router.get("/stats")
 def library_stats(user: User = Depends(get_current_user)):
     """营养库规模统计（菜系/类型分布）"""

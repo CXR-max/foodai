@@ -29,9 +29,9 @@ PROFILES = {
         "TEXT_PROVIDER": "glm",
         "CLOUD_BASE_URL": "https://open.bigmodel.cn/api/paas/v4",
         "CLOUD_TEXT_MODEL": "glm-4-flash",
-        "CLOUD_VISION_MODEL": "glm-4.6v-flash",
-        # 4.6v 经常 429，备用模型填一个实测能用的
-        "CLOUD_VISION_FALLBACK_MODEL": "glm-4v-flash",
+        # 视觉主模型用 4v-flash：实测 1~2 秒出结果；4.6v-flash 高峰期长期 429，只做备用
+        "CLOUD_VISION_MODEL": "glm-4v-flash",
+        "CLOUD_VISION_FALLBACK_MODEL": "glm-4.6v-flash",
         "LLM_TIMEOUT": "60",
         "LLM_DAY_MAX_TOKENS": "700",
         "apply_url": "https://open.bigmodel.cn  （注册后「API Keys」里创建，glm-4-flash 免费）",
@@ -148,7 +148,7 @@ def render(env: dict[str, str], profile: str, key: str | None) -> str:
         ) + "\n"
 
     vision_note = {
-        "zhipu": "视觉 = glm-4.6v-flash（免费）",
+        "zhipu": "视觉 = glm-4v-flash（免费；4.6v-flash 只做限流备用）",
         "qwen": "视觉 = qwen-vl-plus",
         "local": "视觉仍走云端智谱（需要 CLOUD_API_KEY，否则识别会降级模拟）",
         "mock": "全部走本地模拟，不联网不花钱",

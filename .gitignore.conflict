@@ -1,0 +1,191 @@
+<<<<<<< C:\Users\43120\Desktop\foodai\_merge_tmp\ours
+# Python
+backend/.venv/
+backend/__pycache__/
+**/__pycache__/
+backend/foodai.db
+backend/uploads/
+backend/alembic/versions/*.pyc
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# 环境
+.env
+.env.*
+!.env.example
+*.local
+
+# 机密：密钥/证书/凭据，绝不入库
+*.pem
+*.key
+*.p12
+*.pfx
+auth.json
+credentials*.json
+secrets*.json
+
+# 本地模型（Ollama 模型文件，体积大，不入库）
+# 用 /models/ 只匹配仓库根目录，避免误伤 backend/app/models 代码目录
+/models/
+tools/*.zip
+# 可执行文件与压缩包：历史里已有 cloudflared.exe / foodai_new.zip（13MB+），
+# 这里只防止以后再提交同类大二进制（已进历史的文件 .gitignore 删不掉）
+tools/*.exe
+*.zip
+# llama.cpp 本地推理程序与 GGUF 模型（656MB，不入库）
+/tools/llama/
+
+# 营养数据源与导入报告（许可见 README，不提交原始数据）
+data_sources/
+backend/import_reports/
+backend/scripts/nutrition_import/__pycache__/
+
+# 人脸底库照片：生物识别信息，绝不能进版本库（含 database 备份）
+backend/data/
+*.db.bak
+*.db-journal
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# UI 截图核对输出（tools/ui_shot.py 生成）
+.tmp_shots/
+
+# 本地工具/幻灯片工作目录，不入库
+.lark-slides/
+.claude/
+_compare.ps1
+
+# 本地服务日志
+backend/server.log
+backend/server.err.log
+frontend/vite.log
+frontend/vite.err.log
+
+# 配置备份（含 key，绝不入库）
+.env.bak
+.env.*.bak
+*.env.bak
+
+# ---- Capacitor / Android 手机端 ----
+# android/ 目录本身要提交（原生工程配置：Manifest、build.gradle、图标），
+# 下面这些是构建产物和本机路径，不提交
+frontend/android/.gradle/
+frontend/android/build/
+frontend/android/app/build/
+frontend/android/local.properties
+frontend/android/.idea/
+frontend/android/.cxx/
+frontend/android/capacitor-cordova-android-plugins/
+frontend/android/app/src/main/assets/public/
+frontend/android/app/src/main/res/xml/config.xml
+# APK / AAB 构建产物
+*.apk
+*.aab
+# 签名文件：泄露等于别人能冒充你发布应用，绝不入库
+*.jks
+*.keystore
+frontend/android/app/release/
+=======
+# Python
+backend/.venv/
+backend/__pycache__/
+**/__pycache__/
+backend/foodai.db
+# SQLite WAL 模式产生的临时文件（开启 WAL 后每次连接都会生成）
+backend/foodai.db-wal
+backend/foodai.db-shm
+backend/uploads/
+backend/alembic/versions/*.pyc
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# 环境
+.env
+.env.*
+!.env.example
+*.local
+
+# 机密：密钥/证书/凭据，绝不入库
+*.pem
+*.key
+*.p12
+*.pfx
+auth.json
+credentials*.json
+secrets*.json
+
+# 本地模型（Ollama 模型文件，体积大，不入库）
+# 用 /models/ 只匹配仓库根目录，避免误伤 backend/app/models 代码目录
+/models/
+tools/*.zip
+# 可执行文件与压缩包：历史里已有 cloudflared.exe / foodai_new.zip（13MB+），
+# 这里只防止以后再提交同类大二进制（已进历史的文件 .gitignore 删不掉）
+tools/*.exe
+*.zip
+# llama.cpp 本地推理程序与 GGUF 模型（656MB，不入库）
+/tools/llama/
+
+# 营养数据源与导入报告（许可见 README，不提交原始数据）
+data_sources/
+backend/import_reports/
+backend/scripts/nutrition_import/__pycache__/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 本地会话记忆（WorkBuddy 工作日志，属个人过程记录，不入库）
+.workbuddy/
+
+# UI 截图核对输出（tools/ui_shot.py 生成）
+.tmp_shots/
+
+# 本地工具/幻灯片工作目录，不入库
+.lark-slides/
+.claude/
+_compare.ps1
+
+# 本地服务日志
+backend/server.log
+backend/server.err.log
+.uvicorn.log
+.vite.log
+frontend/vite.log
+frontend/vite.err.log
+
+# 配置备份（含 key，绝不入库）
+.env.bak
+.env.*.bak
+*.env.bak
+
+# ---- Capacitor / Android 手机端 ----
+# android/ 目录本身要提交（原生工程配置：Manifest、build.gradle、图标），
+# 下面这些是构建产物和本机路径，不提交
+frontend/android/.gradle/
+frontend/android/build/
+frontend/android/app/build/
+frontend/android/local.properties
+frontend/android/.idea/
+frontend/android/.cxx/
+frontend/android/capacitor-cordova-android-plugins/
+frontend/android/app/src/main/assets/public/
+frontend/android/app/src/main/res/xml/config.xml
+# APK / AAB 构建产物
+*.apk
+*.aab
+# 签名文件：泄露等于别人能冒充你发布应用，绝不入库
+*.jks
+*.keystore
+frontend/android/app/release/
+
+# 数据库快照备份与临时导出
+backend/foodai.db.bak-*
+backend/foodai.db.snap-*
+backend/gen_out.json
+>>>>>>> C:\Users\43120\Desktop\foodai\_merge_tmp\theirs

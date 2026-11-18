@@ -12,26 +12,14 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    // 绑定所有网卡：电脑用 127.0.0.1，手机用电脑的局域网 IP（同一 WiFi/热点）
+    // 0.0.0.0 = 监听所有 IPv4 网卡：电脑用 127.0.0.1/localhost 访问，
+    // 手机连同一 Wi-Fi 用局域网 IP（如 http://192.168.4.121:5173）访问
     host: '0.0.0.0',
     // 允许通过内网穿透的公网域名访问（vite 默认会拦截陌生 Host 头）
     allowedHosts: true,
-    // 编辑器原子写入会在 src 下产生 .xxx.tmpdir/ 临时目录，watch 它会在 Windows 上 EBUSY 崩溃
-    watch: { ignored: ['**/.*.tmpdir/**', '**/*.tmp'] },
     proxy: {
       '/api': { target: 'http://localhost:8000', changeOrigin: true },
       '/uploads': { target: 'http://localhost:8000', changeOrigin: true }, // 识别的图片
-    },
-  },
-  // 生产构建预览：给手机访问用。构建后体积远小于 dev（无 HMR、依赖已打包），
-  // 局域网/隧道下都能开；绑定 0.0.0.0 让同网段的手机能连
-  preview: {
-    port: 4173,
-    host: '0.0.0.0',
-    allowedHosts: true,
-    proxy: {
-      '/api': { target: 'http://localhost:8000', changeOrigin: true },
-      '/uploads': { target: 'http://localhost:8000', changeOrigin: true },
     },
   },
 })

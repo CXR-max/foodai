@@ -3,6 +3,9 @@ backend/.venv/
 backend/__pycache__/
 **/__pycache__/
 backend/foodai.db
+# SQLite WAL 模式产生的临时文件（开启 WAL 后每次连接都会生成）
+backend/foodai.db-wal
+backend/foodai.db-shm
 backend/uploads/
 backend/alembic/versions/*.pyc
 
@@ -41,14 +44,12 @@ data_sources/
 backend/import_reports/
 backend/scripts/nutrition_import/__pycache__/
 
-# 人脸底库照片：生物识别信息，绝不能进版本库（含 database 备份）
-backend/data/
-*.db.bak
-*.db-journal
-
 # 系统文件
 .DS_Store
 Thumbs.db
+
+# 本地会话记忆（WorkBuddy 工作日志，属个人过程记录，不入库）
+.workbuddy/
 
 # UI 截图核对输出（tools/ui_shot.py 生成）
 .tmp_shots/
@@ -61,6 +62,8 @@ _compare.ps1
 # 本地服务日志
 backend/server.log
 backend/server.err.log
+.uvicorn.log
+.vite.log
 frontend/vite.log
 frontend/vite.err.log
 
@@ -88,3 +91,8 @@ frontend/android/app/src/main/res/xml/config.xml
 *.jks
 *.keystore
 frontend/android/app/release/
+
+# 数据库快照备份与临时导出
+backend/foodai.db.bak-*
+backend/foodai.db.snap-*
+backend/gen_out.json

@@ -15,16 +15,19 @@ from app.models.health_profile import HealthProfile
 from app.models.recognition import Recognition
 from app.models.food_record import FoodRecord
 from app.models.diet_plan import DietPlan, PlanDay
+from app.models.diet_deviation import DayMode, DietDeviation, PlanAdjustment
 from app.models.plan_chat import PlanChatMessage
-from app.models.plan_constraint_state import PlanConstraintState
 from app.models.check_in import CheckIn
 from app.models.workout import Workout
+from app.models.user_face import UserFace
 from app.models.points_log import PointsLog
 from app.models.weight_log import WeightLog
 from app.models.reward import Reward
 from app.models.redemption import Redemption
 from app.models.achievement import Achievement, UserAchievement
-from app.models.user_face import UserFace
+from app.models.weekly_report import WeeklyReportCache
+from app.models.sleep_log import SleepLog
+from app.models.water_log import WaterLog
 from app.models.food import (
     Food,
     FoodAlias,
@@ -38,8 +41,11 @@ from app.models.food import (
 __all__ = [
     "User", "HealthProfile", "Recognition", "FoodRecord",
     "DietPlan", "PlanDay", "CheckIn", "Workout", "PointsLog",
+    "DietDeviation", "PlanAdjustment", "DayMode",
     "WeightLog", "Reward", "Redemption", "PlanChatMessage",
-    "PlanConstraintState", "Achievement", "UserAchievement", "UserFace",
+    "Achievement", "UserAchievement", "UserFace",
+    "WeeklyReportCache",
+    "SleepLog", "WaterLog",
     "Food", "FoodAlias", "FoodRelation", "FoodIngredient",
     "FoodRecipe", "FoodRecipeItem", "ImportBatch",
 ]

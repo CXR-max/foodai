@@ -1,0 +1,140 @@
+<<<<<<< C:\Users\43120\Desktop\foodai\_merge_tmp\ours
+// 健康档案接口
+import { get, post, put } from './http'
+
+export interface Profile {
+  height_cm: number | null
+  weight_kg: number | null
+  body_fat_pct: number | null
+  age: number | null
+  gender: string | null
+  activity_level: string
+  goal: string
+  target_weight_kg: number | null
+  daily_calorie_target: number | null
+  taste_preferences: string[]
+  dietary_restrictions: string[]
+  exercise_preferences: string[]
+  bmi: number | null
+  bmi_level: string
+  bmr: number | null
+  nickname: string
+  profile_completed?: boolean
+}
+
+export const getProfile = () => get<Profile>('/profile')
+
+export const saveProfile = (data: Partial<Profile>) => put<Profile>('/profile', data)
+
+export const addWeight = (data: { weight_kg: number; note?: string }) =>
+  post<{ points_awarded: number }>('/profile/weights', data)
+
+export const getWeights = (days = 90) =>
+  get<{ weight_kg: number; recorded_date: string }[]>('/profile/weights', { days })
+=======
+// 健康档案接口
+import { get, post, put } from './http'
+
+/** 热量超限默认处理偏好 */
+export type OverLimitPolicy = 'ask' | 'portion' | 'exercise'
+
+/** 诉求：减脂 / 维持 / 增肌 / 健康饮食（不设赤字） */
+export type Goal = 'lose' | 'maintain' | 'gain' | 'healthy'
+
+/** 依据性质：guideline=指南原文 / derived=公式推算 / heuristic=工程取值 */
+export type SourceKind = 'guideline' | 'derived' | 'heuristic'
+
+export interface TargetSource {
+  id?: string
+  kind?: SourceKind
+  label?: string
+  basis?: string
+}
+
+/** 每日目标（含每个数字的依据 _source） */
+export interface ProfileTargets {
+  calorie_target?: number
+  calorie_min?: number
+  calorie_max?: number
+  protein_min_g?: number
+  protein_max_g?: number
+  fat_min_g?: number
+  fat_max_g?: number
+  carb_min_g?: number
+  carb_max_g?: number
+  water_min_ml?: number
+  water_max_ml?: number
+  sleep_min_h?: number
+  sleep_max_h?: number
+  exercise_burn_min?: number
+  exercise_burn_max?: number
+  steps_min?: number
+  steps_max?: number
+  _source?: Record<string, TargetSource>
+  [key: string]: unknown
+}
+
+/** 处方：为什么给你这个数 */
+export interface Prescription {
+  intent: Goal
+  effective_intent: Goal
+  label: string
+  effective_label: string
+  strategy: 'deficit' | 'surplus' | 'maintain'
+  deficit_pct: number
+  surplus_pct: number
+  bmi: number | null
+  bmi_level: string
+  body_fat_pct: number | null
+  bmr: number | null
+  tdee: number | null
+  target: number
+  rate_kg_week: number
+  rate_text: string
+  basis_weight_kg: number | null
+  basis_weight_note: string
+  train_days: number
+  focus: string[]
+  warnings: string[]
+  summary: string
+}
+
+export interface Profile {
+  height_cm: number | null
+  weight_kg: number | null
+  body_fat_pct: number | null
+  age: number | null
+  gender: string | null
+  activity_level: string
+  goal: Goal | string
+  target_weight_kg: number | null
+  daily_calorie_target: number | null
+  taste_preferences: string[]
+  dietary_restrictions: string[]
+  exercise_preferences: string[]
+  sleep_time?: string | null
+  wake_time?: string | null
+  water_target_ml?: number | null
+  /** 热量超限默认处理：ask=手动选择（默认）/ portion=缩份量 / exercise=加运动 */
+  over_limit_policy?: OverLimitPolicy
+  bmi: number | null
+  bmi_level: string
+  bmr: number | null
+  /** 处方卡：诉求 → 策略 → 预期速度 */
+  prescription?: Prescription | null
+  /** 每日目标区间 + 依据 */
+  targets?: ProfileTargets | null
+  nickname: string
+  profile_completed?: boolean
+}
+
+export const getProfile = () => get<Profile>('/profile')
+
+export const saveProfile = (data: Partial<Profile>) => put<Profile>('/profile', data)
+
+export const addWeight = (data: { weight_kg: number; note?: string }) =>
+  post<{ points_awarded: number }>('/profile/weights', data)
+
+export const getWeights = (days = 90) =>
+  get<{ weight_kg: number; recorded_date: string }[]>('/profile/weights', { days })
+>>>>>>> C:\Users\43120\Desktop\foodai\_merge_tmp\theirs

@@ -355,13 +355,6 @@ onMounted(reloadAll)
 .result-row b { color: #e6a23c; font-size: 22px; }
 .result-row .range { font-size: 12px; color: #909399; }
 
-/* AI 教练点评卡片 */
-.ai-praise { border: 1px solid #b3d8ff; background: linear-gradient(135deg, #f0f7ff, #edfaf1); }
-.ai-praise-head { display: flex; align-items: baseline; gap: 8px; }
-.ai-praise-title { font-weight: 700; font-size: 14px; color: #303133; }
-.ai-praise-sub { font-size: 12px; color: #909399; }
-.ai-praise-text { margin: 8px 0 0; font-size: 14px; line-height: 1.7; color: #303133; }
-
 /* ============ 手机端 ============ */
 @media (max-width: 768px) {
   /* 日历格子收窄，日期数字和完成度不能挤出格子 */
@@ -384,4 +377,11 @@ onMounted(reloadAll)
   .result-row { flex-wrap: wrap; gap: 6px; }
   .result-row b { font-size: 19px; }
 }
+
+/* AI 教练点评卡片 */
+.ai-praise { border: 1px solid #b3d8ff; background: linear-gradient(135deg, #f0f7ff, #edfaf1); }
+.ai-praise-head { display: flex; align-items: baseline; gap: 8px; }
+.ai-praise-title { font-weight: 700; font-size: 14px; color: #303133; }
+.ai-praise-sub { font-size: 12px; color: #909399; }
+.ai-praise-text { margin: 8px 0 0; font-size: 14px; line-height: 1.7; color: #303133; }
 </style>

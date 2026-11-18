@@ -1,9 +1,10 @@
 <script setup lang="ts">
-// 健康档案页：基础信息 + 三组偏好 + BMI 实时展示 + 体重记录曲线
+// 健康档案页：基础信息 + 诉求 + 三组偏好 + BMI + 处方卡（为什么给你这个数）
 import { computed, defineAsyncComponent, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as profileApi from '@/api/profile'
+import BasisPopover from '@/components/BasisPopover.vue'
 import TrendChart from '@/components/TrendChart.vue'
 import { useAuthStore } from '@/stores/auth'
 import { isMobile } from '@/composables/useIsMobile'
@@ -16,9 +17,19 @@ const auth = useAuthStore()
 const router = useRouter()
 const loading = ref(false)
 const weights = ref<{ weight_kg: number; recorded_date: string }[]>([])
+const profile = ref<profileApi.Profile | null>(null)
+
+// 诉求四选一：诉求决定策略，BMI/体脂只决定强度（不按 BMI 一刀切）
+const GOALS = [
+  { value: 'lose', label: '减脂', desc: '按 BMI 给 10~20% 赤字，慢慢减' },
+  { value: 'maintain', label: '维持', desc: '吃够维持量，体重基本不变' },
+  { value: 'gain', label: '增肌', desc: '小幅盈余 + 力量训练' },
+  { value: 'healthy', label: '健康饮食', desc: '不设赤字，重点盐糖蔬菜' },
+]
 
 // 手机端底部只有 5 个 tab，其余功能从这里进（桌面端由左侧菜单承担，不显示这块）
 const moreEntries = [
+  { path: '/workout', title: '运动', icon: '🏃', desc: '跑步/快走/骑行记录与轨迹' },
   { path: '/stats', title: '数据追踪', icon: '📈', desc: '热量趋势、营养结构、体重变化' },
   { path: '/mall', title: '积分商城', icon: '🪙', desc: '用积分兑换奖励' },
   { path: '/achievements', title: '成就徽章', icon: '🏆', desc: '查看已解锁的成就' },
@@ -62,6 +73,7 @@ const newWeight = ref<number | null>(null)
 
 async function load() {
   const p = await profileApi.getProfile()
+  profile.value = p
   Object.assign(form, {
     height_cm: p.height_cm, weight_kg: p.weight_kg, body_fat_pct: p.body_fat_pct, age: p.age,
     gender: p.gender ?? 'male', activity_level: p.activity_level, goal: p.goal,
@@ -71,6 +83,31 @@ async function load() {
   })
   weights.value = await profileApi.getWeights()
 }
+
+/** 处方与目标依据 */
+const rx = computed(() => profile.value?.prescription ?? null)
+const tg = computed(() => profile.value?.targets ?? null)
+const src = (key: string) => tg.value?._source?.[key] ?? null
+
+/** 处方卡上要展示的五行目标（每行都能点开看依据） */
+const TARGET_ROWS = [
+  { key: 'calorie_min', label: '热量', unit: 'kcal', pair: 'calorie_max' },
+  { key: 'protein_min_g', label: '蛋白', unit: 'g', pair: 'protein_max_g' },
+  { key: 'fat_min_g', label: '脂肪', unit: 'g', pair: 'fat_max_g' },
+  { key: 'carb_min_g', label: '碳水', unit: 'g', pair: 'carb_max_g' },
+  { key: 'water_min_ml', label: '饮水', unit: 'ml', pair: 'water_max_ml' },
+  { key: 'exercise_burn_min', label: '运动消耗', unit: 'kcal', pair: 'exercise_burn_max' },
+]
+
+const targetRows = computed(() =>
+  TARGET_ROWS.map((row) => {
+    const t = tg.value as Record<string, unknown> | null
+    const lo = t?.[row.key] as number | undefined
+    const hi = t?.[row.pair] as number | undefined
+    if (lo == null && hi == null) return null
+    return { ...row, text: `${lo ?? '—'}~${hi ?? '—'} ${row.unit}` }
+  }).filter(Boolean) as { key: string; label: string; unit: string; pair: string; text: string }[],
+)
 
 async function save() {
   loading.value = true
@@ -167,7 +204,7 @@ onMounted(() => {
                   </el-radio-group>
                 </el-form-item>
               </el-col>
-              <el-col :span="8" :xs="24">
+              <el-col :span="12" :xs="24">
                 <el-form-item label="活动水平">
                   <el-select v-model="form.activity_level" style="width:100%">
                     <el-option label="久坐少动" value="sedentary" />
@@ -178,16 +215,21 @@ onMounted(() => {
                   </el-select>
                 </el-form-item>
               </el-col>
-              <el-col :span="8" :xs="24">
-                <el-form-item label="目标">
-                  <el-radio-group v-model="form.goal">
-                    <el-radio value="lose">减脂</el-radio>
-                    <el-radio value="maintain">维持</el-radio>
-                    <el-radio value="gain">增肌</el-radio>
-                  </el-radio-group>
-                </el-form-item>
-              </el-col>
             </el-row>
+            <el-form-item label="目标诉求">
+              <div class="goal-grid">
+                <div
+                  v-for="g in GOALS"
+                  :key="g.value"
+                  class="goal-item"
+                  :class="{ active: form.goal === g.value }"
+                  @click="form.goal = g.value"
+                >
+                  <span class="goal-name">{{ g.label }}</span>
+                  <span class="goal-desc">{{ g.desc }}</span>
+                </div>
+              </div>
+            </el-form-item>
             <el-form-item label="目标体重"><el-input-number v-model="form.target_weight_kg" :min="20" :max="300" /></el-form-item>
           </el-form>
 
@@ -219,16 +261,32 @@ onMounted(() => {
           </el-tag>
         </div>
 
-        <div class="page-card">
-          <h3 class="page-title">⚖️ 记录今日体重</h3>
-          <div style="display:flex;gap:8px">
-            <el-input-number v-model="newWeight" :min="20" :max="300" :precision="1" style="flex:1" placeholder="kg" />
-            <el-button type="success" @click="addWeight">记录</el-button>
+        <div v-if="rx" class="page-card rx-card">
+          <h3 class="page-title">🧭 为什么给你这个数</h3>
+          <p class="rx-summary">{{ rx.summary }}</p>
+          <div class="rx-grid">
+            <div class="rx-cell"><span class="rx-k">维持热量</span><b class="rx-v">{{ rx.tdee ?? '—' }}</b></div>
+            <div class="rx-cell"><span class="rx-k">每日目标</span><b class="rx-v">{{ rx.target }}</b></div>
+            <div class="rx-cell"><span class="rx-k">预期速度</span><b class="rx-v">{{ rx.rate_text }}</b></div>
+            <div class="rx-cell"><span class="rx-k">每周训练</span><b class="rx-v">{{ rx.train_days }} 天</b></div>
           </div>
-          <template v-if="weights.length">
-            <TrendChart :option="weightOption" height="200px" style="margin-top:12px" />
-          </template>
-          <el-empty v-else description="还没有体重记录" :image-size="60" />
+          <div class="rx-targets">
+            <div v-for="row in targetRows" :key="row.key" class="rx-line">
+              <span class="rx-line-k">{{ row.label }}</span>
+              <span class="rx-line-v">{{ row.text }}</span>
+              <BasisPopover :source="src(row.key)" :name="row.label" />
+            </div>
+          </div>
+          <div class="rx-focus">
+            <span v-for="f in rx.focus" :key="f" class="rx-chip">{{ f }}</span>
+          </div>
+          <p v-for="w in rx.warnings" :key="w" class="rx-warn">⚠️ {{ w }}</p>
+          <p class="rx-basis">{{ rx.basis_weight_note }}</p>
+          <p class="rx-foot">健康管理建议，非医疗器械。糖尿病、肾病、痛风、孕期请遵医嘱。</p>
+        </div>
+        <div v-else class="page-card">
+          <h3 class="page-title">🧭 为什么给你这个数</h3>
+          <p class="rx-summary">填完身高、体重、年龄，这里会给出热量策略、预期速度和每个数字的依据。</p>
         </div>
 
         <div class="page-card">
@@ -245,6 +303,18 @@ onMounted(() => {
               解绑
             </el-button>
           </template>
+        </div>
+
+        <div class="page-card">
+          <h3 class="page-title">⚖️ 记录今日体重</h3>
+          <div style="display:flex;gap:8px">
+            <el-input-number v-model="newWeight" :min="20" :max="300" :precision="1" style="flex:1" placeholder="kg" />
+            <el-button type="success" @click="addWeight">记录</el-button>
+          </div>
+          <template v-if="weights.length">
+            <TrendChart :option="weightOption" height="200px" style="margin-top:12px" />
+          </template>
+          <el-empty v-else description="还没有体重记录" :image-size="60" />
         </div>
       </el-col>
     </el-row>
@@ -275,6 +345,55 @@ onMounted(() => {
 .bmi { font-size: 42px; font-weight: 800; margin: 4px 0 8px; }
 .page-title { margin-top: 18px; }
 .bf-tip { margin: 0; font-size: 12px; color: #909399; line-height: 1.5; padding-top: 8px; }
+.face-tip { margin: 0 0 10px; font-size: 12px; color: #909399; line-height: 1.5; }
+
+/* 诉求四选一：诉求决定策略，不是按 BMI 一刀切 */
+.goal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+.goal-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid #e8eaf0;
+  border-radius: 10px;
+  background: #fbfcfe;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.goal-item:hover { border-color: #c6d4ea; background: #f5f9ff; }
+.goal-item.active { border-color: #67c23a; background: #f2fbef; box-shadow: 0 0 0 1px #67c23a inset; }
+.goal-name { font-size: 13px; font-weight: 600; color: #303133; }
+.goal-desc { font-size: 11px; color: #909399; line-height: 1.45; }
+
+/* 处方卡 */
+.rx-summary { margin: 0 0 10px; font-size: 12.5px; line-height: 1.6; color: #4b5563; }
+.rx-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
+.rx-cell {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 8px 10px; border-radius: 8px; background: #f7f9fc;
+}
+.rx-k { font-size: 11px; color: #8a94a6; }
+.rx-v { font-size: 14px; color: #303133; }
+.rx-targets { border-top: 1px dashed #eceff4; padding-top: 8px; margin-bottom: 10px; }
+.rx-line {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 12px; padding: 3px 0; color: #606266;
+}
+.rx-line-k { width: 56px; color: #8a94a6; flex: none; }
+.rx-line-v { flex: 1; color: #303133; font-variant-numeric: tabular-nums; }
+.rx-focus { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.rx-chip {
+  padding: 2px 8px; border-radius: 999px; background: #eef6ff;
+  color: #2b6cd4; font-size: 11px;
+}
+.rx-warn { margin: 4px 0 0; font-size: 11.5px; line-height: 1.55; color: #b07a1e; }
+.rx-basis { margin: 8px 0 0; font-size: 11px; color: #909399; line-height: 1.5; }
+.rx-foot { margin: 6px 0 0; font-size: 10.5px; color: #b6bcc8; line-height: 1.5; }
 
 /* 手机端「更多功能」入口列表 */
 .more-card { padding-bottom: 6px; }
@@ -293,5 +412,4 @@ onMounted(() => {
 .more-title { font-size: 14px; color: #303133; font-weight: 500; }
 .more-desc { font-size: 11px; color: #a8abb2; }
 .more-arrow { color: #c0c4cc; font-size: 18px; }
-.face-tip { margin: 0 0 10px; font-size: 12px; color: #909399; line-height: 1.5; }
 </style>

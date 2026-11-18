@@ -2,9 +2,43 @@
 from pydantic import BaseModel, Field, field_validator
 
 
+class DishOverride(BaseModel):
+    """保存前修正某道菜的克数
+
+    视觉模型估克重误差常有 ±30%，不让用户改就等于用一个错数字给他定罪。
+    index 对应识别结果的 dishes 下标。
+    """
+    index: int = Field(ge=0, le=9)
+    portion_g: float = Field(ge=5, le=3000)
+
+    @field_validator("portion_g", mode="before")
+    @classmethod
+    def _coerce(cls, value):
+        if isinstance(value, str):
+            value = value.replace(",", "").strip()
+        return float(value)
+
+
 class SaveRecognitionIn(BaseModel):
-    """把识别结果保存为饮食记录"""
+    """把识别结果保存为饮食记录
+
+    usage 决定归属（三选一，见 services/photo_intake.py）：
+    - plan：这是方案里排的那餐 → 先做菜品判定，对不上就拒绝（不会静默记成方案内）
+    - extra：方案之外自己加的 → origin=extra，不打卡、不指责
+    - inspect：只看热量 → 不该走到这个接口（前端不会调），传了按 extra 处理更安全
+
+    missing：照片里只对上了一部分时，方案缺的那几道怎么算。
+    - skip（默认）：按没吃记，只落照片里的菜 —— 当天热量会真的偏低，文案会说清
+    - plan：按方案克重补记 —— 这餐等于「按方案吃完」，用的是方案自己的值
+    菜品一道都对不上时不存在这个选项：那不是"没拍全"，是另一顿饭，打卡本身就是失败的。
+    replace_manual：这餐已有手动记录时是否一起替换。默认不动——
+    那条可能是用户单独记的一杯牛奶，不该被拍照默默顶掉。
+    """
     meal_type: str = Field(pattern="^(breakfast|lunch|dinner|snack)$")
+    usage: str = Field(default="extra", pattern="^(plan|extra|inspect)$")
+    missing: str = Field(default="skip", pattern="^(skip|plan)$")
+    replace_manual: bool = False
+    overrides: list[DishOverride] = Field(default_factory=list)
 
 
 class CorrectRecognitionIn(BaseModel):

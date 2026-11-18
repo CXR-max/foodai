@@ -8,6 +8,7 @@ Provider 工厂：业务代码统一从这里拿 Provider，永远不直接 new 
 （模式由 settings.LLM_MODE 决定：cloud=云端，local=本地 Ollama 文字）
 """
 import logging
+from functools import lru_cache
 
 from openai import OpenAIError
 from pydantic import ValidationError
@@ -86,15 +87,6 @@ class FallbackProvider(LLMProvider):
             self._used = "mock"
             logger.warning("真模型对话失败，降级 mock：%s", e)
             return self.mock.chat(messages)
-
-    def chat_json(self, messages: list[dict], model: str | None = None,
-                  max_tokens: int | None = None, timeout: float | None = None) -> str:
-        try:
-            return self.real.chat_json(messages, model=model, max_tokens=max_tokens, timeout=timeout)
-        except FALLBACK_ERRORS as e:
-            self._used = "mock"
-            logger.warning("真模型结构化抽取失败，降级 mock：%s", e)
-            return self.mock.chat_json(messages, model=model, max_tokens=max_tokens, timeout=timeout)
 
     def chat_stream(self, messages: list[dict]):
         started = False
@@ -183,21 +175,30 @@ class SolverProvider(MockProvider):
         self._used = self.base.active_name
         return reply
 
-    def chat_json(self, messages: list[dict], model: str | None = None,
-                  max_tokens: int | None = None, timeout: float | None = None) -> str:
-        reply = self.base.chat_json(messages, model=model, max_tokens=max_tokens, timeout=timeout)
-        self._used = self.base.active_name
-        return reply
-
     def chat_stream(self, messages: list[dict]):
         self._used = self.base.active_name
         yield from self.base.chat_stream(messages)
 
 
+@lru_cache(maxsize=1)
+def _cached_real_provider() -> LLMProvider:
+    """缓存真正的模型客户端（OpenAICompatProvider）
+
+    ★ 必须缓存：它构造时会建 2~3 个 OpenAI client（各自一个 httpx 连接池）。
+    不缓存的话，每次识别/方案/周报都要重新做 TCP+TLS 握手，单次调用白多 100~300ms。
+    配置只在进程启动时读取（改 .env 必须重启），所以缓存安全。
+    """
+    return OpenAICompatProvider()
+
+
 def _build_base_provider() -> LLMProvider:
-    """原有 Provider 选择逻辑：有 key 用真模型（可选 mock 兜底），无 key 用 MockProvider"""
+    """Provider 选择：有 key 用真模型（可选 mock 兜底），无 key 用 MockProvider
+
+    注意分层：只缓存「无状态」的底层 client；FallbackProvider 有请求级状态
+    （_used 记录本次真实产出者），必须每次新建，否则并发请求会互相串标。
+    """
     if settings.text_api_key:
-        real = OpenAICompatProvider()
+        real = _cached_real_provider()
         if settings.LLM_FALLBACK_TO_MOCK:
             return FallbackProvider(real)
         return real

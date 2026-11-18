@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 食物识别页：拖拽上传 → AI 识别 → 结果卡片 → 手动校准 → 保存为饮食记录
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadRequestOptions } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
@@ -21,6 +21,109 @@ const saving = ref(false)
 const saveDialog = ref(false)
 const mealType = ref('lunch')
 const MEAL_LABELS: Record<string, string> = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', snack: '加餐' }
+// 三用途：方案内打卡（会自动打卡）/ 额外加餐 / 只看热量（不落记录）
+const usage = ref<foodApi.PhotoUsage>('extra')
+const USAGE_OPTIONS: { value: foodApi.PhotoUsage; label: string; desc: string }[] = [
+  { value: 'plan', label: '方案内打卡', desc: '按方案吃的那餐：先比对菜品，对上才打卡' },
+  { value: 'extra', label: '额外加餐', desc: '方案之外自己加的：记下来但不打卡，超了也不算你的错' },
+  { value: 'inspect', label: '只看热量', desc: '不保存为饮食记录，不影响当天摄入' },
+]
+
+// ---- 方案内打卡的判定（菜品对不对）----
+// 判定必须由后端做：菜名归一化、方案基线都在这边，前端算不了。
+// 切餐次、切用途都要重新请求——用午餐的结论去打晚餐的卡，结果一定是错的。
+const planCheck = ref<foodApi.PlanCheck | null>(null)
+const checkLoading = ref(false)
+// 只对上一部分时：缺的那几道算不算吃过。默认「没吃」更保守——
+// 按方案补上等于替用户多吃了几道，除非他自己说吃了
+const missing = ref<'skip' | 'plan'>('skip')
+const replaceManual = ref(false)     // 这餐已有手动记录时是否一起替换
+const overrideG = ref<Record<number, number>>({})   // 下标 → 用户改过的克数
+
+const CHECK_TEXT: Record<string, string> = {
+  ok: '和方案对得上',
+  partial: '只对上一部分',
+  fail: '和方案对不上',
+}
+
+/** 照片没对上的那几道菜名（partial 的选项要念出来是哪几道） */
+const gapText = computed(() =>
+  (planCheck.value?.only_plan || []).map((d) => d.dish_name).join('、'))
+
+async function loadPlanCheck() {
+  const rec = current.value
+  if (!rec || usage.value !== 'plan') {
+    planCheck.value = null
+    return
+  }
+  checkLoading.value = true
+  try {
+    const res = await foodApi.planCheck(rec.id, mealType.value)
+    planCheck.value = res
+    missing.value = 'skip'
+    replaceManual.value = false
+    const init: Record<number, number> = {}
+    // 用 dish_index（照片里第几道菜）而不是 matches 的顺序：未命中的菜会让两者错位
+    res.matches.forEach((m) => { init[m.dish_index] = m.photo_portion_g })
+    overrideG.value = init
+  } catch {
+    planCheck.value = null      // 判定失败不该挡住保存流程，退回「不校验」的旧行为
+  } finally {
+    checkLoading.value = false
+  }
+}
+
+/** 菜品对不上就不能打卡，没有绕过——所以 fail 一档永久禁用按钮 */
+const planBlocked = computed(() => {
+  const c = planCheck.value
+  if (usage.value !== 'plan' || !c) return false
+  return c.status === 'fail'
+})
+
+/** 改过克数的项：只有和识别值不同的才提交，避免无谓重算 */
+const overridesPayload = computed(() => {
+  const c = planCheck.value
+  if (!c) return []
+  const out: { index: number; portion_g: number }[] = []
+  for (const m of c.matches) {
+    const grams = Math.round(overrideG.value[m.dish_index] || 0)
+    if (grams > 0 && grams !== Math.round(m.photo_portion_g)) {
+      out.push({ index: m.dish_index, portion_g: grams })
+    }
+  }
+  return out
+})
+
+/** 按钮文案跟着判定走：不能打的时候要写清楚为什么，别让人点半天没反应 */
+const saveButtonText = computed(() => {
+  if (usage.value !== 'plan') return '保存为饮食记录（+2 分）'
+  const c = planCheck.value
+  if (!c) return `保存并打卡${MEAL_LABELS[mealType.value] || ''}（+2 分）`
+  if (c.status === 'ok') return `打卡${c.meal_label}（+2 分）`
+  if (c.status === 'partial') {
+    return missing.value === 'plan' ? '补上缺的几道并打卡（+2 分）' : '按拍到的打卡（+2 分）'
+  }
+  return '和方案对不上，不能打卡'
+})
+
+/** 点失败出口：每个都直接改变弹窗状态，不做二次确认 */
+function pickCheckOption(opt: foodApi.PlanCheckOption) {
+  if (opt.key === 'extra') usage.value = 'extra'
+  else if (opt.key === 'inspect') usage.value = 'inspect'
+  else if (opt.key === 'missing_skip') missing.value = 'skip'
+  else if (opt.key === 'missing_plan') missing.value = 'plan'
+  else if (opt.key === 'change_meal') {
+    const suggest = planCheck.value?.suggest_meal
+    if (suggest) mealType.value = suggest.meal_type   // 触发 watch 重新判定
+    else ElMessage.info('换一下上面的餐次，会自动重新比对')
+  }
+}
+
+/** 按当前时间猜这餐属于哪一顿（用户可改，只是别让他每次手选） */
+function guessMeal(): string {
+  const h = new Date().getHours()
+  return h < 10 ? 'breakfast' : h < 15 ? 'lunch' : h < 21 ? 'dinner' : 'snack'
+}
 
 // ---- 识别历史分页 ----
 const page = ref(1)
@@ -279,21 +382,64 @@ async function rerunRec(row: Recognition) {
 }
 
 function openSave() {
-  mealType.value = 'lunch'
+  // 默认值由后端按「照片里的菜 vs 方案那餐」算好：命中方案就是方案内打卡，
+  // 否则按额外加餐。默认错了归因就错（方案错 vs 自己多吃，处置方向完全不同）
+  const r = current.value
+  mealType.value = r?.suggested_meal_type || r?.plan_compare?.meal_type || guessMeal()
+  usage.value = (r?.suggested_usage as foodApi.PhotoUsage) || 'extra'
   saveDialog.value = true
+  loadPlanCheck()
 }
+
+// 切用途、切餐次都要重新判定：比对结果和餐次绑死，换一餐结论就变了
+watch([usage, mealType], () => {
+  if (saveDialog.value) loadPlanCheck()
+})
+
+/** 用途改了要重新判断：方案里没有这道菜却选「方案内」，等于把额外吃的算成方案，归因会错 */
+const usageHint = computed(() => {
+  const cmp = current.value?.plan_compare
+  if (!cmp) return ''
+  if (usage.value === 'plan') return ''      // 方案内由判定卡片接管，不再重复提示
+  if (usage.value === 'extra' && cmp.matches.length) {
+    return '这道菜方案里有：选「额外加餐」会按方案外加一份算，总量会偏高'
+  }
+  return cmp.hint
+})
 
 async function confirmSave() {
   if (!current.value) return
+  // 只看热量：不落饮食记录，也就不会影响当天摄入和判定
+  if (usage.value === 'inspect') {
+    saveDialog.value = false
+    ElMessage.info('仅查看成分，没有保存为饮食记录')
+    return
+  }
+  if (planBlocked.value) {
+    ElMessage.warning('照片里的菜和方案这餐对不上，不能按方案打卡——改成「额外加餐」或换一餐再试')
+    return
+  }
   saving.value = true
   try {
-    const r = await foodApi.saveRecognition(current.value.id, mealType.value)
+    const r = await foodApi.saveRecognition(current.value.id, {
+      meal_type: mealType.value,
+      usage: usage.value,
+      missing: missing.value,
+      replace_manual: replaceManual.value,
+      overrides: overridesPayload.value,
+    })
+    // 后端拦下来（理论上前端已挡，这里是兜底）：原因和出口要原样给用户看
+    if (!r.saved) {
+      ElMessage.warning(r.reason || r.message || '没能打卡')
+      await loadPlanCheck()
+      return
+    }
     auth.fetchMe().catch(() => {})   // 顶栏积分刷新
-    ElMessage.success(`已保存为饮食记录 +${r.points_awarded} 分`)
+    ElMessage.success(r.message || `已保存为饮食记录 +${r.points_awarded || 0} 分`)
     saveDialog.value = false
     await loadHistory()
     loadMeta()   // 预算卡刷新
-    if (current.value) current.value.food_record_id = r.food_record_id
+    if (current.value) current.value.food_record_id = r.food_record_id ?? null
   } finally {
     saving.value = false
   }
@@ -676,15 +822,117 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 保存餐次选择 -->
-    <el-dialog v-model="saveDialog" title="保存为饮食记录" :width="isMobile ? '100%' : '360px'" :fullscreen="isMobile">
-      <p style="margin-top:0">这是哪一餐？</p>
-      <el-radio-group v-model="mealType">
-        <el-radio-button v-for="(label, key) in MEAL_LABELS" :key="key" :value="key">{{ label }}</el-radio-button>
-      </el-radio-group>
+    <!-- 保存：先定用途，再定餐次，方案内还要先过「菜品对不对」这一关 -->
+    <el-dialog v-model="saveDialog" title="这张照片算什么？" :width="isMobile ? '100%' : '440px'" :fullscreen="isMobile">
+      <div class="usage-list">
+        <div v-for="opt in USAGE_OPTIONS" :key="opt.value"
+             class="usage-item" :class="{ active: usage === opt.value }"
+             @click="usage = opt.value">
+          <div class="usage-head">
+            <span class="usage-label">{{ opt.label }}</span>
+            <span v-if="opt.value === (current?.suggested_usage || 'extra')" class="usage-badge">推荐</span>
+          </div>
+          <p class="usage-desc">{{ opt.desc }}</p>
+        </div>
+      </div>
+
+      <template v-if="usage !== 'inspect'">
+        <p class="dlg-label">这是哪一餐？</p>
+        <el-radio-group v-model="mealType">
+          <el-radio-button v-for="(label, key) in MEAL_LABELS" :key="key" :value="key">{{ label }}</el-radio-button>
+        </el-radio-group>
+      </template>
+
+      <!-- 方案内：菜品判定结果。对不上就不让打卡，并把原因和出口摆出来 -->
+      <div v-if="usage === 'plan'" v-loading="checkLoading"
+           class="check-card" :class="planCheck ? `check-${planCheck.status}` : ''">
+        <template v-if="planCheck">
+          <div class="check-head">
+            <span class="check-badge">{{ CHECK_TEXT[planCheck.status] }}</span>
+            <span class="check-reason">{{ planCheck.reason }}</span>
+          </div>
+
+          <div v-if="planCheck.matches.length" class="check-rows">
+            <div v-for="m in planCheck.matches" :key="m.dish_index" class="check-row">
+              <span class="check-dish">{{ m.plan_dish }}</span>
+              <span class="check-plan">方案 {{ m.plan_portion_g }}g</span>
+              <el-input-number v-model="overrideG[m.dish_index]" :min="5" :max="3000" :step="10"
+                               size="small" controls-position="right" style="width:104px" />
+              <span class="check-unit">g</span>
+            </div>
+            <p class="check-tip">克数按你实际吃的改，热量和判定会跟着重算</p>
+          </div>
+
+          <p v-if="planCheck.only_photo.length" class="check-line">
+            方案里没有：{{ planCheck.only_photo.map((d) => d.dish_name).join('、') }}
+            <span class="muted">— 按「额外加餐」另记更准</span>
+          </p>
+          <p v-if="planCheck.only_plan.length && planCheck.status !== 'fail'" class="check-line muted">
+            没拍到：{{ planCheck.only_plan.map((d) => d.dish_name).join('、') }}
+          </p>
+          <p v-if="planCheck.portion.significant" class="check-line">
+            {{ planCheck.portion.detail }}
+            <span v-if="planCheck.portion.needs_confirm" class="muted"> — 识别可能不准，不对就在上面改克数</span>
+          </p>
+          <p v-if="planCheck.existing.note" class="check-line muted">{{ planCheck.existing.note }}</p>
+          <el-checkbox v-if="planCheck.existing.manual_records" v-model="replaceManual" size="small">
+            替换这餐已有的 {{ planCheck.existing.manual_records }} 条手动记录
+          </el-checkbox>
+
+          <!-- 只对上一部分：缺的那几道算不算吃过。两个都是正常路径，数据各自自洽 -->
+          <div v-if="planCheck.status === 'partial'" class="check-actions">
+            <p class="check-ask">「{{ gapText }}」这几道吃了吗？</p>
+            <el-radio-group v-model="missing" class="missing-group">
+              <el-radio value="skip">没吃，只记拍到的</el-radio>
+              <el-radio value="plan">都吃了，只是没拍到（按方案补上）</el-radio>
+            </el-radio-group>
+            <div class="check-btns">
+              <el-button v-for="o in planCheck.options.filter((x) => !x.key.startsWith('missing_'))"
+                         :key="o.key" size="small" text @click="pickCheckOption(o)">
+                {{ o.label }}
+              </el-button>
+            </div>
+          </div>
+
+          <!-- 一道都对不上：这不算这餐，只能换个方式记（没有"仍按方案打卡"这条路） -->
+          <div v-if="planCheck.status === 'fail'" class="check-actions">
+            <p class="check-ask">这不算{{ planCheck.meal_label }}的打卡，换个方式记：</p>
+            <div class="check-btns">
+              <el-button v-for="o in planCheck.options" :key="o.key" size="small" @click="pickCheckOption(o)">
+                {{ o.label }}
+              </el-button>
+            </div>
+            <p class="check-foot">如果确实按方案吃了这餐，点「取消」后手动打卡就行，方案那份会照常记账</p>
+          </div>
+        </template>
+        <p v-else-if="!checkLoading" class="check-line muted">
+          没能比对方案，直接保存会按你选的方式记
+        </p>
+      </div>
+
+      <p v-if="usageHint" class="usage-hint">{{ usageHint }}</p>
+
+      <!-- 额外加餐：同种菜分量不同，仍要说清差多少 -->
+      <div v-if="usage === 'extra' && current?.plan_compare?.matches?.length" class="compare-box">
+        <p class="compare-title">和方案比</p>
+        <div v-for="m in current.plan_compare.matches" :key="m.dish_name" class="compare-row">
+          <span>{{ m.plan_dish }}</span>
+          <span class="compare-nums">
+            方案 {{ m.plan_portion_g }}g / 照片 {{ m.photo_portion_g }}g
+            <b :class="m.kcal_delta > 0 ? 'up' : 'down'">
+              {{ m.kcal_delta > 0 ? '+' : '' }}{{ m.kcal_delta }} kcal
+            </b>
+          </span>
+        </div>
+        <p class="compare-note">按你实际吃的算，方案那份不会重复计</p>
+      </div>
+
       <template #footer>
         <el-button @click="saveDialog = false">取消</el-button>
-        <el-button type="success" :loading="saving" @click="confirmSave">保存（+2 分）</el-button>
+        <el-button v-if="usage === 'inspect'" @click="confirmSave">只看，不保存</el-button>
+        <el-button v-else type="success" :loading="saving" :disabled="planBlocked" @click="confirmSave">
+          {{ saveButtonText }}
+        </el-button>
       </template>
     </el-dialog>
 
@@ -760,6 +1008,61 @@ onMounted(() => {
 .ing-label { font-size: 13px; color: #606266; }
 .muted { font-size: 12px; color: #909399; }
 .dlg-tip { margin: 0 0 14px; font-size: 12px; color: #909399; }
+
+/* 三用途选择：三块可点的卡片，一眼看出差别（不是三个看不出区别的 radio） */
+.usage-list { display: flex; flex-direction: column; gap: 8px; }
+.usage-item {
+  border: 1px solid #e4e7ed; border-radius: 10px; padding: 10px 12px;
+  cursor: pointer; transition: border-color .15s, background .15s;
+}
+.usage-item.active { border-color: #67c23a; background: #f0f9eb; }
+.usage-head { display: flex; align-items: center; gap: 6px; }
+.usage-label { font-size: 14px; font-weight: 600; color: #303133; }
+.usage-badge {
+  font-size: 10px; padding: 0 5px; border-radius: 8px;
+  background: #67c23a; color: #fff; line-height: 16px;
+}
+.usage-desc { margin: 4px 0 0; font-size: 12px; line-height: 1.5; color: #909399; }
+.usage-hint { margin: 10px 0 0; font-size: 12px; line-height: 1.5; color: #909399; }
+.usage-hint.warn { color: #e6a23c; }
+/* 方案内判定卡片：绿=对上、黄=部分对上要确认、红=不能打卡 */
+.check-card { margin-top: 12px; padding: 10px 12px; border: 1px solid #dcdfe6; border-radius: 8px; background: #fafafa; }
+.check-card.check-ok { border-color: #b3e19d; background: #f0f9eb; }
+.check-card.check-partial { border-color: #f0c78a; background: #fdf6ec; }
+.check-card.check-fail { border-color: #f3b3b3; background: #fef0f0; }
+.check-head { display: flex; align-items: flex-start; gap: 8px; }
+.check-badge {
+  flex: none; padding: 1px 7px; border: 1px solid currentColor; border-radius: 10px;
+  font-size: 12px; font-weight: 600; color: #606266; background: #fff;
+}
+.check-ok .check-badge { color: #529b2e; }
+.check-partial .check-badge { color: #b88230; }
+.check-fail .check-badge { color: #c45656; }
+.check-reason { font-size: 12px; line-height: 1.6; color: #303133; }
+.check-rows { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.check-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.check-dish { flex: 1; min-width: 0; color: #303133; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.check-plan, .check-unit { color: #909399; }
+.check-tip { margin: 2px 0 0; font-size: 11px; color: #a0a6b3; }
+.check-line { margin: 6px 0 0; font-size: 12px; line-height: 1.6; color: #303133; }
+.check-line.muted, .muted { color: #909399; }
+.check-actions { margin-top: 10px; }
+.check-ask { margin: 0 0 6px; font-size: 12px; color: #606266; }
+.check-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.check-btns :deep(.el-button) { margin-left: 0; }
+.check-force { margin-top: 8px; }
+.check-force :deep(.el-checkbox__label) { font-size: 12px; color: #b88230; }
+.dlg-label { margin: 14px 0 8px; font-size: 13px; color: #606266; }
+.compare-box { margin-top: 10px; padding: 10px 12px; background: #fafafa; border-radius: 8px; }
+.compare-title { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: #606266; }
+.compare-row {
+  display: flex; justify-content: space-between; gap: 8px;
+  font-size: 12px; color: #606266; padding: 2px 0;
+}
+.compare-nums { color: #909399; white-space: nowrap; }
+.compare-nums .up { color: #f56c6c; }
+.compare-nums .down { color: #67c23a; }
+.compare-note { margin: 6px 0 0; font-size: 11.5px; color: #b0b3b8; }
 .form-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .form-label { width: 40px; font-size: 14px; color: #606266; flex-shrink: 0; }
 .preview-box { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #f5f7fa; border-radius: 6px; font-size: 13px; }

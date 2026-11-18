@@ -1,0 +1,5 @@
+INFO:     Started server process [31672]
+INFO:     Waiting for application startup.
+营养库种子失败：'name_zh'
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
