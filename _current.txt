@@ -1,0 +1,9 @@
+﻿python.exe : INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+所在位置 行:1 字符: 289
++ ...  当前版本 ==="; & ".\.venv\Scripts\python.exe" -m alembic current 2>&1 |  ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (INFO  [alembic....mpl SQLiteImpl.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+e5f9c3d2b8a1 (head)

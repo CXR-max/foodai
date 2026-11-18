@@ -18,6 +18,7 @@ const menus = [
   { path: '/recognition', title: '食物识别', icon: Dish },
   { path: '/plans', title: '养生方案', icon: MagicStick },
   { path: '/checkin', title: '健康打卡', icon: Calendar },
+  { path: '/workout', title: '运动', icon: DataLine },
   { path: '/stats', title: '数据追踪', icon: DataLine },
   { path: '/mall', title: '积分商城', icon: Coin },
   { path: '/achievements', title: '成就徽章', icon: Trophy },

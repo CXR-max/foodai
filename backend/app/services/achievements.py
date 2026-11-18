@@ -42,7 +42,7 @@ def compute_metrics(db: Session, user: User) -> dict[str, int]:
         "streak_days": calc_streak(db, user.id),
         "manual_exercise_count": db.query(CheckIn).filter(
             CheckIn.user_id == user.id,
-            CheckIn.task_key == "manual_exercise",
+            CheckIn.task_key.in_(("manual_exercise", "workout", "exercise")),
             CheckIn.status == "done").count(),
         "points_total": user.points_total or 0,
         "plan_count": db.query(DietPlan).filter(DietPlan.user_id == user.id).count(),

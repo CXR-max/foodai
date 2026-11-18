@@ -1,0 +1,108 @@
+﻿python.exe : INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+所在位置 行:1 字符: 55
++ ... i\backend"; & ".\.venv\Scripts\python.exe" -m alembic upgrade 11b79bc ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (INFO  [alembic....mpl SQLiteImpl.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade d4e8b2c1a7f3 -> c51a9e2d4b07, personalized burn: check_ins intensity/
+met_used/burn_detail + health_profiles body_fat_pct
+INFO  [alembic.runtime.migration] Running upgrade baf27cd8977f -> 03ee2ffd34a1, add food library tables
+Traceback (most recent call last):
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1953, in _exec_s
+ingle_context
+    self.dialect.do_execute(
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 1192, in do_e
+xecute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such table: main.foods
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\alembic\__main__.py", line 4, in <module>
+    main(prog="alembic")
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\alembic\config.py", line 1039, in main
+    CommandLine(prog=prog).main(argv=argv)
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\alembic\config.py", line 1029, in main
+    self.run_cmd(cfg, options)
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\alembic\config.py", line 963, in run_cmd
+    fn(
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\alembic\command.py", line 487, in upgrade
+    script.run_env()
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\alembic\script\base.py", line 550, in run_env
+    util.load_python_file(self.dir, "env.py")
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\alembic\util\pyfiles.py", line 114, in load_pytho
+n_file
+    module = load_module_py(module_id, path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\alembic\util\pyfiles.py", line 132, in load_modul
+e_py
+    spec.loader.exec_module(module)  # type: ignore
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "C:\Users\43120\Desktop\foodai\backend\alembic\env.py", line 54, in <module>
+    run_migrations_online()
+  File "C:\Users\43120\Desktop\foodai\backend\alembic\env.py", line 48, in run_migrations_online
+    context.run_migrations()
+  File "<string>", line 8, in run_migrations
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\alembic\runtime\environment.py", line 970, in run
+_migrations
+    self.get_context().run_migrations(**kw)
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\alembic\runtime\migration.py", line 616, in run_m
+igrations
+    step.migration_fn(**kw)
+  File "C:\Users\43120\Desktop\foodai\backend\alembic\versions\03ee2ffd34a1_add_food_library_tables.py", line 65, in up
+grade
+    op.create_index(op.f('ix_foods_active'), 'foods', ['active'], unique=False)
+  File "<string>", line 8, in create_index
+  File "<string>", line 3, in create_index
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\alembic\operations\ops.py", line 1004, in create_
+index
+    return operations.invoke(op)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\alembic\operations\base.py", line 448, in invoke
+    return fn(self, operation)
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\alembic\operations\toimpl.py", line 116, in creat
+e_index
+    operations.impl.create_index(idx, **kw)
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\alembic\ddl\impl.py", line 463, in create_index
+    self._exec(schema.CreateIndex(index, **kw))
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\alembic\ddl\impl.py", line 252, in _exec
+    return conn.execute(construct, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1458, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\sql\ddl.py", line 203, in _execute_on_
+connection
+    return connection._execute_ddl(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1567, in _execut
+e_ddl
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1832, in _execut
+e_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1972, in _exec_s
+ingle_context
+    self._handle_dbapi_exception(
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2342, in _handle
+_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1953, in _exec_s
+ingle_context
+    self.dialect.do_execute(
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 1192, in do_e
+xecute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such table: main.foods
+[SQL: CREATE INDEX ix_foods_active ON foods (active)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)

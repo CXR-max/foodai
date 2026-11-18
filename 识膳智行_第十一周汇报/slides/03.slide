@@ -1,0 +1,80 @@
+<Slide style={{ width: 1280, height: 720, background: '#FAF6F1', padding: '48px 53px', position: 'relative' }}>
+    <Box style={{ flexDirection: 'column', height: 624 }}>
+        <Box style={{ flexDirection: 'row' }}>
+            <Box style={{ background: '#D2694C', borderRadius: 18, padding: '7px 18px' }}>
+                <Text style={{ fontSize: 13, color: '#FFFFFF', fontWeight: 'bold', letterSpacing: 2 }}>模块① · 组长</Text>
+            </Box>
+        </Box>
+
+        <Text style={{ fontSize: 34, fontWeight: 900, color: '#262220', marginTop: 16, letterSpacing: 1 }}>
+            移动端信息架构重构
+        </Text>
+
+        <Box style={{ flexDirection: 'row', gap: 20, flex: 1, marginTop: 24 }}>
+            <Box style={{ flex: 1, background: '#FFFFFF', borderRadius: 20, border: '1px solid #F0E6D9', padding: 24, flexDirection: 'column' }}>
+                <Text style={{ fontSize: 15.5, fontWeight: 'bold', color: '#262220', lineHeight: 1.4 }}>
+                    <><span style={{ color: '#D2694C' }}>①</span> 九个入口 → 一条路径</>
+                </Text>
+                <Text style={{ fontSize: 13, color: '#4A4340', lineHeight: 1.95, marginTop: 14 }}>
+                    <>▸ 原来 5 个并列入口、9 个功能页平铺，用户先要想「我该点哪个」<br />▸ 现在按一天的使用路径收成五个模块<br />▸ 一条闭环：定计划 → 执行 → 记录 → 反馈 → 激励</>
+                </Text>
+                <Box style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
+                    <Box style={{ background: '#FAF0E7', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#9A6A50' }}>识别降为功能</Text>
+                    </Box>
+                    <Box style={{ background: '#FAF0E7', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#9A6A50' }}>方案升为计划</Text>
+                    </Box>
+                    <Box style={{ background: '#FAF0E7', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#9A6A50' }}>打卡升为日程</Text>
+                    </Box>
+                </Box>
+            </Box>
+
+            <Box style={{ flex: 1, background: '#FFFFFF', borderRadius: 20, border: '1px solid #F0E6D9', padding: 24, flexDirection: 'column' }}>
+                <Text style={{ fontSize: 15.5, fontWeight: 'bold', color: '#262220', lineHeight: 1.4 }}>
+                    <><span style={{ color: '#D2694C' }}>②</span> 计划与日程</>
+                </Text>
+                <Text style={{ fontSize: 13, color: '#4A4340', lineHeight: 1.95, marginTop: 14 }}>
+                    <>▸ 计划分「生成 + 展示」两段：勾偏好忌禁 → 本地模型抽约束 → 约束解析器逐日生成<br />▸ 展示逐天查看、可视化编辑、一键导入日历<br />▸ 日程是每日执行层，方案里的餐食与运动按天落成待办</>
+                </Text>
+                <Box style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
+                    <Box style={{ background: '#FAF0E7', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#9A6A50' }}>偏好 · 忌禁</Text>
+                    </Box>
+                    <Box style={{ background: '#FAF0E7', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#9A6A50' }}>约束解析</Text>
+                    </Box>
+                    <Box style={{ background: '#FAF0E7', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#9A6A50' }}>日历导入</Text>
+                    </Box>
+                </Box>
+            </Box>
+
+            <Box style={{ flex: 1, background: '#FFFFFF', borderRadius: 20, border: '1px solid #F0E6D9', padding: 24, flexDirection: 'column' }}>
+                <Text style={{ fontSize: 15.5, fontWeight: 'bold', color: '#262220', lineHeight: 1.4 }}>
+                    <><span style={{ color: '#D2694C' }}>③</span> 社区 · 我的 · 手环</>
+                </Text>
+                <Text style={{ fontSize: 13, color: '#4A4340', lineHeight: 1.95, marginTop: 14 }}>
+                    <>▸ 社区：饮食运动动态分享，排行榜（Redis 实时 + 头衔）与积分商城收成两个小板块<br />▸ 我的：档案 / 体重 / 积分 / 订单 / 成就统一收口<br />▸ 手环：小米 / 华为 / Apple 健康导入，接三环与图表</>
+                </Text>
+                <Box style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
+                    <Box style={{ background: '#FAF0E7', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#9A6A50' }}>动态分享</Text>
+                    </Box>
+                    <Box style={{ background: '#FAF0E7', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#9A6A50' }}>实时排行榜</Text>
+                    </Box>
+                    <Box style={{ background: '#FAF0E7', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#9A6A50' }}>健康数据导入</Text>
+                    </Box>
+                </Box>
+            </Box>
+        </Box>
+    </Box>
+
+    <Box style={{ position: 'absolute', left: 53, bottom: 14, width: 1174, flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Text style={{ fontSize: 11, color: '#B3AAA1', letterSpacing: 1.5 }}>识膳智行 · SMART DIET</Text>
+        <Text style={{ fontSize: 11, color: '#B3AAA1', letterSpacing: 1.5 }}>03 / 11</Text>
+    </Box>
+</Slide>

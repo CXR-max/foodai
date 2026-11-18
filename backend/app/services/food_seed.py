@@ -25,18 +25,25 @@ def _read_json(path: Path):
 
 
 def _food_values(item: dict) -> dict:
+    """兼容两种种子格式：
+    - 新版：name_zh / category_l1 / nutrition
+    - 旧版（foods_seed.json 现状）：name / category / per_100g
+    """
     nutrition = item.get("nutrition") or item.get("per_100g") or {}
+    name_zh = item.get("name_zh") or item.get("name")
+    if not name_zh:
+        raise KeyError("种子条目缺少 name/name_zh")
     return {
         "source": item["source"],
         "source_id": item["source_id"],
-        "name_zh": item["name_zh"],
+        "name_zh": name_zh,
         "name_en": item.get("name_en"),
-        "name_norm": item.get("name_norm") or normalize_name(item["name_zh"]),
+        "name_norm": item.get("name_norm") or normalize_name(name_zh),
         "food_type": item.get("food_type") or "dish",
         "dish_style": item.get("dish_style") or "家常菜",
         "region": item.get("region") or "通用",
         "cuisine": item.get("cuisine") or "家常菜",
-        "category_l1": item.get("category_l1") or "其他",
+        "category_l1": item.get("category_l1") or item.get("category") or "其他",
         "category_l2": item.get("category_l2"),
         "state": item.get("state") or "cooked",
         "edible_ratio": item.get("edible_ratio") or 1.0,

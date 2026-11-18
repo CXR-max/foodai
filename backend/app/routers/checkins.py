@@ -6,7 +6,7 @@
 """
 import logging
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
@@ -17,6 +17,7 @@ from app.db.session import get_db
 from app.models.check_in import CheckIn
 from app.models.diet_plan import DietPlan, PlanDay
 from app.models.user import User
+from app.models.workout import Workout
 from app.schemas.checkin import FromPlanIn, ManualCheckInIn
 from app.services import day_context, diet_intake, metric_bands, points, schedule_import, wellness
 from app.services.achievements import calc_streak, unlock_all
@@ -39,6 +40,43 @@ TASK_ORDER = {
     "meal_breakfast": 0, "meal_lunch": 1, "meal_dinner": 2, "meal_snack": 3,
     "exercise": 4, "water": 5, "sleep": 6,
 }
+
+
+def sync_exercise_workout(db: Session, user: User, c: CheckIn) -> None:
+    """运动打卡落一条 workouts 记录，保证运动页/日程/每日目标同一本账。
+
+    之前日程页点“完成运动”只写 check_ins，运动页读 workouts 就看不到；
+    这里在打卡完成时补一条 manual workout，并用 client_id 幂等。
+    """
+    if c.check_type != "exercise":
+        return
+    existed = (db.query(Workout)
+               .filter(Workout.user_id == user.id,
+                       Workout.checkin_id == c.id)
+               .first())
+    if existed:
+        return
+    minutes = int(c.duration_min or 0)
+    if minutes <= 0:
+        return
+    start = datetime.combine(c.check_date, datetime.now().time().replace(microsecond=0))
+    db.add(Workout(
+        user_id=user.id,
+        sport_type=c.exercise_type or "运动",
+        source="manual",
+        start_at=start,
+        end_at=start + timedelta(minutes=minutes),
+        duration_sec=minutes * 60,
+        distance_m=0.0,
+        calories=c.calories_burned or 0,
+        intensity=c.intensity or "moderate",
+        met_used=c.met_used,
+        burn_detail=c.burn_detail or {},
+        note="来自日程运动任务",
+        plan_day_id=c.plan_day_id,
+        checkin_id=c.id,
+        client_id=f"checkin-{c.id}",
+    ))
 
 
 def task_short(c: CheckIn, plan_day: PlanDay | None) -> str:
@@ -306,6 +344,8 @@ def complete_checkin(
                 c.burn_detail = {"base": r["base"], "factors": r["factors"], "steps": r["steps"],
                                  "low": r["low"], "high": r["high"], "formula": r["formula"],
                                  "source": "方案任务按个性化模型补算"}
+    # 运动任务也落一条 workout，运动页和日程页读同一本账
+    sync_exercise_workout(db, user, c)
     # 注意：session 配置了 autoflush=False，先 flush 让下面的 pending 统计能看到本次改动
     db.flush()
     action = "task_exercise" if c.check_type == "exercise" else "task_meal"
@@ -413,6 +453,8 @@ def manual_checkin(
         met_used=met_used, burn_detail=detail, note=data.note,
     )
     db.add(c)
+    db.flush()   # 拿到 c.id，运动打卡才能关联 workout
+    sync_exercise_workout(db, user, c)
     ref = data.check_type   # 用 ref_type 区分饮食/运动的每日首次
     desc = ("手动记录饮食" if data.check_type == "diet"
             else f"手动运动打卡：{(data.exercise_type or '')}{(str(data.duration_min or '') + '分钟')}".strip())

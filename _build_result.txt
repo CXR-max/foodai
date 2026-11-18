@@ -1,0 +1,74 @@
+OK: food_aliases
+OK: food_relations
+OK: food_ingredients
+OK: food_recipes
+OK: food_recipe_items
+OK: import_batches
+
+=== 建索引 ===
+  索引 ix_foods_name_zh: (sqlite3.OperationalError) no such table: main.foods
+[SQL: CREATE INDEX ix_foods_name_zh ON foods (name_zh)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_foods_name_norm: (sqlite3.OperationalError) no such table: main.foods
+[SQL: CREATE INDEX ix_foods_name_norm ON foods (name_norm)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_foods_category_l1: (sqlite3.OperationalError) no such table: main.foods
+[SQL: CREATE INDEX ix_foods_category_l1 ON foods (category_l1)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_foods_verified: (sqlite3.OperationalError) no such table: main.foods
+[SQL: CREATE INDEX ix_foods_verified ON foods (verified)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_foods_cuisine: (sqlite3.OperationalError) no such table: main.foods
+[SQL: CREATE INDEX ix_foods_cuisine ON foods (cuisine)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_foods_active: (sqlite3.OperationalError) no such table: main.foods
+[SQL: CREATE INDEX ix_foods_active ON foods (active)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_foods_region: (sqlite3.OperationalError) no such table: main.foods
+[SQL: CREATE INDEX ix_foods_region ON foods (region)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_foods_dish_style: (sqlite3.OperationalError) no such table: main.foods
+[SQL: CREATE INDEX ix_foods_dish_style ON foods (dish_style)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_foods_active_lookup: (sqlite3.OperationalError) no such table: main.foods
+[SQL: CREATE INDEX ix_foods_active_lookup ON foods (active, region, cuisine, category_l1, food_type)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_foods_food_type: (sqlite3.OperationalError) no such table: main.foods
+[SQL: CREATE INDEX ix_foods_food_type ON foods (food_type)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_food_aliases_alias_norm: (sqlite3.OperationalError) no such table: main.food_aliases
+[SQL: CREATE INDEX ix_food_aliases_alias_norm ON food_aliases (alias_norm)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_food_aliases_food_id: (sqlite3.OperationalError) no such table: main.food_aliases
+[SQL: CREATE INDEX ix_food_aliases_food_id ON food_aliases (food_id)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_food_relations_relation_type: (sqlite3.OperationalError) no such table: main.food_relations
+[SQL: CREATE INDEX ix_food_relations_relation_type ON food_relations (relation_type)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_food_relations_group_key: (sqlite3.OperationalError) no such table: main.food_relations
+[SQL: CREATE INDEX ix_food_relations_group_key ON food_relations (group_key)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_food_relations_name_norm: (sqlite3.OperationalError) no such table: main.food_relations
+[SQL: CREATE INDEX ix_food_relations_name_norm ON food_relations (name_norm)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_food_ingredients_ingredient_name: (sqlite3.OperationalError) no such table: main.food_ingredients
+[SQL: CREATE INDEX ix_food_ingredients_ingredient_name ON food_ingredients (ingredient_name)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_food_ingredients_food_id: (sqlite3.OperationalError) no such table: main.food_ingredients
+[SQL: CREATE INDEX ix_food_ingredients_food_id ON food_ingredients (food_id)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_food_ingredients_ingredient_id: (sqlite3.OperationalError) no such table: main.food_ingredients
+[SQL: CREATE INDEX ix_food_ingredients_ingredient_id ON food_ingredients (ingredient_id)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_food_recipes_food_id: (sqlite3.OperationalError) no such table: main.food_recipes
+[SQL: CREATE INDEX ix_food_recipes_food_id ON food_recipes (food_id)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_food_recipe_items_ingredient_id: (sqlite3.OperationalError) no such table: main.food_recipe_items
+[SQL: CREATE INDEX ix_food_recipe_items_ingredient_id ON food_recipe_items (ingredient_id)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_food_recipe_items_recipe_id: (sqlite3.OperationalError) no such table: main.food_recipe_items
+[SQL: CREATE INDEX ix_food_recipe_items_recipe_id ON food_recipe_items (recipe_id)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+  索引 ix_import_batches_source: (sqlite3.OperationalError) no such table: main.import_batches
+[SQL: CREATE INDEX ix_import_batches_source ON import_batches (source)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
