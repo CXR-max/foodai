@@ -240,6 +240,22 @@ def normalize_meals(meals: list[dict]) -> list[dict]:
     return sorted(meals, key=lambda m: MEAL_ORDER.get(m.get("meal_type", "snack"), 9))
 
 
+def enrich_meal_ingredients(meals: list[dict]) -> list[dict]:
+    """按菜名从营养库反查食材，补到每道菜的 ingredients（购物清单聚合用）。
+
+    只在菜品已有食材为空时反查，避免覆盖 LLM / 求解器返回的更准确食材。
+    食物库只有部分菜带 ingredients，反查不到就留空，前端会自动回退列菜名。
+    """
+    for meal in meals or []:
+        for item in meal.get("items") or []:
+            if item.get("ingredients"):
+                continue
+            entry = foods_data.find_food(item.get("name", ""))
+            if entry:
+                item["ingredients"] = list(entry.get("ingredients") or [])
+    return meals
+
+
 def repeated_dishes(meals: list[dict]) -> list[str]:
     """同一天里出现在两个及以上餐次的菜（同一餐多吃两份不算，跨餐才算重复）。
 
@@ -473,7 +489,7 @@ def normalize_generated_day(
     return {
         "day_index": day_index,
         "theme": day.theme or PLAN_THEMES[(day_index - 1) % len(PLAN_THEMES)],
-        "meals": meals,
+        "meals": enrich_meal_ingredients(meals),
         "exercise": extra["exercise"],
         "exercises": extra["exercises"],
         "sleep": extra["sleep"],
@@ -1035,6 +1051,7 @@ def _apply_meals(plan: DietPlan, day: PlanDay, meals_in: list, rebalance: str | 
     elif info["status"] == "high" and rebalance == "exercise":
         exercise = plan_lifecycle.rebalance_by_exercise(plan, day, info["excess_kcal"])
 
+    recalculated["meals"] = enrich_meal_ingredients(recalculated["meals"])
     return recalculated, info, exercise
 
 

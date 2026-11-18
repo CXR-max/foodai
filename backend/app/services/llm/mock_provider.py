@@ -142,7 +142,8 @@ class MockProvider(LLMProvider):
                 meal_cal = day_target * ratio
                 # 每餐选 1~2 道菜
                 main = cands[(day_i + len(meals)) % len(cands)]
-                items = [PlanMealItem(name=main["name"], portion_g=main["common_portion_g"])]
+                items = [PlanMealItem(name=main["name"], portion_g=main["common_portion_g"],
+                                      ingredients=main.get("ingredients") or [])]
                 total = main["per_100g"]["calories"] * main["common_portion_g"] / 100
                 if meal_type in ("lunch", "dinner"):
                     # 午/晚餐主食：优先米饭/面条类（排除面包类），更符合中餐习惯
@@ -152,7 +153,8 @@ class MockProvider(LLMProvider):
                                    and meal_type in (f.get("suitable_meals") or [])]
                     staple_pool = staple_pool or [f for f in pool if f.get("category") == "主食" and "面包" not in f["name"]] or pool
                     staple = staple_pool[day_i % len(staple_pool)]
-                    items.append(PlanMealItem(name=staple["name"], portion_g=staple["common_portion_g"]))
+                    items.append(PlanMealItem(name=staple["name"], portion_g=staple["common_portion_g"],
+                                              ingredients=staple.get("ingredients") or []))
                     total += staple["per_100g"]["calories"] * staple["common_portion_g"] / 100
                 meals.append(PlanMeal(
                     meal_type=meal_type,

@@ -46,6 +46,7 @@ class PlanMealItem(BaseModel):
     """一餐里的单个菜品"""
     name: str
     portion_g: float = Field(default=100, ge=0)
+    ingredients: list[str] = Field(default_factory=list)  # 主要食材，供购物清单聚合
 
 
 class PlanMeal(BaseModel):

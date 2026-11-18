@@ -101,17 +101,17 @@ def build_plan_messages(profile_ctx: dict, days: int, note: str = "") -> list[di
       "day_index": 1,
       "theme": "当天主题",
       "meals": [
-        {{"meal_type": "breakfast", "items": [{{"name": "菜名", "portion_g": 克数}}], "calories": 本餐热量}},
-        {{"meal_type": "lunch", "items": [{{"name": "菜名", "portion_g": 克数}}], "calories": 本餐热量}},
-        {{"meal_type": "dinner", "items": [{{"name": "菜名", "portion_g": 克数}}], "calories": 本餐热量}},
-        {{"meal_type": "snack", "items": [{{"name": "菜名", "portion_g": 克数}}], "calories": 本餐热量}}
+        {{"meal_type": "breakfast", "items": [{{"name": "菜名", "portion_g": 克数, "ingredients": ["食材1", "食材2"]}}], "calories": 本餐热量}},
+        {{"meal_type": "lunch", "items": [{{"name": "菜名", "portion_g": 克数, "ingredients": ["食材1", "食材2"]}}], "calories": 本餐热量}},
+        {{"meal_type": "dinner", "items": [{{"name": "菜名", "portion_g": 克数, "ingredients": ["食材1", "食材2"]}}], "calories": 本餐热量}},
+        {{"meal_type": "snack", "items": [{{"name": "菜名", "portion_g": 克数, "ingredients": ["食材1", "食材2"]}}], "calories": 本餐热量}}
       ],
       "exercise": {{"type": "运动名", "duration_min": 分钟, "calories_burned": 消耗千卡, "tips": "一句话要领"}}
     }}
   ]
 }}
 
-要求：每天 4 餐、每餐 1 道主菜；tips 不超过 15 字；只输出 JSON。"""
+要求：每天 4 餐、每餐 1 道主菜；每道菜的 ingredients 列 2~6 种主要食材（不含油盐酱醋等调味料）；tips 不超过 15 字；只输出 JSON。"""
 
     user = f"""【用户档案】
 - 身高：{profile_ctx.get('height_cm', '未填')} cm，体重：{profile_ctx.get('weight_kg', '未填')} kg，BMI：{profile_ctx.get('bmi', '未填')}
@@ -160,16 +160,17 @@ def build_day_messages(profile_ctx: dict, day_index: int, days: int,
 3.【渐进式】第 1 天热量接近当前水平，逐日向目标靠近；运动强度逐日递增
 4.【精简】每餐只 1 道主菜，不要"套餐名"
 5.【不重复】尽量避开前面已用过的菜：{used_txt}
+6.【食材】每道菜的 ingredients 列 2~6 种主要食材，不含油盐酱醋等调味料
 
 输出格式（严格照抄字段名）：
 {{
   "day_index": {day_index},
   "theme": "当天主题",
   "meals": [
-    {{"meal_type": "breakfast", "items": [{{"name": "菜名", "portion_g": 克数}}], "calories": 本餐热量}},
-    {{"meal_type": "lunch", "items": [{{"name": "菜名", "portion_g": 克数}}], "calories": 本餐热量}},
-    {{"meal_type": "dinner", "items": [{{"name": "菜名", "portion_g": 克数}}], "calories": 本餐热量}},
-    {{"meal_type": "snack", "items": [{{"name": "菜名", "portion_g": 克数}}], "calories": 本餐热量}}
+    {{"meal_type": "breakfast", "items": [{{"name": "菜名", "portion_g": 克数, "ingredients": ["食材1", "食材2"]}}], "calories": 本餐热量}},
+    {{"meal_type": "lunch", "items": [{{"name": "菜名", "portion_g": 克数, "ingredients": ["食材1", "食材2"]}}], "calories": 本餐热量}},
+    {{"meal_type": "dinner", "items": [{{"name": "菜名", "portion_g": 克数, "ingredients": ["食材1", "食材2"]}}], "calories": 本餐热量}},
+    {{"meal_type": "snack", "items": [{{"name": "菜名", "portion_g": 克数, "ingredients": ["食材1", "食材2"]}}], "calories": 本餐热量}}
   ],
   "exercise": {{"type": "运动名", "duration_min": 分钟, "calories_burned": 消耗千卡, "tips": "一句话"}}
 }}
