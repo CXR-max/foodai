@@ -82,6 +82,15 @@ class Settings(BaseSettings):
     LLM_FALLBACK_TO_MOCK: bool = True # 真模型失败后自动降级 mock（演示保命开关）
     TEXT_FALLBACK_TO_CLOUD: bool = True  # 文字用本地模型时，连不上自动切云端（有 key 才生效）
 
+    # ---- 手环「实时」后台同步（融合自 feat/personalized-burn）----
+    # 后端每 BAND_SYNC_SECONDS 秒给绑定的手环刷一条分钟级样本，页面轮询即可看到数字在动。
+    # 关掉：.env 里设 BAND_AUTO_SYNC=false（页面开关只影响单台设备）
+    BAND_AUTO_SYNC: bool = True
+    BAND_SYNC_SECONDS: int = 20          # 采样间隔（秒），最小 15；越小越像实时
+    BAND_SAMPLE_KEEP_DAYS: int = 3       # 实时样本保留天数，过期自动清理
+    # 导出的数据包扔进这个目录，后台会自动导入（手机上不方便点上传时的备用通道）
+    BAND_INBOX_DIR: Path = BASE_DIR / "band_inbox"
+
     # ---- 识别防刷 ----
     VISION_DAILY_QUOTA: int = 50      # 每人每天最多识别次数（0=不限制）
     VISION_DEDUPE_HOURS: int = 24     # 同图去重窗口（小时内重复上传直接回放上次结果）

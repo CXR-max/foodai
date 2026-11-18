@@ -7,6 +7,9 @@ import * as wellnessApi from '@/api/wellness'
 import type { DaySummary } from '@/api/wellness'
 import type { Overview } from '@/api/stats'
 import { useAuthStore } from '@/stores/auth'
+// 融合：能量天平（三环下方）+ AI 教练（同页悬浮）
+import EnergyBalance from '@/components/EnergyBalance.vue'
+import CoachChat from '@/components/CoachChat.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -22,6 +25,7 @@ const shortcuts = [
   { title: '成就徽章', icon: '🎖', path: '/achievements' },
   { title: '排行榜', icon: '🏆', path: '/leaderboard' },
   { title: '饮食记录', icon: '🍽', path: '/recognition' },
+  { title: '手环数据', icon: '⌚', path: '/m/band' },
 ]
 
 const calPct = computed(() => {
@@ -189,6 +193,12 @@ onMounted(() => {
         </p>
       </div>
     </section>
+
+    <!-- 融合：能量天平紧跟三环；摄入与主分支同源，消耗含「手动打卡 + 手环记录」 -->
+    <EnergyBalance />
+
+    <!-- 融合：AI 教练只在这一页悬浮（FAB 抬到 tabBar 上方，不遮挡内容） -->
+    <CoachChat />
   </div>
 </template>
 

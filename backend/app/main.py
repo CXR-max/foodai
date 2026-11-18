@@ -14,8 +14,8 @@ from app.core.config import settings
 from app.db.session import SessionLocal
 from app.models.reward import Reward
 from app.routers import (
-    achievements, auth, checkins, daily, food_records, foods, plans, points, profile,
-    recognitions, rewards, stats, wellness,
+    achievements, auth, checkins, coach, daily, devices, food_records, foods, plans,
+    points, profile, recognitions, rewards, stats, wellness,
 )
 from app.services.achievement_seed import seed_achievements
 from app.services.food_seed import seed_foods_if_empty
@@ -62,7 +62,14 @@ async def lifespan(app: FastAPI):
     seed_rewards()
     seed_achievements(SessionLocal())
     seed_foods_if_empty()
-    yield
+    # 手环「实时」后台采样（融合）：每 BAND_SYNC_SECONDS 秒一条分钟级样本，
+    # 页面轮询即可看到步数/心率在走；导出包投递目录也会被自动扫描导入。
+    from app.services import band_live
+    band_live.start_loop()
+    try:
+        yield
+    finally:
+        await band_live.stop_loop()
 
 
 app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
@@ -97,7 +104,7 @@ app.mount("/uploads", StaticFiles(directory=str(settings.UPLOAD_DIR)), name="upl
 
 # 业务路由，统一挂 /api 前缀
 for r in (auth, profile, recognitions, food_records, foods, plans, checkins, daily,
-          wellness, stats, points, rewards, achievements):
+          wellness, stats, points, rewards, achievements, devices, coach):
     app.include_router(r.router, prefix="/api")
 
 

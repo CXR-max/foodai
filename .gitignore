@@ -6,6 +6,9 @@ backend/foodai.db
 # SQLite WAL 模式产生的临时文件（开启 WAL 后每次连接都会生成）
 backend/foodai.db-wal
 backend/foodai.db-shm
+# 融合前的本地库备份 + 一次性校验脚本（只在本地保留，不进仓库）
+backend/foodai_local_backup_*.db
+tools/.tmp_*
 backend/uploads/
 backend/alembic/versions/*.pyc
 

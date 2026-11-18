@@ -26,6 +26,8 @@ from app.models.achievement import Achievement, UserAchievement
 from app.models.weekly_report import WeeklyReportCache
 from app.models.sleep_log import SleepLog
 from app.models.water_log import WaterLog
+# 手环接入（融合自 feat/personalized-burn）：设备登记 / 每日指标 / 分钟级实时样本
+from app.models.device import Device, DeviceMetric, DeviceSample
 from app.models.food import (
     Food,
     FoodAlias,
@@ -44,6 +46,7 @@ __all__ = [
     "Achievement", "UserAchievement",
     "WeeklyReportCache",
     "SleepLog", "WaterLog",
+    "Device", "DeviceMetric", "DeviceSample",
     "Food", "FoodAlias", "FoodRelation", "FoodIngredient",
     "FoodRecipe", "FoodRecipeItem", "ImportBatch",
 ]
