@@ -395,6 +395,54 @@ onMounted(() => {
 .rx-basis { margin: 8px 0 0; font-size: 11px; color: #909399; line-height: 1.5; }
 .rx-foot { margin: 6px 0 0; font-size: 10.5px; color: #b6bcc8; line-height: 1.5; }
 
+/* 诉求四选一：诉求决定策略，不是按 BMI 一刀切 */
+.goal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+.goal-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid #e8eaf0;
+  border-radius: 10px;
+  background: #fbfcfe;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.goal-item:hover { border-color: #c6d4ea; background: #f5f9ff; }
+.goal-item.active { border-color: #67c23a; background: #f2fbef; box-shadow: 0 0 0 1px #67c23a inset; }
+.goal-name { font-size: 13px; font-weight: 600; color: #303133; }
+.goal-desc { font-size: 11px; color: #909399; line-height: 1.45; }
+
+/* 处方卡 */
+.rx-summary { margin: 0 0 10px; font-size: 12.5px; line-height: 1.6; color: #4b5563; }
+.rx-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
+.rx-cell {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 8px 10px; border-radius: 8px; background: #f7f9fc;
+}
+.rx-k { font-size: 11px; color: #8a94a6; }
+.rx-v { font-size: 14px; color: #303133; }
+.rx-targets { border-top: 1px dashed #eceff4; padding-top: 8px; margin-bottom: 10px; }
+.rx-line {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 12px; padding: 3px 0; color: #606266;
+}
+.rx-line-k { width: 56px; color: #8a94a6; flex: none; }
+.rx-line-v { flex: 1; color: #303133; font-variant-numeric: tabular-nums; }
+.rx-focus { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.rx-chip {
+  padding: 2px 8px; border-radius: 999px; background: #eef6ff;
+  color: #2b6cd4; font-size: 11px;
+}
+.rx-warn { margin: 4px 0 0; font-size: 11.5px; line-height: 1.55; color: #b07a1e; }
+.rx-basis { margin: 8px 0 0; font-size: 11px; color: #909399; line-height: 1.5; }
+.rx-foot { margin: 6px 0 0; font-size: 10.5px; color: #b6bcc8; line-height: 1.5; }
+
 /* 手机端「更多功能」入口列表 */
 .more-card { padding-bottom: 6px; }
 .more-item {
