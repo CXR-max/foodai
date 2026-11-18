@@ -8,6 +8,7 @@ backend/foodai.db-wal
 backend/foodai.db-shm
 # 融合前的本地库备份 + 一次性校验脚本（只在本地保留，不进仓库）
 backend/foodai_local_backup_*.db
+backend/foodai_merge_backup_*.db
 tools/.tmp_*
 backend/uploads/
 backend/alembic/versions/*.pyc
