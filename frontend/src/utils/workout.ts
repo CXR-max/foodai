@@ -88,6 +88,7 @@ export function fmtWhen(iso: string | null | undefined): string {
 export const SPORT_ICON: Record<string, string> = {
   跑步: '🏃', 快走: '🚶', 骑行: '🚴', 跑步机: '🏃', 跳绳: '🤸',
   瑜伽: '🧘', 拉伸: '🤸', 八段锦: '🧘', 呼吸: '🌬️',
+  慢跑: '🏃', 游泳: '🏊', 力量训练: '🏋️', 球类: '🏀', 其他: '🤸',
 }
 export const sportIcon = (t: string) => SPORT_ICON[t] || '🏃'
 

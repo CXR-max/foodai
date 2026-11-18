@@ -1,7 +1,6 @@
 <script setup lang="ts">
 // 登录页：账号密码登录 + 人脸登录
 import { defineAsyncComponent, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
@@ -13,7 +12,6 @@ import * as faceApi from '@/api/face'
 const FaceCaptureDialog = defineAsyncComponent(() => import('@/components/FaceCaptureDialog.vue'))
 
 const auth = useAuthStore()
-const router = useRouter()
 const formRef = ref<FormInstance>()
 const loading = ref(false)
 const form = reactive({ username: '', password: '' })
@@ -34,7 +32,9 @@ async function submit() {
   try {
     await auth.login(form.username, form.password)
     ElMessage.success('登录成功')
-    router.push(homePath())
+    // 手机自带浏览器 / 内网穿透下 history 路由偶发不跳转；
+    // 登录后整页进入对应首页最稳（token 已写 localStorage，守卫会放行）。
+    window.location.replace(homePath())
   } finally {
     loading.value = false
   }
@@ -70,7 +70,7 @@ async function onFaceCaptured(images: string[]) {
     const data = await faceApi.faceLogin(ticket)
     auth.setSession(data.token, data.user)
     ElMessage.success('刷脸登录成功')
-    router.push(homePath())
+    window.location.replace(homePath())
   } catch {
     /* 错误提示已统一处理 */
   } finally {
@@ -84,14 +84,28 @@ async function onFaceCaptured(images: string[]) {
     <el-card class="auth-card">
       <h2 class="auth-title">🥗 识膳智行</h2>
       <p class="auth-sub">AI 健康管理平台 · 爱吃才是最好的营养师</p>
-      <el-form ref="formRef" :model="form" :rules="rules" size="large" @keyup.enter="submit">
+      <el-form
+        ref="formRef"
+        :model="form"
+        :rules="rules"
+        size="large"
+        @submit.prevent="submit"
+        @keyup.enter.prevent="submit"
+      >
         <el-form-item prop="username">
           <el-input v-model="form.username" placeholder="用户名" />
         </el-form-item>
         <el-form-item prop="password">
           <el-input v-model="form.password" type="password" show-password placeholder="密码" />
         </el-form-item>
-        <el-button type="success" size="large" style="width: 100%" :loading="loading" @click="submit">
+        <el-button
+          type="success"
+          size="large"
+          style="width: 100%"
+          native-type="button"
+          :loading="loading"
+          @click="submit"
+        >
           登 录
         </el-button>
       </el-form>

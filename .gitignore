@@ -96,3 +96,4 @@ frontend/android/app/release/
 backend/foodai.db.bak-*
 backend/foodai.db.snap-*
 backend/gen_out.json
+_remote_main/

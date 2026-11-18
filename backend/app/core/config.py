@@ -59,6 +59,8 @@ class Settings(BaseSettings):
     LOCAL_TEXT_BASE_URL: str = "http://localhost:11434/v1"
     LOCAL_TEXT_API_KEY: str = "ollama"        # Ollama 不校验，占位即可
     LOCAL_TEXT_MODEL: str = "qwen2.5:7b"
+    # 意图抽取专用小模型（3B 更快；留空则只用 LOCAL_TEXT_MODEL）
+    LOCAL_INTENT_MODEL: str = ""
 
     # 通义千问（云端文字，阿里云 DashScope OpenAI 兼容端点，有免费额度）
     QWEN_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
@@ -74,6 +76,9 @@ class Settings(BaseSettings):
     LLM_MAX_TOKENS: int = 2048        # 通用/整份方案最大输出 tokens
     LLM_DAY_MAX_TOKENS: int = 700     # 逐天生成方案时单天上限（约 400 字 JSON，够用且防截断）
     LLM_CHAT_MAX_TOKENS: int = 128    # 聊天回复最大输出（提示词要求 ≤80 字）
+    # 对话意图抽取：独立超时与输出预算（小模型 + JSON，比普通聊天更需要余量）
+    LLM_INTENT_TIMEOUT: int = 45
+    LLM_INTENT_MAX_TOKENS: int = 512
     LLM_REPORT_MAX_TOKENS: int = 700  # AI 健康周报输出上限（结构化 JSON 点评）
     LLM_VISION_MAX_TOKENS: int = 1500 # 食物识别输出上限（思考 token 与 JSON 共用预算，留足余量）
     LLM_VISION_THINKING: bool = False # glm-4v-flash 不支持思考模式，关闭避免报错
@@ -128,6 +133,13 @@ class Settings(BaseSettings):
         if self.TEXT_PROVIDER.strip().lower() == "local":
             return self.LOCAL_TEXT_MODEL
         return self.CLOUD_TEXT_MODEL
+
+    @property
+    def intent_model(self) -> str:
+        """意图抽取用的模型名；只有本地模式才有独立小模型，其余返回空由调用方跳过。"""
+        if self.TEXT_PROVIDER.strip().lower() == "local":
+            return self.LOCAL_INTENT_MODEL
+        return ""
 
     # 视觉：暂时始终走云端
     @property

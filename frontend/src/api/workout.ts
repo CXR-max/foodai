@@ -105,7 +105,9 @@ export const createManualWorkout = (data: {
   start_at?: string | null
   duration_sec: number
   distance_m?: number | null
+  intensity?: 'light' | 'moderate' | 'intense' | null
   note?: string
+  plan_day_id?: number | null
   client_id?: string | null
 }) => post<WorkoutDetail & { points_awarded: number; message: string }>('/workouts/manual', data)
 

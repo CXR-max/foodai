@@ -155,4 +155,4 @@ def estimate_intensity(sport_type: str, distance_m: float, duration_sec: int) ->
 
 
 # 我们的消耗模型里没有"跑步机"，按跑步算；跳绳本来就有
-MET_TYPE_MAP = {"跑步机": "跑步"}
+MET_TYPE_MAP = {"跑步机": "跑步", "慢跑": "跑步", "拉伸": "瑜伽", "其他": "快走"}

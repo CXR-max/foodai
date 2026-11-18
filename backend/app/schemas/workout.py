@@ -38,5 +38,9 @@ class ManualWorkoutIn(BaseModel):
     start_at: datetime | None = None
     duration_sec: int = Field(ge=60, le=86400)
     distance_m: float | None = Field(default=None, ge=0)
+    # 用户自选强度；不传则按运动类型 + 时速自动估算
+    intensity: str | None = Field(default=None, pattern="^(light|moderate|intense)$")
     note: str = Field(default="", max_length=300)
+    # 按方案处方补录时关联方案天，便于后续算依从性
+    plan_day_id: int | None = None
     client_id: str | None = Field(default=None, max_length=64)

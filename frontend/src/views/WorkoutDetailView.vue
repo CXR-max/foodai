@@ -10,10 +10,16 @@ import {
   fmtDistance, fmtDuration, fmtPace, fmtSpeed, fmtWhen, isRide, paceColor, paceToSpeed, sportIcon,
 } from '@/utils/workout'
 import { refreshTodayCheckin } from '@/stores/todayCheckin'
+import { isMobile } from '@/composables/useIsMobile'
 
 const route = useRoute()
 const router = useRouter()
 const id = Number(route.params.id)
+
+/** 手机端回新的运动首页；桌面端才回 /workout */
+function backToList() {
+  router.replace(isMobile.value ? '/m/sport' : '/workout')
+}
 
 const w = ref<WorkoutDetail | null>(null)
 const loading = ref(true)
@@ -73,7 +79,7 @@ async function load() {
     w.value = await workoutApi.getWorkout(id)
   } catch {
     ElMessage.error('运动记录不存在')
-    router.replace('/workout')
+    backToList()
   } finally {
     loading.value = false
   }
@@ -90,7 +96,7 @@ async function remove() {
   await workoutApi.deleteWorkout(id)
   refreshTodayCheckin()
   ElMessage.success('已删除')
-  router.replace('/workout')
+  backToList()
 }
 
 async function share() {

@@ -89,10 +89,15 @@ MAX_SERVINGS = 4               # 每餐每道菜最多 4 份（绝对上限）
 MAX_GRAMS_PER_DISH = 500       # 单道菜最多 500g，避免 1000g 豆浆/800g 青菜
 MIN_DISHES_PER_MEAL = 1
 MAX_DISHES_PER_MEAL = 3
+# 份量粒度：1 标准份拆成 2 步（= 半份可点）。
+# 旧库里 common_portion_g 多为 100/200 g，只能整份加时热量粒度为 150~250 kcal，
+# 目标上限（如 2390）永远跨不过去，求解器被判无解后强行放宽 → 蛋白/脂肪超标。
+SERVING_STEPS = 2
 # 加餐是小食组合（水果 + 酸奶 + 几颗坚果很正常），上限放宽到 4 道——
 # 指南要求每天 12 种以上，正餐 3×3=9 种不够，缺额靠加餐补
 MAX_DISHES_SNACK = 4
-SOLVER_TIME_LIMIT = 3.0        # 单次求解限时（秒）。扩池+宝塔约束后 0.8 s 解不完，                               # 会误报「无解」直接拒绝出方案；7 天方案约 20 s，可接受
+SOLVER_TIME_LIMIT = 0.8        # 单次求解限时（秒）。降级链会重试多轮，单轮过长会让
+                               # 3 天方案从前端角度看「卡住」（实测 3.0s×8 轮≈170s）
 
 # CP-SAT 只能处理整数：统一放大 10 倍（热量 0.1 kcal，蛋白 0.1 g）
 SCALE = 10
@@ -482,7 +487,7 @@ def _day_nutrients(selected: dict[str, list[tuple[dict, int]]]) -> dict:
     totals = {key: 0.0 for key in NUTRIENT_SCALES}
     for meal_type, _ratio in MEALS:
         for food, servings in selected.get(meal_type, []):
-            portion_g = float(food["common_portion_g"]) * servings
+            portion_g = float(food["common_portion_g"]) * servings / SERVING_STEPS
             values = foods_data.calc_diet_nutrients(food, portion_g)
             for key, value in values.items():
                 totals[key] += float(value or 0)
@@ -499,14 +504,16 @@ def _verify(nutrients: dict, targets: dict, soft_keys: tuple[str, ...]) -> dict:
     return nutrition_check.check(nutrients, targets, soft_keys=soft)
 
 
-def _serving_units(food: dict) -> dict[str, int]:
-    """一份菜的七项营养（各自按 NUTRIENT_SCALES 取整），全部由 foods_data 按克重换算
+def _serving_units(food: dict, steps: int = 1) -> dict[str, int]:
+    """一步（默认 1 步 = 1 份）的七项营养（各自按 NUTRIENT_SCALES 取整）
+
+    steps>1 时返回「1/steps 份」的营养，供求解器按细粒度累加。
 
     纤维/钠/糖缺失时按同类中位数补（见 foods_data.reference_per_100g）：
     按 0 算会系统性低估，方案会「看起来纤维达标、实际只有一半」。
     """
     per = food["per_100g"]
-    factor = float(food["common_portion_g"]) / 100.0
+    factor = float(food["common_portion_g"]) / 100.0 / max(1, steps)
     units: dict[str, int] = {}
     for key, scale in NUTRIENT_SCALES.items():
         raw = per.get(key)
@@ -665,22 +672,26 @@ def _solve_day(
             name = food["name"]
             key = (meal_type, name)
             portion_g = float(food["common_portion_g"])
-            max_servings = min(MAX_SERVINGS, max(1, int(MAX_GRAMS_PER_DISH // portion_g)))
-            x_var = model.NewIntVar(0, max_servings, f"x_{meal_type}_{len(x)}")
+            max_steps = min(
+                MAX_SERVINGS * SERVING_STEPS,
+                max(SERVING_STEPS, int(MAX_GRAMS_PER_DISH // portion_g) * SERVING_STEPS),
+            )
+            x_var = model.NewIntVar(0, max_steps, f"x_{meal_type}_{len(x)}")
             y_var = model.NewBoolVar(f"y_{meal_type}_{len(y)}")
             x[key] = x_var
             y[key] = y_var
-            # 0 份 = 不选；1~max_servings 份 = 选中
-            model.Add(x_var <= max_servings * y_var)
+            # 0 步 = 不选；1~max_steps 步（SERVING_STEPS 步 = 1 份）= 选中
+            model.Add(x_var <= max_steps * y_var)
             model.Add(x_var >= y_var)
-            units = _serving_units(food)
+            units = _serving_units(food, SERVING_STEPS)
             for nutrient, value in units.items():
                 serving[nutrient][key] = value
             by_name[name].append(y_var)
             # 单菜超过 2 份的部分单独计惩罚（仅对标准份量较小的菜生效）
-            if max_servings > 2:
-                extra = model.NewIntVar(0, max_servings - 2, f"extra_{meal_type}_{len(x)}")
-                model.Add(extra >= x_var - 2)
+            standard_steps = 2 * SERVING_STEPS
+            if max_steps > standard_steps:
+                extra = model.NewIntVar(0, max_steps - standard_steps, f"extra_{meal_type}_{len(x)}")
+                model.Add(extra >= x_var - standard_steps)
                 extra_servings.append(extra)
 
     total = {
@@ -951,7 +962,7 @@ def _to_plan_day(
         items: list[PlanMealItem] = []
         calories = 0.0
         for food, servings in selected.get(meal_type, []):
-            portion_g = float(food["common_portion_g"]) * servings
+            portion_g = float(food["common_portion_g"]) * servings / SERVING_STEPS
             nut = foods_data.calc_nutrition(food, portion_g)
             items.append(PlanMealItem(name=food["name"], portion_g=portion_g))
             calories += float(nut["calories"])
@@ -1056,7 +1067,7 @@ def build_day(
                                 if layer not in (food_layers.EGG, food_layers.BEAN))
             species_min = 10
             # 兜底一级放宽时限：宁可多花几秒也别拒出方案
-            time_limit = max(SOLVER_TIME_LIMIT, 8.0)
+            time_limit = max(SOLVER_TIME_LIMIT, 4.0)
         for variety_relaxed in (False, True):
             selected = _solve_day(
                 pools=pools,

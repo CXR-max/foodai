@@ -288,7 +288,8 @@ def create_manual_workout(
             return {**_workout_dict(existed, with_track=True), "points_awarded": 0,
                     "message": "已保存（重复提交已忽略）"}
     start = _naive_local(data.start_at) or datetime.now()
-    intensity = workout_calc.estimate_intensity(data.sport_type, data.distance_m or 0, data.duration_sec)
+    intensity = data.intensity or workout_calc.estimate_intensity(
+        data.sport_type, data.distance_m or 0, data.duration_sec)
     met_type = workout_calc.MET_TYPE_MAP.get(data.sport_type, data.sport_type)
     duration_min = max(1, round(data.duration_sec / 60))
     burn = personalized_burn(met_type, duration_min, _profile(db, user.id), intensity)
@@ -304,7 +305,8 @@ def create_manual_workout(
         distance_m=round(data.distance_m, 1) if data.distance_m else 0.0,
         avg_pace_sec_km=round(avg_pace, 1) if avg_pace else None,
         calories=burn["calories_burned"], intensity=intensity, met_used=burn["met"],
-        burn_detail=burn_detail, note=data.note, client_id=data.client_id,
+        burn_detail=burn_detail, note=data.note, plan_day_id=data.plan_day_id,
+        client_id=data.client_id,
     )
     db.add(w)
     db.flush()
