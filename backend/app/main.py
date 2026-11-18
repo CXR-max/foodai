@@ -14,8 +14,8 @@ from app.core.config import settings
 from app.db.session import SessionLocal
 from app.models.reward import Reward
 from app.routers import (
-    achievements, auth, checkins, food_records, foods, plans, points, profile,
-    recognitions, rewards, stats,
+    achievements, auth, checkins, face, food_records, foods, plans, points, profile,
+    recognitions, rewards, stats, workouts,
 )
 from app.services.achievement_seed import seed_achievements
 from app.services.food_seed import seed_foods_if_empty
@@ -51,9 +51,95 @@ def seed_rewards():
         db.close()
 
 
+def auto_fix_columns():
+    """启动时自动补合并后缺失的列（SQLite 不支持 IF NOT EXISTS，需手动检查）"""
+    from sqlalchemy import text, inspect
+    from app.db.session import engine
+    insp = inspect(engine)
+    fixes = [
+        ("health_profiles", "body_fat_pct", "ALTER TABLE health_profiles ADD COLUMN body_fat_pct FLOAT"),
+        ("check_ins", "intensity", "ALTER TABLE check_ins ADD COLUMN intensity VARCHAR(10)"),
+        ("check_ins", "met_used", "ALTER TABLE check_ins ADD COLUMN met_used FLOAT"),
+        ("check_ins", "burn_detail", "ALTER TABLE check_ins ADD COLUMN burn_detail JSON"),
+        ("users", "equipped_achievement_id", "ALTER TABLE users ADD COLUMN equipped_achievement_id INTEGER"),
+        ("workouts", "client_id", "ALTER TABLE workouts ADD COLUMN client_id VARCHAR(64)"),
+    ]
+    with engine.connect() as conn:
+        # 人脸底库表（没有 alembic 迁移时也能自建）
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS user_faces (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER NOT NULL UNIQUE,
+                image_path VARCHAR(300) NOT NULL,
+                provider VARCHAR(20),
+                created_at DATETIME,
+                updated_at DATETIME
+            )
+        """))
+        conn.commit()
+        # 运动记录表（没有 alembic 迁移时也能自建；字段与 models/workout.py 保持一致）
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS workouts (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                sport_type VARCHAR(20) NOT NULL,
+                source VARCHAR(10) NOT NULL,
+                start_at DATETIME NOT NULL,
+                end_at DATETIME,
+                duration_sec INTEGER NOT NULL DEFAULT 0,
+                distance_m FLOAT,
+                avg_pace_sec_km FLOAT,
+                best_pace_sec_km FLOAT,
+                elevation_gain FLOAT,
+                calories FLOAT,
+                intensity VARCHAR(10),
+                met_used FLOAT,
+                burn_detail JSON,
+                avg_hr INTEGER,
+                max_hr INTEGER,
+                hr_series JSON,
+                track JSON,
+                splits JSON,
+                external_id VARCHAR(64),
+                client_id VARCHAR(64),
+                note VARCHAR(300),
+                plan_day_id INTEGER,
+                checkin_id INTEGER,
+                created_at DATETIME,
+                FOREIGN KEY(user_id) REFERENCES users (id),
+                FOREIGN KEY(plan_day_id) REFERENCES plan_days (id),
+                FOREIGN KEY(checkin_id) REFERENCES check_ins (id)
+            )
+        """))
+        for idx_sql in (
+            "CREATE INDEX IF NOT EXISTS ix_workouts_user_id ON workouts (user_id)",
+            "CREATE INDEX IF NOT EXISTS ix_workouts_start_at ON workouts (start_at)",
+            "CREATE INDEX IF NOT EXISTS ix_workouts_external_id ON workouts (external_id)",
+        ):
+            conn.execute(text(idx_sql))
+        conn.commit()
+        for table, col, sql in fixes:
+            try:
+                existing = [c["name"] for c in insp.get_columns(table)]
+                if col not in existing:
+                    conn.execute(text(sql))
+                    conn.commit()
+                    print(f"[自动补列] {table}.{col}")
+            except Exception as e:
+                print(f"[自动补列] {table}.{col} 跳过: {e}")
+        # 幂等索引要在 client_id 补列之后建（老库先补列，否则 create index 会报 no such column）
+        try:
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_workouts_client_id ON workouts (client_id)"))
+            conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_workouts_user_client ON workouts (user_id, client_id)"))
+            conn.commit()
+        except Exception as e:
+            print(f"[自动补列] workouts.client_id 索引跳过: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用启动/关闭钩子"""
+    auto_fix_columns()
     seed_rewards()
     seed_achievements(SessionLocal())
     seed_foods_if_empty()
@@ -90,7 +176,7 @@ app.add_middleware(
 app.mount("/uploads", StaticFiles(directory=str(settings.UPLOAD_DIR)), name="uploads")
 
 # 业务路由，统一挂 /api 前缀
-for r in (auth, profile, recognitions, food_records, foods, plans, checkins, stats, points, rewards, achievements):
+for r in (auth, face, profile, recognitions, food_records, foods, plans, checkins, stats, points, rewards, achievements, workouts):
     app.include_router(r.router, prefix="/api")
 
 

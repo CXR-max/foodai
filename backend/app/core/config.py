@@ -86,6 +86,15 @@ class Settings(BaseSettings):
     VISION_DAILY_QUOTA: int = 50      # 每人每天最多识别次数（0=不限制）
     VISION_DEDUPE_HOURS: int = 24     # 同图去重窗口（小时内重复上传直接回放上次结果）
 
+    # ---- 人脸登录 ----
+    FACE_PROVIDER: str = "mock"           # mock=本地演示 | baidu=百度智能云人脸比对
+    FACE_MATCH_THRESHOLD: float = 80.0    # 1:1 比对通过分（百度 0~100）
+    FACE_MOCK_STRICT: bool = False        # mock 下是否也做相似度校验（默认直接放行，便于演示）
+    FACE_TICKET_TTL: int = 120            # 核验通过后一次性票据有效期（秒）
+    FACE_DIR: Path = BASE_DIR / "data" / "faces"   # 人脸底库目录（不对外暴露）
+    BAIDU_FACE_API_KEY: str = ""
+    BAIDU_FACE_SECRET_KEY: str = ""
+
     # ---- 派生：当前生效的文字 / 视觉配置（业务代码只认这几个）----
     @property
     def is_local(self) -> bool:

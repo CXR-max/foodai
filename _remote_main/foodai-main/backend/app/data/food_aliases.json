@@ -1,0 +1,16 @@
+[
+  {"alias": "番茄炒蛋", "name": "西红柿炒鸡蛋", "alias_type": "regional"},
+  {"alias": "西红柿炒蛋", "name": "西红柿炒鸡蛋", "alias_type": "regional"},
+  {"alias": "白米饭", "name": "米饭", "alias_type": "common"},
+  {"alias": "牛奶", "name": "纯牛奶", "alias_type": "common"},
+  {"alias": "宫爆鸡丁", "name": "宫保鸡丁", "alias_type": "common"},
+  {"alias": "土豆丝", "name": "酸辣土豆丝", "alias_type": "common"},
+  {"alias": "土豆烧牛肉", "name": "土豆炖牛肉", "alias_type": "regional"},
+  {"alias": "小炒肉", "name": "辣椒炒肉", "alias_type": "regional"},
+  {"alias": "农家小炒肉", "name": "辣椒炒肉", "alias_type": "regional"},
+  {"alias": "四喜丸子", "name": "狮子头", "alias_type": "regional"},
+  {"alias": "蒸鲈鱼", "name": "清蒸鲈鱼", "alias_type": "common"},
+  {"alias": "水煮虾", "name": "白灼虾", "alias_type": "common"},
+  {"alias": "薯条", "name": "炸薯条", "alias_type": "common"},
+  {"alias": "奶茶", "name": "珍珠奶茶", "alias_type": "common"}
+]

@@ -30,6 +30,7 @@ router = APIRouter(prefix="/check-ins", tags=["健康打卡"])
 TASK_LABELS = {
     "meal_breakfast": "早餐", "meal_lunch": "午餐",
     "meal_dinner": "晚餐", "meal_snack": "加餐", "exercise": "运动",
+    "workout": "运动记录",   # 由 workouts 模块自动生成的打卡行
 }
 
 

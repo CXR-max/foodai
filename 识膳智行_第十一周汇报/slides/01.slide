@@ -1,0 +1,26 @@
+<Slide style={{ width: 1280, height: 720, background: '#FAF6F1', padding: '48px 53px', position: 'relative' }}>
+    <Box style={{ flexDirection: 'column', justifyContent: 'center', height: 624 }}>
+        <Box style={{ flexDirection: 'row' }}>
+            <Box style={{ background: '#D2694C', borderRadius: 20, padding: '8px 20px' }}>
+                <Text style={{ fontSize: 13, color: '#FFFFFF', fontWeight: 'bold', letterSpacing: 2 }}>本周汇报 · 2026.11</Text>
+            </Box>
+        </Box>
+
+        <Text style={{ fontSize: 74, fontWeight: 900, color: '#262220', letterSpacing: 2, lineHeight: 1.15, marginTop: 28 }}>
+            <>识膳<span style={{ color: '#D2694C' }}>智行</span></>
+        </Text>
+
+        <Text style={{ fontSize: 26, fontWeight: 'bold', color: '#262220', marginTop: 22, letterSpacing: 1 }}>
+            本周功能更新
+        </Text>
+
+        <Text style={{ fontSize: 15, color: '#8C837A', marginTop: 14, letterSpacing: 0.6 }}>
+            四个模块 · 架构重构 · 运动记录 · 三环睡眠 · 日程执行
+        </Text>
+    </Box>
+
+    <Box style={{ position: 'absolute', left: 53, bottom: 14, width: 1174, flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Text style={{ fontSize: 11, color: '#B3AAA1', letterSpacing: 1.5 }}>识膳智行 · SMART DIET</Text>
+        <Text style={{ fontSize: 11, color: '#B3AAA1', letterSpacing: 1.5 }}>01 / 11</Text>
+    </Box>
+</Slide>

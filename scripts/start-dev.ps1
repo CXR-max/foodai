@@ -132,7 +132,7 @@ if (Test-Port 5173) {
     }
     Write-Host '[前端] 正在启动 Vite（新窗口）...' -ForegroundColor Green
     Start-Process -FilePath $Node `
-        -ArgumentList @($Vite, '--host', '127.0.0.1', '--port', '5173') `
+        -ArgumentList @($Vite, '--host', '0.0.0.0', '--port', '5173') `
         -WorkingDirectory $Frontend -WindowStyle Normal
     Wait-Port 5173
     Write-Host '[前端] 5173 已就绪' -ForegroundColor Green

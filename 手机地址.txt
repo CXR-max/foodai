@@ -1,0 +1,5 @@
+公网 HTTPS（手机流量/异地，推荐，能定位）：
+https://bolt-raised-encoding-graphics.trycloudflare.com
+
+局域网（电脑和手机在同一 WiFi/热点，最快，但 HTTP 不能定位）：
+http://172.20.10.7:4173

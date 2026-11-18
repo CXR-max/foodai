@@ -18,11 +18,13 @@ from app.models.diet_plan import DietPlan, PlanDay
 from app.models.plan_chat import PlanChatMessage
 from app.models.plan_constraint_state import PlanConstraintState
 from app.models.check_in import CheckIn
+from app.models.workout import Workout
 from app.models.points_log import PointsLog
 from app.models.weight_log import WeightLog
 from app.models.reward import Reward
 from app.models.redemption import Redemption
 from app.models.achievement import Achievement, UserAchievement
+from app.models.user_face import UserFace
 from app.models.food import (
     Food,
     FoodAlias,
@@ -35,9 +37,9 @@ from app.models.food import (
 
 __all__ = [
     "User", "HealthProfile", "Recognition", "FoodRecord",
-    "DietPlan", "PlanDay", "CheckIn", "PointsLog",
+    "DietPlan", "PlanDay", "CheckIn", "Workout", "PointsLog",
     "WeightLog", "Reward", "Redemption", "PlanChatMessage",
-    "PlanConstraintState", "Achievement", "UserAchievement",
+    "PlanConstraintState", "Achievement", "UserAchievement", "UserFace",
     "Food", "FoodAlias", "FoodRelation", "FoodIngredient",
     "FoodRecipe", "FoodRecipeItem", "ImportBatch",
 ]

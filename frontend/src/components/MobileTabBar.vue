@@ -8,11 +8,18 @@ const route = useRoute()
 
 const tabs = [
   { path: '/recognition', title: '识别', icon: '🍽️' },
+  { path: '/workout', title: '运动', icon: '🏃' },
   { path: '/plans', title: '方案', icon: '📋' },
   { path: '/checkin', title: '打卡', icon: '✅' },
   { path: '/dashboard', title: '仪表盘', icon: '📊' },
   { path: '/profile', title: '我的', icon: '👤' },
 ]
+
+// 「运动」下还有跑步中/详情两个子页，进到子页时 tab 要保持高亮
+function isActive(path: string) {
+  if (path === '/workout') return route.path.startsWith('/workout')
+  return route.path === path
+}
 
 // 打卡未完成时显示红点（复用全局打卡状态，和侧边栏红点同源）
 function showDot(path: string) {
@@ -27,7 +34,7 @@ function showDot(path: string) {
       :key="t.path"
       :to="t.path"
       class="tab"
-      :class="{ active: route.path === t.path }"
+      :class="{ active: isActive(t.path) }"
     >
       <span class="icon">
         {{ t.icon }}
@@ -62,7 +69,7 @@ function showDot(path: string) {
   justify-content: center;
   text-decoration: none;
   color: #909399;
-  font-size: 11px;
+  font-size: 10px;
   transition: color 0.15s;
 }
 
@@ -72,13 +79,14 @@ function showDot(path: string) {
 }
 
 .icon {
-  font-size: 20px;
+  font-size: 19px;
   line-height: 1;
   position: relative;
 }
 
 .label {
-  margin-top: 3px;
+  margin-top: 2px;
+  white-space: nowrap;
 }
 
 .dot {

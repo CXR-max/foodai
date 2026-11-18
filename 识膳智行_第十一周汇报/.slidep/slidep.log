@@ -1,0 +1,39 @@
+=== boot pid=17828 ts=2026-11-12 00:03:57.307 cwd=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报 argv=C:\Users\43120\.workbuddy\binaries\node\versions\22.22.2-6\node_modules\@tencent\slidep\dist\index.js create 识膳智行_第十一周汇报.pptx ===
+[2026-11-12 00:03:57.306] [INFO ] [pid=17828] [server-url] baseUrl=http://127.0.0.1:39099 source=env
+=== boot pid=28064 ts=2026-11-12 00:04:19.948 cwd=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报 argv=C:\Users\43120\.workbuddy\binaries\node\versions\22.22.2-6\node_modules\@tencent\slidep\dist\index.js upsert-dsl 识膳智行_第十一周汇报.pptx --dsl-file slides/01.slide ===
+[2026-11-12 00:04:19.947] [INFO ] [pid=28064] [server-url] baseUrl=http://127.0.0.1:39099 source=env
+[2026-11-12 00:04:19.988] [INFO ] [pid=28064] [slide-version] fileId=sid_mwcb version=0 filePath=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报\识膳智行_第十一周汇报.pptx
+=== boot pid=28480 ts=2026-11-12 00:04:44.226 cwd=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报 argv=C:\Users\43120\.workbuddy\binaries\node\versions\22.22.2-6\node_modules\@tencent\slidep\dist\index.js upsert-dsl 识膳智行_第十一周汇报.pptx --dsl-file slides/02.slide ===
+[2026-11-12 00:04:44.225] [INFO ] [pid=28480] [server-url] baseUrl=http://127.0.0.1:39099 source=env
+[2026-11-12 00:04:44.264] [INFO ] [pid=28480] [slide-version] fileId=sid_mwcb version=1 filePath=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报\识膳智行_第十一周汇报.pptx
+=== boot pid=20952 ts=2026-11-12 00:05:16.134 cwd=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报 argv=C:\Users\43120\.workbuddy\binaries\node\versions\22.22.2-6\node_modules\@tencent\slidep\dist\index.js upsert-dsl 识膳智行_第十一周汇报.pptx --dsl-file slides/03.slide ===
+[2026-11-12 00:05:16.133] [INFO ] [pid=20952] [server-url] baseUrl=http://127.0.0.1:39099 source=env
+[2026-11-12 00:05:16.170] [INFO ] [pid=20952] [slide-version] fileId=sid_mwcb version=2 filePath=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报\识膳智行_第十一周汇报.pptx
+=== boot pid=5956 ts=2026-11-12 00:05:44.480 cwd=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报 argv=C:\Users\43120\.workbuddy\binaries\node\versions\22.22.2-6\node_modules\@tencent\slidep\dist\index.js upsert-dsl 识膳智行_第十一周汇报.pptx --dsl-file slides/04.slide ===
+[2026-11-12 00:05:44.479] [INFO ] [pid=5956] [server-url] baseUrl=http://127.0.0.1:39099 source=env
+[2026-11-12 00:05:44.519] [INFO ] [pid=5956] [slide-version] fileId=sid_mwcb version=3 filePath=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报\识膳智行_第十一周汇报.pptx
+=== boot pid=27996 ts=2026-11-12 00:06:16.970 cwd=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报 argv=C:\Users\43120\.workbuddy\binaries\node\versions\22.22.2-6\node_modules\@tencent\slidep\dist\index.js upsert-dsl 识膳智行_第十一周汇报.pptx --dsl-file slides/05.slide ===
+[2026-11-12 00:06:16.969] [INFO ] [pid=27996] [server-url] baseUrl=http://127.0.0.1:39099 source=env
+[2026-11-12 00:06:17.009] [INFO ] [pid=27996] [slide-version] fileId=sid_mwcb version=4 filePath=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报\识膳智行_第十一周汇报.pptx
+=== boot pid=1088 ts=2026-11-12 00:06:40.703 cwd=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报 argv=C:\Users\43120\.workbuddy\binaries\node\versions\22.22.2-6\node_modules\@tencent\slidep\dist\index.js upsert-dsl 识膳智行_第十一周汇报.pptx --dsl-file slides/06.slide ===
+[2026-11-12 00:06:40.703] [INFO ] [pid=1088] [server-url] baseUrl=http://127.0.0.1:39099 source=env
+[2026-11-12 00:06:40.744] [INFO ] [pid=1088] [slide-version] fileId=sid_mwcb version=5 filePath=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报\识膳智行_第十一周汇报.pptx
+=== boot pid=30816 ts=2026-11-12 00:07:05.957 cwd=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报 argv=C:\Users\43120\.workbuddy\binaries\node\versions\22.22.2-6\node_modules\@tencent\slidep\dist\index.js upsert-dsl 识膳智行_第十一周汇报.pptx --dsl-file slides/07.slide ===
+[2026-11-12 00:07:05.956] [INFO ] [pid=30816] [server-url] baseUrl=http://127.0.0.1:39099 source=env
+[2026-11-12 00:07:05.997] [INFO ] [pid=30816] [slide-version] fileId=sid_mwcb version=6 filePath=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报\识膳智行_第十一周汇报.pptx
+=== boot pid=24412 ts=2026-11-12 00:07:29.292 cwd=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报 argv=C:\Users\43120\.workbuddy\binaries\node\versions\22.22.2-6\node_modules\@tencent\slidep\dist\index.js upsert-dsl 识膳智行_第十一周汇报.pptx --dsl-file slides/08.slide ===
+[2026-11-12 00:07:29.291] [INFO ] [pid=24412] [server-url] baseUrl=http://127.0.0.1:39099 source=env
+[2026-11-12 00:07:29.335] [INFO ] [pid=24412] [slide-version] fileId=sid_mwcb version=7 filePath=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报\识膳智行_第十一周汇报.pptx
+=== boot pid=26664 ts=2026-11-12 00:07:52.659 cwd=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报 argv=C:\Users\43120\.workbuddy\binaries\node\versions\22.22.2-6\node_modules\@tencent\slidep\dist\index.js upsert-dsl 识膳智行_第十一周汇报.pptx --dsl-file slides/09.slide ===
+[2026-11-12 00:07:52.658] [INFO ] [pid=26664] [server-url] baseUrl=http://127.0.0.1:39099 source=env
+[2026-11-12 00:07:52.702] [INFO ] [pid=26664] [slide-version] fileId=sid_mwcb version=8 filePath=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报\识膳智行_第十一周汇报.pptx
+=== boot pid=5100 ts=2026-11-12 00:08:14.556 cwd=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报 argv=C:\Users\43120\.workbuddy\binaries\node\versions\22.22.2-6\node_modules\@tencent\slidep\dist\index.js upsert-dsl 识膳智行_第十一周汇报.pptx --dsl-file slides/10.slide ===
+[2026-11-12 00:08:14.555] [INFO ] [pid=5100] [server-url] baseUrl=http://127.0.0.1:39099 source=env
+[2026-11-12 00:08:14.599] [INFO ] [pid=5100] [slide-version] fileId=sid_mwcb version=9 filePath=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报\识膳智行_第十一周汇报.pptx
+=== boot pid=29576 ts=2026-11-12 00:08:38.725 cwd=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报 argv=C:\Users\43120\.workbuddy\binaries\node\versions\22.22.2-6\node_modules\@tencent\slidep\dist\index.js upsert-dsl 识膳智行_第十一周汇报.pptx --dsl-file slides/11.slide ===
+[2026-11-12 00:08:38.725] [INFO ] [pid=29576] [server-url] baseUrl=http://127.0.0.1:39099 source=env
+[2026-11-12 00:08:38.763] [INFO ] [pid=29576] [slide-version] fileId=sid_mwcb version=10 filePath=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报\识膳智行_第十一周汇报.pptx
+=== boot pid=30176 ts=2026-11-12 00:08:50.379 cwd=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报 argv=C:\Users\43120\.workbuddy\binaries\node\versions\22.22.2-6\node_modules\@tencent\slidep\dist\index.js inspect 识膳智行_第十一周汇报.pptx --out C:/Users/43120/AppData/Local/Temp/insp_new_1629 ===
+[2026-11-12 00:08:50.376] [INFO ] [pid=30176] [server-url] baseUrl=http://127.0.0.1:39099 source=env
+=== boot pid=17276 ts=2026-11-12 00:09:04.585 cwd=C:\Users\43120\Desktop\foodai\识膳智行_第十一周汇报 argv=C:\Users\43120\.workbuddy\binaries\node\versions\22.22.2-6\node_modules\@tencent\slidep\dist\index.js inspect 识膳智行_第十一周汇报.pptx --out C:/Users/43120/AppData/Local/Temp/chk_1490 ===
+[2026-11-12 00:09:04.582] [INFO ] [pid=17276] [server-url] baseUrl=http://127.0.0.1:39099 source=env

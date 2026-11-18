@@ -1,12 +1,16 @@
 <script setup lang="ts">
 // 健康档案页：基础信息 + 三组偏好 + BMI 实时展示 + 体重记录曲线
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as profileApi from '@/api/profile'
 import TrendChart from '@/components/TrendChart.vue'
 import { useAuthStore } from '@/stores/auth'
 import { isMobile } from '@/composables/useIsMobile'
+import * as faceApi from '@/api/face'
+
+// 人脸组件依赖 MediaPipe（约 20MB），只在点击「绑定人脸」时加载
+const FaceCaptureDialog = defineAsyncComponent(() => import('@/components/FaceCaptureDialog.vue'))
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -102,7 +106,34 @@ const weightOption = computed(() => ({
   }],
 }))
 
-onMounted(load)
+// ---- 人脸登录绑定 ----
+const faceBound = ref(false)
+const faceVisible = ref(false)
+
+async function loadFace() {
+  try {
+    faceBound.value = (await faceApi.myFace()).registered
+  } catch {
+    /* 未登录或接口异常时保持未绑定状态 */
+  }
+}
+
+async function onFaceCaptured(images: string[]) {
+  const r = await faceApi.enrollFace(images[0])
+  faceBound.value = true
+  ElMessage.success(r.provider === 'mock' ? '已绑定（演示模式）' : '人脸绑定成功')
+}
+
+async function doUnbindFace() {
+  await faceApi.unbindFace()
+  faceBound.value = false
+  ElMessage.success('已解绑人脸')
+}
+
+onMounted(() => {
+  load()
+  loadFace()
+})
 </script>
 
 <template>
@@ -199,6 +230,22 @@ onMounted(load)
           </template>
           <el-empty v-else description="还没有体重记录" :image-size="60" />
         </div>
+
+        <div class="page-card">
+          <h3 class="page-title">🔐 人脸登录</h3>
+          <p class="face-tip">
+            {{ faceBound ? '已绑定，可在登录页刷脸进入' : '未绑定，绑定后可在登录页刷脸进入' }}
+          </p>
+          <el-button v-if="!faceBound" type="success" plain style="width:100%" @click="faceVisible = true">
+            绑定人脸
+          </el-button>
+          <template v-else>
+            <el-button plain style="width:100%" @click="faceVisible = true">重新绑定</el-button>
+            <el-button text type="danger" style="width:100%;margin:6px 0 0" @click="doUnbindFace">
+              解绑
+            </el-button>
+          </template>
+        </div>
       </el-col>
     </el-row>
 
@@ -219,6 +266,8 @@ onMounted(load)
         <span class="more-arrow">›</span>
       </div>
     </div>
+
+    <FaceCaptureDialog v-model:visible="faceVisible" title="绑定人脸" allow-upload @captured="onFaceCaptured" />
   </div>
 </template>
 
@@ -244,4 +293,5 @@ onMounted(load)
 .more-title { font-size: 14px; color: #303133; font-weight: 500; }
 .more-desc { font-size: 11px; color: #a8abb2; }
 .more-arrow { color: #c0c4cc; font-size: 18px; }
+.face-tip { margin: 0 0 10px; font-size: 12px; color: #909399; line-height: 1.5; }
 </style>
