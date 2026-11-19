@@ -18,6 +18,9 @@ from app.models.diet_plan import DietPlan, PlanDay
 from app.models.diet_deviation import DayMode, DietDeviation, PlanAdjustment
 from app.models.plan_chat import PlanChatMessage
 from app.models.check_in import CheckIn
+from app.models.workout import Workout
+from app.models.user_face import UserFace
+from app.models.plan_constraint_state import PlanConstraintState
 from app.models.points_log import PointsLog
 from app.models.weight_log import WeightLog
 from app.models.reward import Reward
@@ -40,10 +43,10 @@ from app.models.food import (
 
 __all__ = [
     "User", "HealthProfile", "Recognition", "FoodRecord",
-    "DietPlan", "PlanDay", "CheckIn", "PointsLog",
+    "DietPlan", "PlanDay", "CheckIn", "Workout", "PointsLog",
     "DietDeviation", "PlanAdjustment", "DayMode",
     "WeightLog", "Reward", "Redemption", "PlanChatMessage",
-    "Achievement", "UserAchievement",
+    "Achievement", "UserAchievement", "UserFace", "PlanConstraintState",
     "WeeklyReportCache",
     "SleepLog", "WaterLog",
     "Device", "DeviceMetric", "DeviceSample",

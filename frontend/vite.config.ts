@@ -8,7 +8,10 @@ import { defineConfig } from 'vite'
 // 不设这个变量时保持主分支默认的 http 行为，桌面开发不受影响。
 const useHttps = process.env.VITE_HTTPS === '1'
 
-// Vite 配置：@ 别名指向 src；开发时把 /api 代理到后端 8000 端口（免跨域）
+// 后端地址：默认 8000；本机 8000 被旧进程占用时，可用 VITE_API_TARGET 指到 8001
+const API_TARGET = process.env.VITE_API_TARGET || 'http://localhost:8000'
+
+// Vite 配置：@ 别名指向 src；开发/预览都把 /api 代理到后端（免跨域）
 export default defineConfig({
   plugins: [vue(), ...(useHttps ? [basicSsl()] : [])],
   resolve: {
@@ -25,9 +28,20 @@ export default defineConfig({
     allowedHosts: true,
     // 融合：VITE_HTTPS=1 时加载 basicSsl，手机端 https://<局域网IP>:5173 可用
     ...(useHttps ? { https: {} } : {}),
+    // 编辑器原子写入会在 src 下产生 .xxx.tmpdir/ 临时目录，watch 它会在 Windows 上 EBUSY 崩溃
+    watch: { ignored: ['**/.*.tmpdir/**', '**/*.tmp'] },
     proxy: {
-      '/api': { target: 'http://localhost:8000', changeOrigin: true },
-      '/uploads': { target: 'http://localhost:8000', changeOrigin: true }, // 识别的图片
+      '/api': { target: API_TARGET, changeOrigin: true },
+      '/uploads': { target: API_TARGET, changeOrigin: true }, // 识别的图片
+    },
+  },
+  preview: {
+    port: 4173,
+    host: '0.0.0.0',
+    allowedHosts: true,
+    proxy: {
+      '/api': { target: API_TARGET, changeOrigin: true },
+      '/uploads': { target: API_TARGET, changeOrigin: true },
     },
   },
 })

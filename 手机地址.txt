@@ -1,0 +1,8 @@
+手机打开（HTTPS，可定位）：
+https://lindsay-dennis-src-whenever.trycloudflare.com
+
+账号：demo_xiaoming
+密码：demo123456
+
+同一 WiFi/热点备用（HTTP 不能定位）：
+http://172.20.10.7:4173

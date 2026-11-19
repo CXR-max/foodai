@@ -100,3 +100,9 @@ frontend/android/app/release/
 backend/foodai.db.bak-*
 backend/foodai.db.snap-*
 backend/gen_out.json
+_remote_main/
+
+# 融合验证临时脚本与运行日志（只在本地保留）
+backend/tools/.tmp_*
+backend/_backend_merge.log
+.npm-cache/

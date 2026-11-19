@@ -1,0 +1,24 @@
+﻿文件: C:\Users\43120\Desktop\foodai\backend\foodai.db
+大小: 475136 bytes
+
+health_profiles 列数: 14
+  id (INTEGER)
+  user_id (INTEGER)
+  height_cm (FLOAT)
+  weight_kg (FLOAT)
+  age (INTEGER)
+  gender (VARCHAR(10))
+  activity_level (VARCHAR(20))
+  goal (VARCHAR(20))
+  target_weight_kg (FLOAT)
+  daily_calorie_target (INTEGER)
+  taste_preferences (JSON)
+  dietary_restrictions (JSON)
+  exercise_preferences (JSON)
+  updated_at (DATETIME)
+
+=== 直接加列 ===
+ALTER 执行成功
+commit 完成
+加完后列: ['id', 'user_id', 'height_cm', 'weight_kg', 'age', 'gender', 'activity_level', 'goal', 'target_weight_kg', 'daily_calorie_target', 'taste_preferences', 'dietary_restrictions', 'exercise_preferences', 'updated_at']
+body_fat_pct 在列中: False

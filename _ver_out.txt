@@ -1,0 +1,3 @@
+﻿alembic_version: [('e5f9c3d2b8a1',)]
+health_profiles has body_fat_pct: False
+check_ins has intensity: False
