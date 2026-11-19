@@ -11,7 +11,9 @@ from app.models.check_in import CheckIn
 from app.models.health_profile import HealthProfile
 from app.models.user import User
 from app.models.weight_log import WeightLog
+from app.models.device import DeviceMetric
 from app.services import diet_intake
+from app.services.nutrition import calc_bmr
 
 router = APIRouter(prefix="/stats", tags=["数据统计"])
 
@@ -215,5 +217,79 @@ def weekly_report(refresh: bool = Query(default=False, description="true=忽略�
             "total_burn": s["total_burn"], "exercise_times": s["exercise_times"],
             "checkin_days": s["checkin_days"], "streak_days": s["streak_days"],
             "weight_change": s["weight_change"],
+        },
+    }
+
+
+# ============ 能量天平（融合自 feat/personalized-burn，适配主分支数据口径） ============
+# 摄入：直接复用主分支 diet_intake.day_intake（食物记录 + 已打卡未记餐次的方案折算），
+#       保证与「我的 / 日程」页显示的摄入数字完全一致。
+# 总消耗 = 基础代谢 BMR + 手动运动打卡消耗 + 手环记录的活动消耗。
+#       后两项分别返回，前端分两行展示，用户能直观看到「自己打卡的」和「手环记录的」。
+# 数据来源都在同一个 foodai.db、同一个 user_id、同一天 → 两边数据天然互通。
+@router.get("/energy")
+def energy_balance(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    today = date.today()
+    intake = diet_intake.day_intake(db, user.id, today)
+    intake_kcal = round(float(intake.get("calories") or 0))
+    records = int(intake.get("records") or 0)
+
+    # 1) 手动在系统里打卡的运动消耗（主分支 check_ins.calories_burned）
+    done_ex = (db.query(CheckIn)
+               .filter(CheckIn.user_id == user.id, CheckIn.check_date == today,
+                       CheckIn.check_type == "exercise", CheckIn.status == "done").all())
+    checkin_burn = round(sum(float(c.calories_burned or 0) for c in done_ex))
+
+    # 2) 手环记录的活动消耗（我新增的 device_metrics，与主分支同库同用户同日）
+    band_rows = (db.query(DeviceMetric)
+                 .filter(DeviceMetric.user_id == user.id,
+                         DeviceMetric.metric_date == today).all())
+    band_burn = round(sum(float(m.calories or 0) for m in band_rows))
+    band_steps = sum(int(m.steps or 0) for m in band_rows)
+    band_sleep = max((int(m.sleep_minutes or 0) for m in band_rows), default=0)
+    band_source = band_rows[0].source if band_rows else None
+
+    # 3) 基础代谢：按用户档案用 Mifflin-St Jeor 算，档案不全时给温和兜底值
+    profile = db.query(HealthProfile).filter(HealthProfile.user_id == user.id).first()
+    bmr = None
+    if profile:
+        bmr = calc_bmr(profile.weight_kg, profile.height_cm, profile.age, profile.gender)
+    bmr = int(bmr or 1500)
+
+    activity = checkin_burn + band_burn
+    total_burn = bmr + activity
+    gap = intake_kcal - total_burn
+    target = int(profile.daily_calorie_target) if profile and profile.daily_calorie_target else None
+
+    has_intake = records > 0 or intake_kcal > 0
+    if not has_intake:
+        verdict = "今天还没有饮食记录，先去记一餐吧"
+    elif gap > 300:
+        verdict = f"摄入比消耗多 {gap} kcal，今天略有盈余"
+    elif gap < -300:
+        verdict = f"消耗比摄入多 {-gap} kcal，今天处于热量缺口"
+    else:
+        verdict = "摄入与消耗基本持平，保持得不错"
+
+    return {
+        "date": str(today),
+        "intake": {"value": intake_kcal, "target": target, "unit": "kcal"},
+        "burn": {
+            "total": total_burn,
+            "bmr": bmr,
+            "checkin": checkin_burn,
+            "band": band_burn,
+            "activity": activity,
+            "unit": "kcal",
+        },
+        "gap": gap,
+        "verdict": verdict,
+        "has_intake": has_intake,
+        "has_checkin": checkin_burn > 0,
+        "has_device": bool(band_rows),
+        "band": {
+            "source": band_source,
+            "steps": band_steps,
+            "sleep_h": round(band_sleep / 60, 1) if band_sleep else None,
         },
     }
