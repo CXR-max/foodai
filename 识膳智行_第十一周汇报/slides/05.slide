@@ -1,0 +1,83 @@
+<Slide style={{ width: 1280, height: 720, background: '#FAF6F1', padding: '48px 53px', position: 'relative' }}>
+    <Box style={{ flexDirection: 'column', height: 624 }}>
+        <Box style={{ flexDirection: 'row' }}>
+            <Box style={{ background: '#5B87B5', borderRadius: 18, padding: '7px 18px' }}>
+                <Text style={{ fontSize: 13, color: '#FFFFFF', fontWeight: 'bold', letterSpacing: 2 }}>模块② · 组员2</Text>
+            </Box>
+        </Box>
+
+        <Text style={{ fontSize: 34, fontWeight: 900, color: '#262220', marginTop: 16, letterSpacing: 1 }}>
+            运动记录与报告
+        </Text>
+
+        <Box style={{ flexDirection: 'row', gap: 20, flex: 1, marginTop: 24 }}>
+            <Box style={{ flex: 1, background: '#FFFFFF', borderRadius: 20, border: '1px solid #F0E6D9', padding: 24, flexDirection: 'column' }}>
+                <Text style={{ fontSize: 15.5, fontWeight: 'bold', color: '#262220', lineHeight: 1.4 }}>
+                    <><span style={{ color: '#5B87B5' }}>①</span> 补成一条完整链路</>
+                </Text>
+                <Text style={{ fontSize: 13, color: '#4A4340', lineHeight: 1.95, marginTop: 14 }}>
+                    <>▸ 原来只有打卡页底部一个「手动填运动」的表单，填完就没了<br />▸ 现在：选类型 → 记录 → 报告 → 沉淀历史 → 回写打卡与积分<br />▸ 底部导航 5 个 tab 变 6 个，新增「运动」</>
+                </Text>
+                <Box style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
+                    <Box style={{ background: '#EEF2F7', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#4E718F' }}>跑步</Text>
+                    </Box>
+                    <Box style={{ background: '#EEF2F7', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#4E718F' }}>快走</Text>
+                    </Box>
+                    <Box style={{ background: '#EEF2F7', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#4E718F' }}>骑行</Text>
+                    </Box>
+                    <Box style={{ background: '#EEF2F7', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#4E718F' }}>跑步机 / 跳绳补录</Text>
+                    </Box>
+                </Box>
+            </Box>
+
+            <Box style={{ flex: 1, background: '#FFFFFF', borderRadius: 20, border: '1px solid #F0E6D9', padding: 24, flexDirection: 'column' }}>
+                <Text style={{ fontSize: 15.5, fontWeight: 'bold', color: '#262220', lineHeight: 1.4 }}>
+                    <><span style={{ color: '#5B87B5' }}>②</span> 跑步中与运动报告</>
+                </Text>
+                <Text style={{ fontSize: 13, color: '#4A4340', lineHeight: 1.95, marginTop: 14 }}>
+                    <>▸ 跑步中全屏：实时轨迹、大号距离、时长 / 当前配速 / 平均配速<br />▸ 暂停继续、长按结束防误触、退出拦截、屏幕常亮<br />▸ 报告：轨迹地图 + 四格数据 + 最快公里 + 每公里分段配速条</>
+                </Text>
+                <Box style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
+                    <Box style={{ background: '#EEF2F7', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#4E718F' }}>实时轨迹</Text>
+                    </Box>
+                    <Box style={{ background: '#EEF2F7', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#4E718F' }}>分段配速</Text>
+                    </Box>
+                    <Box style={{ background: '#EEF2F7', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#4E718F' }}>消耗明细</Text>
+                    </Box>
+                </Box>
+            </Box>
+
+            <Box style={{ flex: 1, background: '#FFFFFF', borderRadius: 20, border: '1px solid #F0E6D9', padding: 24, flexDirection: 'column' }}>
+                <Text style={{ fontSize: 15.5, fontWeight: 'bold', color: '#262220', lineHeight: 1.4 }}>
+                    <><span style={{ color: '#5B87B5' }}>③</span> 后端与原有体系联动</>
+                </Text>
+                <Text style={{ fontSize: 13, color: '#4A4340', lineHeight: 1.95, marginTop: 14 }}>
+                    <>▸ 新建运动记录表：类型 / 来源 / 起止时间 / 轨迹点 / 分段 / 消耗<br />▸ 距离与配速由服务端重算，轨迹点先去漂移、抖动再累加<br />▸ 存完自动完成当天运动打卡，积分按现有规则发放</>
+                </Text>
+                <Box style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
+                    <Box style={{ background: '#EEF2F7', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#4E718F' }}>MET 模型</Text>
+                    </Box>
+                    <Box style={{ background: '#EEF2F7', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#4E718F' }}>坐标校正</Text>
+                    </Box>
+                    <Box style={{ background: '#EEF2F7', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#4E718F' }}>自动打卡</Text>
+                    </Box>
+                </Box>
+            </Box>
+        </Box>
+    </Box>
+
+    <Box style={{ position: 'absolute', left: 53, bottom: 14, width: 1174, flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Text style={{ fontSize: 11, color: '#B3AAA1', letterSpacing: 1.5 }}>识膳智行 · SMART DIET</Text>
+        <Text style={{ fontSize: 11, color: '#B3AAA1', letterSpacing: 1.5 }}>05 / 11</Text>
+    </Box>
+</Slide>

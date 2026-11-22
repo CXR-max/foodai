@@ -1,0 +1,31 @@
+"""人脸登录请求/响应体"""
+from pydantic import BaseModel, Field
+
+
+class FaceStatusIn(BaseModel):
+    username: str = Field(min_length=1, max_length=50)
+
+
+class FaceStatusOut(BaseModel):
+    registered: bool
+    provider: str
+    mock: bool
+
+
+class FaceEnrollIn(BaseModel):
+    image: str = Field(description="data:image/jpeg;base64,... 或纯 base64")
+
+
+class FaceVerifyIn(BaseModel):
+    username: str = Field(min_length=1, max_length=50)
+    image: str = Field(description="现场抓拍照，dataURL 或纯 base64")
+
+
+class FaceVerifyOut(BaseModel):
+    ticket: str
+    score: float
+    expires_in: int
+
+
+class FaceLoginIn(BaseModel):
+    ticket: str

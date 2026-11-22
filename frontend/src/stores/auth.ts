@@ -33,12 +33,23 @@ export const useAuthStore = defineStore('auth', () => {
     if (user.value) user.value.points_total = points
   }
 
+  /** 人脸登录等外部流程拿到 token 后，写回登录态 */
+  function setSession(newToken: string, newUser: authApi.User) {
+    token.value = newToken
+    user.value = newUser
+    localStorage.setItem('token', newToken)
+  }
+
   function logout() {
     token.value = null
     user.value = null
     localStorage.removeItem('token')
+    // 避免下一个账号看到上一个账号的本地对话缓存
+    for (const key of ['plan_chat_current', 'plan_chat_history', 'plan_chat_owner']) {
+      localStorage.removeItem(key)
+    }
     router.push('/login')
   }
 
-  return { token, user, isLoggedIn, login, register, fetchMe, refreshPoints, logout }
+  return { token, user, isLoggedIn, login, register, setSession, fetchMe, refreshPoints, logout }
 })

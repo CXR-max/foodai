@@ -1,0 +1,125 @@
+INFO:     Started server process [30664]
+INFO:     Waiting for application startup.
+ERROR:    Traceback (most recent call last):
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1953, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 1192, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such table: main.recognitions
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\starlette\routing.py", line 654, in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+  File "C:\Users\43120\AppData\Local\Programs\Python\Python311\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\fastapi\routing.py", line 248, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Users\43120\AppData\Local\Programs\Python\Python311\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\fastapi\routing.py", line 248, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Users\43120\AppData\Local\Programs\Python\Python311\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\fastapi\routing.py", line 248, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Users\43120\AppData\Local\Programs\Python\Python311\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\fastapi\routing.py", line 248, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Users\43120\AppData\Local\Programs\Python\Python311\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\fastapi\routing.py", line 248, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Users\43120\AppData\Local\Programs\Python\Python311\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\fastapi\routing.py", line 248, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Users\43120\AppData\Local\Programs\Python\Python311\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\fastapi\routing.py", line 248, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Users\43120\AppData\Local\Programs\Python\Python311\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\fastapi\routing.py", line 248, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Users\43120\AppData\Local\Programs\Python\Python311\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\fastapi\routing.py", line 248, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Users\43120\AppData\Local\Programs\Python\Python311\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\fastapi\routing.py", line 248, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Users\43120\AppData\Local\Programs\Python\Python311\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\fastapi\routing.py", line 248, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Users\43120\AppData\Local\Programs\Python\Python311\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\app\main.py", line 67, in lifespan
+    Base.metadata.create_all(bind=engine)  # 补建索引
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\sql\schema.py", line 6700, in create_all
+    bind._run_ddl_visitor(
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 3245, in _run_ddl_visitor
+    conn._run_ddl_visitor(visitorcallable, element, **kwargs)
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2446, in _run_ddl_visitor
+    ).traverse_single(element)
+      ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\sql\visitors.py", line 650, in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\sql\ddl.py", line 1472, in visit_metadata
+    self.traverse_single(
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\sql\visitors.py", line 650, in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\sql\ddl.py", line 1519, in visit_table
+    self.traverse_single(index, create_ok=True)
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\sql\visitors.py", line 650, in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\sql\ddl.py", line 1558, in visit_index
+    CreateIndex(index)._invoke_with(self.connection)
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\sql\ddl.py", line 337, in _invoke_with
+    return bind.execute(self)
+           ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1458, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\sql\ddl.py", line 203, in _execute_on_connection
+    return connection._execute_ddl(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1567, in _execute_ddl
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1832, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1972, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2342, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1953, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\43120\Desktop\foodai\backend\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 1192, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such table: main.recognitions
+[SQL: CREATE INDEX ix_recognitions_user_id ON recognitions (user_id)]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+
+ERROR:    Application startup failed. Exiting.

@@ -1,4 +1,4 @@
-﻿param([switch]$KeepOllama)
+﻿param([switch]$KeepOllama, [switch]$KeepTunnel)
 
 $ErrorActionPreference = 'Stop'
 
@@ -72,6 +72,14 @@ if ($KeepOllama) {
     Write-Host "[Ollama] 已停止 $ollamaCount 个进程（11434）" -ForegroundColor Green
 }
 
+# 手机隧道 cloudflared（不关的话 https 地址会一直占着）
+if ($KeepTunnel) {
+    Write-Host '[隧道] 保留运行（-KeepTunnel）' -ForegroundColor Yellow
+} else {
+    $tunnelProcs = Get-MatchingProcesses 'cloudflared\.exe.*tunnel'
+    $tunnelCount = Stop-MatchingTrees $tunnelProcs
+    Write-Host "[隧道] 已停止 $tunnelCount 个进程" -ForegroundColor Green
+}
 Start-Sleep -Seconds 1
 foreach ($port in 8000, 5173, 11434) {
     $conn = Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue |
@@ -82,4 +90,4 @@ foreach ($port in 8000, 5173, 11434) {
         Write-Host "端口 $port 已释放" -ForegroundColor DarkGray
     }
 }
-Write-Host '停止完成。下次启动：任务「全栈: 一键启动（自动打开浏览器）」。' -ForegroundColor Cyan
+Write-Host '停止完成。下次启动：任务「★ 一键启动（网页端 + 手机端）」。' -ForegroundColor Cyan

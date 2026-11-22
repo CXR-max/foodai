@@ -24,6 +24,9 @@ _cache: list[dict] | None = None
 _cache_at = 0.0
 _name_map: dict[str, dict] = {}
 _alias_map: dict[str, dict] = {}
+# 原始名索引：normalize 依赖 opencc 做繁简转换，未装时繁体名（萊姆/中脂鮮羊乳）
+# 查不到自己 → 复核退回「全库均值」，热量被放大数倍导致方案被判超标。
+_raw_name_map: dict[str, dict] = {}
 _relations_by_name: dict[str, list[dict]] = {}
 
 
@@ -177,12 +180,14 @@ def _load_from_json() -> list[dict]:
 
 
 def _build_indexes(foods: list[dict], relations: list[dict]) -> list[dict]:
-    global _name_map, _alias_map, _relations_by_name
+    global _name_map, _alias_map, _raw_name_map, _relations_by_name
     name_map: dict[str, dict] = {}
     alias_map: dict[str, dict] = {}
+    raw_map: dict[str, dict] = {}
     relations_by_name: dict[str, list[dict]] = {}
     for food in foods:
         name_map.setdefault(food["name_norm"], food)
+        raw_map.setdefault(str(food.get("name") or "").strip(), food)
         for alias in food.get("aliases", []):
             alias_map.setdefault(normalize_name(alias), food)
     for relation in relations:
@@ -193,6 +198,7 @@ def _build_indexes(foods: list[dict], relations: list[dict]) -> list[dict]:
             food["relations"].append(relation)
     _name_map = name_map
     _alias_map = alias_map
+    _raw_name_map = raw_map
     _relations_by_name = relations_by_name
     return foods
 
@@ -347,6 +353,12 @@ def match_entry(dish_name: str) -> dict | None:
             "group_key": None,
             **extra,
         }
+
+    # 原始名先查：繁简转换不可用时，繁体菜名（萊姆）靠 normalize 查不到自己，
+    # 会掉进「包含/fuzzy/全库均值」分支，营养值被放大约 4 倍
+    raw = _raw_name_map.get(name)
+    if raw is not None:
+        return result(raw, "exact", 1.0)
 
     exact = _name_map.get(norm)
     if exact is not None:

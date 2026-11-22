@@ -1,0 +1,48 @@
+=== foods DDL ===
+
+CREATE TABLE foods (
+	id INTEGER NOT NULL, 
+	source VARCHAR(50) NOT NULL, 
+	source_id VARCHAR(120) NOT NULL, 
+	name_zh VARCHAR(120) NOT NULL, 
+	name_en VARCHAR(240), 
+	name_norm VARCHAR(120), 
+	food_type VARCHAR(20), 
+	dish_style VARCHAR(30), 
+	region VARCHAR(30), 
+	cuisine VARCHAR(30), 
+	category_l1 VARCHAR(30), 
+	category_l2 VARCHAR(60), 
+	state VARCHAR(20), 
+	edible_ratio FLOAT, 
+	serving_g FLOAT, 
+	common_portion_g FLOAT, 
+	energy_kcal FLOAT, 
+	protein_g FLOAT, 
+	fat_g FLOAT, 
+	carb_g FLOAT, 
+	fiber_g FLOAT, 
+	sodium_mg FLOAT, 
+	sugar_g FLOAT, 
+	extra_nutrients JSON, 
+	ingredients JSON, 
+	suitable_meals JSON, 
+	taste_tags JSON, 
+	dietary_tags JSON, 
+	source_type VARCHAR(30), 
+	license VARCHAR(120), 
+	source_url VARCHAR(500), 
+	retrieved_at DATETIME, 
+	version VARCHAR(50), 
+	verified BOOLEAN, 
+	active BOOLEAN, 
+	created_at DATETIME, 
+	updated_at DATETIME, 
+	PRIMARY KEY (id), 
+	CONSTRAINT uq_foods_source_source_id UNIQUE (source, source_id)
+)
+
+
+
+=== 直接执行 ===
+OK: foods 表创建成功

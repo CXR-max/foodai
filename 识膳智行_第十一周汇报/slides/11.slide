@@ -1,0 +1,35 @@
+<Slide style={{ width: 1280, height: 720, background: '#FAF6F1', padding: '48px 53px', position: 'relative' }}>
+    <Box style={{ flexDirection: 'column', height: 624, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ fontSize: 15, color: '#A79C92', letterSpacing: 8, fontWeight: 'bold' }}>
+            THANKS FOR WATCHING
+        </Text>
+
+        <Text style={{ fontSize: 58, fontWeight: 900, color: '#262220', marginTop: 10, letterSpacing: 8 }}>
+            谢谢观看
+        </Text>
+
+        <Text style={{ fontSize: 15, color: '#8C837A', marginTop: 16, letterSpacing: 1.5 }}>
+            识膳智行 · 本周功能更新
+        </Text>
+
+        <Box style={{ flexDirection: 'row', gap: 12, marginTop: 34 }}>
+            <Box style={{ border: '1px solid #E6D8C8', borderRadius: 10, padding: '9px 20px' }}>
+                <Text style={{ fontSize: 13, color: '#6B615A' }}>架构重构</Text>
+            </Box>
+            <Box style={{ border: '1px solid #E6D8C8', borderRadius: 10, padding: '9px 20px' }}>
+                <Text style={{ fontSize: 13, color: '#6B615A' }}>运动记录</Text>
+            </Box>
+            <Box style={{ border: '1px solid #E6D8C8', borderRadius: 10, padding: '9px 20px' }}>
+                <Text style={{ fontSize: 13, color: '#6B615A' }}>三环睡眠</Text>
+            </Box>
+            <Box style={{ border: '1px solid #E6D8C8', borderRadius: 10, padding: '9px 20px' }}>
+                <Text style={{ fontSize: 13, color: '#6B615A' }}>日程执行</Text>
+            </Box>
+        </Box>
+    </Box>
+
+    <Box style={{ position: 'absolute', left: 53, bottom: 14, width: 1174, flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Text style={{ fontSize: 11, color: '#B3AAA1', letterSpacing: 1.5 }}>识膳智行 · SMART DIET</Text>
+        <Text style={{ fontSize: 11, color: '#B3AAA1', letterSpacing: 1.5 }}>11 / 11</Text>
+    </Box>
+</Slide>

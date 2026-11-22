@@ -4,6 +4,7 @@
 """
 import hashlib
 import secrets
+import time
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -48,3 +49,39 @@ def decode_token(token: str) -> int | None:
         return int(payload["sub"])
     except Exception:
         return None
+
+
+# ---------------- 人脸登录一次性票据 ----------------
+# 单进程内存表：jti -> (user_id, 过期时间戳)。多 worker/多机部署请换 Redis
+FACE_TICKETS: dict[str, tuple[int, float]] = {}
+
+
+def create_face_ticket(user_id: int) -> str:
+    """人脸核验通过后签发的一次性票据（默认 2 分钟）"""
+    jti = secrets.token_hex(8)
+    FACE_TICKETS[jti] = (user_id, time.time() + settings.FACE_TICKET_TTL)
+    payload = {
+        "sub": str(user_id),
+        "purpose": "face_login",
+        "jti": jti,
+        "exp": datetime.now(timezone.utc) + timedelta(seconds=settings.FACE_TICKET_TTL),
+    }
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
+
+
+def take_face_ticket(ticket: str) -> tuple[int, str] | None:
+    """校验并消费票据（只能用一次）；无效/过期/已用过都返回 None"""
+    try:
+        payload = jwt.decode(ticket, settings.JWT_SECRET, algorithms=["HS256"])
+    except Exception:
+        return None
+    if payload.get("purpose") != "face_login":
+        return None
+    jti = payload.get("jti") or ""
+    item = FACE_TICKETS.pop(jti, None)
+    if not item:
+        return None
+    user_id, expire_at = item
+    if time.time() > expire_at:
+        return None
+    return int(user_id), jti

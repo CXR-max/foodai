@@ -14,8 +14,8 @@ from app.core.config import settings
 from app.db.session import SessionLocal
 from app.models.reward import Reward
 from app.routers import (
-    achievements, auth, checkins, daily, food_records, foods, plans, points, profile,
-    recognitions, rewards, stats, wellness,
+    achievements, auth, checkins, coach, daily, devices, face, food_records, foods, plans,
+    points, profile, recognitions, rewards, stats, wellness, workouts,
 )
 from app.services.achievement_seed import seed_achievements
 from app.services.food_seed import seed_foods_if_empty
@@ -51,6 +51,17 @@ def seed_rewards():
         db.close()
 
 
+def ensure_face_workout_tables():
+    """启动时自建人脸底库表与运动记录表（结构直接取自模型定义，避免手写 SQL 对不上）"""
+    from app.db.session import Base, engine
+    from app.models.user_face import UserFace  # noqa: F401
+    from app.models.workout import Workout  # noqa: F401
+    try:
+        Base.metadata.create_all(bind=engine, tables=[UserFace.__table__, Workout.__table__])
+    except Exception as e:  # noqa: BLE001
+        logger.warning("人脸/运动表初始化跳过：%s", e)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用启动/关闭钩子"""
@@ -59,10 +70,18 @@ async def lifespan(app: FastAPI):
             "JWT_SECRET 仍是默认值或过短，任何人可伪造登录凭证；"
             "请在 backend/.env 里换成随机字符串（>=32 位）后重启"
         )
+    ensure_face_workout_tables()
     seed_rewards()
     seed_achievements(SessionLocal())
     seed_foods_if_empty()
-    yield
+    # 手环「实时」后台采样（融合）：每 BAND_SYNC_SECONDS 秒一条分钟级样本，
+    # 页面轮询即可看到步数/心率在走；导出包投递目录也会被自动扫描导入。
+    from app.services import band_live
+    band_live.start_loop()
+    try:
+        yield
+    finally:
+        await band_live.stop_loop()
 
 
 app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
@@ -97,7 +116,7 @@ app.mount("/uploads", StaticFiles(directory=str(settings.UPLOAD_DIR)), name="upl
 
 # 业务路由，统一挂 /api 前缀
 for r in (auth, profile, recognitions, food_records, foods, plans, checkins, daily,
-          wellness, stats, points, rewards, achievements):
+          wellness, face, workouts, stats, points, rewards, achievements, devices, coach):
     app.include_router(r.router, prefix="/api")
 
 

@@ -42,6 +42,9 @@ $Url = 'http://127.0.0.1:5173/'
 
 $env:PYTHONUTF8 = '1'
 $env:PYTHONIOENCODING = 'utf-8'
+# 本地模型常驻 + 更长上下文（仅对本脚本拉起的 ollama serve 生效）
+$env:OLLAMA_KEEP_ALIVE = '-1'
+$env:OLLAMA_CONTEXT_LENGTH = '8192'
 
 function Test-Port {
     param([int]$Port)
@@ -129,7 +132,7 @@ if (Test-Port 5173) {
     }
     Write-Host '[前端] 正在启动 Vite（新窗口）...' -ForegroundColor Green
     Start-Process -FilePath $Node `
-        -ArgumentList @($Vite, '--host', '127.0.0.1', '--port', '5173') `
+        -ArgumentList @($Vite, '--host', '0.0.0.0', '--port', '5173') `
         -WorkingDirectory $Frontend -WindowStyle Normal
     Wait-Port 5173
     Write-Host '[前端] 5173 已就绪' -ForegroundColor Green
