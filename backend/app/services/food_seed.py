@@ -25,18 +25,25 @@ def _read_json(path: Path):
 
 
 def _food_values(item: dict) -> dict:
+    # 两套字段名都要认：老种子用 name_zh/nutrition/category_l1，
+    # 新营养库（foods_seed.json，导入管道产出）用 name/per_100g/category。
+    # 只认老字段会导致「导入种子」直接 KeyError，开发机食物表停在几百条，
+    # 排餐器拿不到足够菜品就判无解、整份拒收方案。
     nutrition = item.get("nutrition") or item.get("per_100g") or {}
+    name = item.get("name_zh") or item.get("name")
+    if not name:
+        raise KeyError(f"种子条目缺少名称字段（name_zh/name）：{item.get('source_id')}")
     return {
         "source": item["source"],
         "source_id": item["source_id"],
-        "name_zh": item["name_zh"],
+        "name_zh": name,
         "name_en": item.get("name_en"),
-        "name_norm": item.get("name_norm") or normalize_name(item["name_zh"]),
+        "name_norm": item.get("name_norm") or normalize_name(name),
         "food_type": item.get("food_type") or "dish",
         "dish_style": item.get("dish_style") or "家常菜",
         "region": item.get("region") or "通用",
         "cuisine": item.get("cuisine") or "家常菜",
-        "category_l1": item.get("category_l1") or "其他",
+        "category_l1": item.get("category_l1") or item.get("category") or "其他",
         "category_l2": item.get("category_l2"),
         "state": item.get("state") or "cooked",
         "edible_ratio": item.get("edible_ratio") or 1.0,

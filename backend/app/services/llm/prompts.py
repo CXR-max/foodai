@@ -79,6 +79,42 @@ ACTIVITY_LABEL = {
 }
 
 
+def _targets_text(profile_ctx: dict) -> str:
+    """当日七项硬区间
+
+    只给总热量时，模型会按自己的口味配「高蛋白高脂低碳」，复核按区间一卡就整份
+    拒收（蛋白 148 g / 脂肪 116 g 这种）。把区间原样写进提示词，一次就能排进去。
+    """
+    t = profile_ctx.get("targets") or {}
+    if not t:
+        return ""
+    parts: list[str] = []
+
+    def _span(lo_key: str, hi_key: str, label: str, unit: str) -> None:
+        lo, hi = t.get(lo_key), t.get(hi_key)
+        if lo is None or hi is None:
+            return
+        parts.append(f"{label} {float(lo):g}~{float(hi):g} {unit}")
+
+    _span("calorie_min", "calorie_max", "热量", "kcal")
+    _span("protein_min_g", "protein_max_g", "蛋白质", "g")
+    _span("fat_min_g", "fat_max_g", "脂肪", "g")
+    _span("carb_min_g", "carb_max_g", "碳水", "g")
+    if t.get("fiber_min_g") is not None:
+        parts.append(f"膳食纤维 ≥{float(t['fiber_min_g']):g} g")
+    if t.get("sodium_max_mg") is not None:
+        parts.append(f"钠 ≤{float(t['sodium_max_mg']):g} mg")
+    if not parts:
+        return ""
+    return (
+        "- 当日七项硬区间（四餐累加后必须同时落在区间内，超一点都不行）："
+        + "、".join(parts)
+        + "\n"
+        + "- 搭配要求：每餐「主食 + 优质蛋白 + 蔬菜」组合，全天菜品 ≥10 种；"
+        + "不要堆大份肉菜或油炸菜凑热量，蛋白别超过每公斤体重 1.6 g\n"
+    )
+
+
 def build_plan_messages(profile_ctx: dict, days: int, note: str = "") -> list[dict]:
     """
     构造方案生成的消息列表
@@ -119,7 +155,7 @@ def build_plan_messages(profile_ctx: dict, days: int, note: str = "") -> list[di
 - 活动水平：{ACTIVITY_LABEL.get(profile_ctx.get('activity_level', ''), profile_ctx.get('activity_level', '未填'))}
 - 目标：{GOAL_LABEL.get(profile_ctx.get('goal', ''), profile_ctx.get('goal', '未填'))}
 - 每日热量目标：约 {profile_ctx.get('daily_target_calories', 2000)} 千卡（已按科学公式算好，允许 ±10% 微调）
-- 口味偏好（优先满足）：{('、'.join(profile_ctx.get('taste_preferences', [])) or '无')}
+{_targets_text(profile_ctx)}- 口味偏好（优先满足）：{('、'.join(profile_ctx.get('taste_preferences', [])) or '无')}
 - 饮食禁忌（必须绝对排除）：{('、'.join(profile_ctx.get('dietary_restrictions', [])) or '无')}
 - 运动偏好（优先安排）：{('、'.join(profile_ctx.get('exercise_preferences', [])) or '无')}
 - 用户补充要求：{note or '无'}
@@ -138,7 +174,7 @@ def _profile_text(profile_ctx: dict, note: str = "") -> str:
 - 活动水平：{ACTIVITY_LABEL.get(profile_ctx.get('activity_level', ''), profile_ctx.get('activity_level', '未填'))}
 - 目标：{GOAL_LABEL.get(profile_ctx.get('goal', ''), profile_ctx.get('goal', '未填'))}
 - 每日热量目标：约 {profile_ctx.get('daily_target_calories', 2000)} 千卡（允许 ±10% 微调）
-- 口味偏好（优先满足）：{('、'.join(profile_ctx.get('taste_preferences', [])) or '无')}
+{_targets_text(profile_ctx)}- 口味偏好（优先满足）：{('、'.join(profile_ctx.get('taste_preferences', [])) or '无')}
 - 饮食禁忌（必须绝对排除）：{('、'.join(profile_ctx.get('dietary_restrictions', [])) or '无')}
 - 运动偏好（优先安排）：{('、'.join(profile_ctx.get('exercise_preferences', [])) or '无')}
 - 用户补充要求：{note or '无'}"""

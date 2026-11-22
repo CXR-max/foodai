@@ -391,6 +391,9 @@ def build_profile_ctx(profile: HealthProfile, data: GeneratePlanIn) -> dict:
         ctx["dietary_restrictions"] = data.dietary_restrictions
     if data.exercise_preferences is not None:
         ctx["exercise_preferences"] = data.exercise_preferences
+    # 七项区间一并带进上下文：提示词只给总热量时，模型会按「高蛋白低碳」自由发挥
+    # （实测蛋白顶到 3.3 g/kg、脂肪占 50% 能量），复核必然越界、整份方案被拒。
+    ctx["targets"] = plan_targets.build_targets(ctx)
     return ctx
 
 
