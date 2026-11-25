@@ -422,7 +422,17 @@ def normalize_generated_day(
         from app.services import planner
 
         try:
-            fallback = planner.build_day(profile_ctx, day_index, 7, prior_days or [])
+            try:
+                fallback = planner.build_day(profile_ctx, day_index, 7, prior_days or [])
+            except Exception as first_exc:  # noqa: BLE001
+                if not prior_days:
+                    raise
+                # 第 4 天起「跨天不重复」累积 3 天以上，可行域被压得很窄，
+                # 加时也排不出解。去掉跨天约束再排一次：宁可少量重复，
+                # 也别让整份 7 天方案卡在中途被拒收。
+                logger.warning("第 %d 天带跨天约束重排失败（%s），去掉跨天约束重试",
+                               day_index, first_exc)
+                fallback = planner.build_day(profile_ctx, day_index, 7, [])
             meals = normalize_meals([m.model_dump() for m in fallback.meals])
             meals = meal_recalc.recalc_meals(meals)["meals"]
             calibrated = True

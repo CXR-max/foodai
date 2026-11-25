@@ -59,6 +59,8 @@ class Settings(BaseSettings):
     LOCAL_TEXT_BASE_URL: str = "http://localhost:11434/v1"
     LOCAL_TEXT_API_KEY: str = "ollama"        # Ollama 不校验，占位即可
     LOCAL_TEXT_MODEL: str = "qwen2.5:7b"
+    # 意图抽取专用小模型（3B 更快；留空则只用 LOCAL_TEXT_MODEL）
+    LOCAL_INTENT_MODEL: str = ""
 
     # 通义千问（云端文字，阿里云 DashScope OpenAI 兼容端点，有免费额度）
     QWEN_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
@@ -74,6 +76,9 @@ class Settings(BaseSettings):
     LLM_MAX_TOKENS: int = 2048        # 通用/整份方案最大输出 tokens
     LLM_DAY_MAX_TOKENS: int = 700     # 逐天生成方案时单天上限（约 400 字 JSON，够用且防截断）
     LLM_CHAT_MAX_TOKENS: int = 128    # 聊天回复最大输出（提示词要求 ≤80 字）
+    # 对话意图抽取：独立超时与输出预算（小模型 + JSON，比普通聊天更需要余量）
+    LLM_INTENT_TIMEOUT: int = 45
+    LLM_INTENT_MAX_TOKENS: int = 512
     LLM_REPORT_MAX_TOKENS: int = 700  # AI 健康周报输出上限（结构化 JSON 点评）
     LLM_VISION_MAX_TOKENS: int = 1500 # 食物识别输出上限（思考 token 与 JSON 共用预算，留足余量）
     LLM_VISION_THINKING: bool = False # glm-4v-flash 不支持思考模式，关闭避免报错
@@ -82,9 +87,27 @@ class Settings(BaseSettings):
     LLM_FALLBACK_TO_MOCK: bool = True # 真模型失败后自动降级 mock（演示保命开关）
     TEXT_FALLBACK_TO_CLOUD: bool = True  # 文字用本地模型时，连不上自动切云端（有 key 才生效）
 
+    # ---- 手环「实时」后台同步（融合自 feat/personalized-burn）----
+    # 后端每 BAND_SYNC_SECONDS 秒给绑定的手环刷一条分钟级样本，页面轮询即可看到数字在动。
+    # 关掉：.env 里设 BAND_AUTO_SYNC=false（页面开关只影响单台设备）
+    BAND_AUTO_SYNC: bool = True
+    BAND_SYNC_SECONDS: int = 20          # 采样间隔（秒），最小 15；越小越像实时
+    BAND_SAMPLE_KEEP_DAYS: int = 3       # 实时样本保留天数，过期自动清理
+    # 导出的数据包扔进这个目录，后台会自动导入（手机上不方便点上传时的备用通道）
+    BAND_INBOX_DIR: Path = BASE_DIR / "band_inbox"
+
     # ---- 识别防刷 ----
     VISION_DAILY_QUOTA: int = 50      # 每人每天最多识别次数（0=不限制）
     VISION_DEDUPE_HOURS: int = 24     # 同图去重窗口（小时内重复上传直接回放上次结果）
+
+    # ---- 人脸登录 ----
+    FACE_PROVIDER: str = "mock"           # mock=本地演示 | baidu=百度智能云人脸比对
+    FACE_MATCH_THRESHOLD: float = 80.0    # 1:1 比对通过分（百度 0~100）
+    FACE_MOCK_STRICT: bool = False        # mock 下是否也做相似度校验（默认直接放行，便于演示）
+    FACE_TICKET_TTL: int = 120            # 核验通过后一次性票据有效期（秒）
+    FACE_DIR: Path = BASE_DIR / "data" / "faces"   # 人脸底库目录（不对外暴露）
+    BAIDU_FACE_API_KEY: str = ""
+    BAIDU_FACE_SECRET_KEY: str = ""
 
     # ---- 派生：当前生效的文字 / 视觉配置（业务代码只认这几个）----
     @property
@@ -119,6 +142,13 @@ class Settings(BaseSettings):
         if self.TEXT_PROVIDER.strip().lower() == "local":
             return self.LOCAL_TEXT_MODEL
         return self.CLOUD_TEXT_MODEL
+
+    @property
+    def intent_model(self) -> str:
+        """意图抽取用的模型名；只有本地模式才有独立小模型，其余返回空由调用方跳过。"""
+        if self.TEXT_PROVIDER.strip().lower() == "local":
+            return self.LOCAL_INTENT_MODEL
+        return ""
 
     # 视觉：暂时始终走云端
     @property

@@ -1,0 +1,24 @@
+﻿DATABASE_URL: sqlite+pysqlite:///C:/Users/43120/Desktop/foodai/backend/foodai.db
+engine.url: sqlite+pysqlite:///C%3A/Users/43120/Desktop/foodai/backend/foodai.db
+
+数据库文件: C:/Users/43120/Desktop/foodai/backend/foodai.db
+文件存在: True
+文件大小: 471040 bytes
+
+实际表数: 16
+  achievements
+  alembic_version
+  check_ins
+  diet_plans
+  food_records
+  health_profiles
+  plan_chat_messages
+  plan_constraint_states
+  plan_days
+  points_logs
+  recognitions
+  redemptions
+  rewards
+  user_achievements
+  users
+  weight_logs

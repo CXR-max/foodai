@@ -1,0 +1,11 @@
+﻿python.exe : usage: alembic [-h] [--version] [-c CONFIG] [-n NAME] [-x X] [--raiseerr] [-q]
+所在位置 行:1 字符: 55
++ ... i\backend"; & ".\.venv\Scripts\python.exe" -m alembic history 11b79bc ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (usage: alembic ...-raiseerr] [-q]:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+               {branches,check,current,downgrade,edit,ensure_version,heads,history,init,list_templates,merge,revision,s
+how,stamp,upgrade}
+               ...
+alembic: error: unrecognized arguments: 11b79bc57c01

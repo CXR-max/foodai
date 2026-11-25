@@ -13,6 +13,9 @@ const router = createRouter({
     { path: '/welcome', name: 'welcome', component: () => import('@/views/WelcomeView.vue') },
     { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue') },
     { path: '/register', name: 'register', component: () => import('@/views/RegisterView.vue') },
+    // 运动：跑步中 / 运动详情是沉浸式独立页（不吃底部 tabBar），运动首页放在布局内
+    { path: '/workout/run', name: 'workout-run', component: () => import('@/views/RunTrackView.vue'), meta: { title: '运动中' } },
+    { path: '/workout/:id(\\d+)', name: 'workout-detail', component: () => import('@/views/WorkoutDetailView.vue'), meta: { title: '运动报告' } },
     {
       path: '/',
       component: () => import('@/layouts/MainLayout.vue'),
@@ -24,6 +27,8 @@ const router = createRouter({
         { path: 'm/sport', name: 'm-sport', component: () => import('@/views/mobile/MobileSportView.vue'), meta: { title: '运动', mobile: true } },
         { path: 'm/community', name: 'm-community', component: () => import('@/views/mobile/MobileCommunityView.vue'), meta: { title: '社区', mobile: true } },
         { path: 'm/me', name: 'm-me', component: () => import('@/views/mobile/MobileMeView.vue'), meta: { title: '我的', mobile: true } },
+        // 融合：手环数据（设备页），手机端从「我的」进入
+        { path: 'm/band', name: 'm-band', component: () => import('@/views/DeviceView.vue'), meta: { title: '手环数据', mobile: true } },
 
         // ---- 桌面端原有页面（布局与行为保持不变）----
         { path: 'dashboard', name: 'dashboard', component: () => import('@/views/DashboardView.vue'), meta: { title: '仪表盘' } },
@@ -31,6 +36,7 @@ const router = createRouter({
         { path: 'recognition', name: 'recognition', component: () => import('@/views/RecognitionView.vue'), meta: { title: '食物识别' } },
         { path: 'plans', name: 'plans', component: () => import('@/views/PlansView.vue'), meta: { title: '养生方案' } },
         { path: 'checkin', name: 'checkin', component: () => import('@/views/CheckInView.vue'), meta: { title: '健康打卡' } },
+        { path: 'workout', name: 'workout', component: () => import('@/views/WorkoutView.vue'), meta: { title: '运动' } },
         { path: 'stats', name: 'stats', component: () => import('@/views/StatsView.vue'), meta: { title: '数据追踪' } },
         { path: 'mall', name: 'mall', component: () => import('@/views/MallView.vue'), meta: { title: '积分商城' } },
         { path: 'achievements', name: 'achievements', component: () => import('@/views/AchievementsView.vue'), meta: { title: '成就徽章' } },

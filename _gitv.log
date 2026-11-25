@@ -1,0 +1,181 @@
+14:27:33.852403 http.c:1033             == Info: !!! WARNING !!!
+14:27:33.852403 http.c:1033             == Info: This is a debug build of libcurl, do not use in production.
+14:27:33.853410 http.c:1033             == Info: Could not find host github.com in the .netrc file; using defaults
+14:27:33.889198 http.c:1033             == Info: Host github.com:443 was resolved.
+14:27:33.889198 http.c:1033             == Info: IPv6: (none)
+14:27:33.889198 http.c:1033             == Info: IPv4: 20.205.243.166
+14:27:33.889198 http.c:1033             == Info:   Trying 20.205.243.166:443...
+14:27:33.968464 http.c:1033             == Info: schannel: SSL/TLS connection with github.com port 443 (step 1/3)
+14:27:33.968464 http.c:1033             == Info: schannel: ignore revocation offline errors
+14:27:33.968464 http.c:1033             == Info: schannel: disabled automatic use of client certificate
+14:27:33.971868 http.c:1033             == Info: ALPN: curl offers http/1.1
+14:27:33.972859 http.c:1033             == Info: schannel: sending initial handshake data: sending 457 bytes.
+14:27:33.973858 http.c:1033             == Info: schannel: sent initial handshake data: sent 457 bytes
+14:27:33.973858 http.c:1033             == Info: schannel: SSL/TLS connection with github.com port 443 (step 2/3)
+14:27:33.973858 http.c:1033             == Info: schannel: failed to receive handshake, need more data
+14:27:34.036467 http.c:1033             == Info: schannel: SSL/TLS connection with github.com port 443 (step 2/3)
+14:27:34.036467 http.c:1033             == Info: schannel: failed to receive handshake, need more data
+14:27:34.047985 http.c:1033             == Info: schannel: SSL/TLS connection with github.com port 443 (step 2/3)
+14:27:34.053585 http.c:1033             == Info: schannel: sending next handshake data: sending 64 bytes.
+14:27:34.053585 http.c:1033             == Info: schannel: SSL/TLS handshake complete
+14:27:34.053585 http.c:1033             == Info: schannel: SSL/TLS connection with github.com port 443 (step 3/3)
+14:27:34.053585 http.c:1033             == Info: ALPN: server accepted http/1.1
+14:27:34.053585 http.c:1033             == Info: Established connection to github.com (20.205.243.166 port 443) from 172.20.10.7 port 12101 
+14:27:34.053585 http.c:1033             == Info: using HTTP/1.x
+14:27:34.053585 http.c:1033             == Info: sending last upload chunk of 220 bytes
+14:27:34.054584 http.c:1033             == Info: Curl_xfer_send(len=220, eos=1) -> 0, 220
+14:27:34.054584 http.c:980              => Send header, 0000000220 bytes (0x000000dc)
+14:27:34.054584 http.c:992              => Send header: GET /CXR-max/foodai.git/info/refs?service=git-upload-pack HTTP/1.1
+14:27:34.054584 http.c:992              => Send header: Host: github.com
+14:27:34.054584 http.c:992              => Send header: User-Agent: git/2.56.0.windows.3
+14:27:34.054584 http.c:992              => Send header: Accept: */*
+14:27:34.054584 http.c:992              => Send header: Accept-Encoding: deflate, gzip, br, zstd
+14:27:34.054584 http.c:992              => Send header: Pragma: no-cache
+14:27:34.054584 http.c:992              => Send header: Git-Protocol: version=2
+14:27:34.054584 http.c:992              => Send header:
+14:27:34.054584 http.c:1033             == Info: Request completely sent off
+14:27:34.132358 http.c:1033             == Info: schannel: remote party requests renegotiation
+14:27:34.132358 http.c:1033             == Info: schannel: renegotiating SSL/TLS connection
+14:27:34.132358 http.c:1033             == Info: schannel: SSL/TLS connection with github.com port 443 (step 2/3)
+14:27:34.132358 http.c:1033             == Info: schannel: SSL/TLS handshake complete
+14:27:34.132358 http.c:1033             == Info: schannel: SSL/TLS connection with github.com port 443 (step 3/3)
+14:27:34.132358 http.c:1033             == Info: schannel: SSL/TLS connection renegotiated
+14:27:34.132358 http.c:1033             == Info: schannel: remote party requests renegotiation
+14:27:34.132358 http.c:1033             == Info: schannel: renegotiating SSL/TLS connection
+14:27:34.132358 http.c:1033             == Info: schannel: SSL/TLS connection with github.com port 443 (step 2/3)
+14:27:34.133360 http.c:1033             == Info: schannel: SSL/TLS handshake complete
+14:27:34.133360 http.c:1033             == Info: schannel: SSL/TLS connection with github.com port 443 (step 3/3)
+14:27:34.133360 http.c:1033             == Info: schannel: SSL/TLS connection renegotiated
+14:27:34.381462 http.c:980              <= Recv header, 0000000017 bytes (0x00000011)
+14:27:34.381462 http.c:992              <= Recv header: HTTP/1.1 200 OK
+14:27:34.381462 http.c:980              <= Recv header, 0000000026 bytes (0x0000001a)
+14:27:34.381462 http.c:992              <= Recv header: Server: GitHub-Babel/3.0
+14:27:34.381462 http.c:980              <= Recv header, 0000000059 bytes (0x0000003b)
+14:27:34.381462 http.c:992              <= Recv header: Content-Type: application/x-git-upload-pack-advertisement
+14:27:34.381462 http.c:980              <= Recv header, 0000000054 bytes (0x00000036)
+14:27:34.381462 http.c:992              <= Recv header: Content-Security-Policy: default-src 'none'; sandbox
+14:27:34.381462 http.c:980              <= Recv header, 0000000040 bytes (0x00000028)
+14:27:34.381462 http.c:992              <= Recv header: expires: Fri, 01 Jan 1980 00:00:00 GMT
+14:27:34.381462 http.c:980              <= Recv header, 0000000018 bytes (0x00000012)
+14:27:34.381462 http.c:992              <= Recv header: pragma: no-cache
+14:27:34.381462 http.c:980              <= Recv header, 0000000053 bytes (0x00000035)
+14:27:34.381462 http.c:992              <= Recv header: Cache-Control: no-cache, max-age=0, must-revalidate
+14:27:34.381462 http.c:980              <= Recv header, 0000000023 bytes (0x00000017)
+14:27:34.381462 http.c:992              <= Recv header: Vary: Accept-Encoding
+14:27:34.381462 http.c:980              <= Recv header, 0000000045 bytes (0x0000002d)
+14:27:34.381462 http.c:992              <= Recv header: Strict-Transport-Security: max-age=31536000
+14:27:34.381462 http.c:980              <= Recv header, 0000000028 bytes (0x0000001c)
+14:27:34.381462 http.c:992              <= Recv header: Transfer-Encoding: chunked
+14:27:34.381462 http.c:980              <= Recv header, 0000000037 bytes (0x00000025)
+14:27:34.381462 http.c:992              <= Recv header: Date: Wed, 18 Nov 2026 06:27:34 GMT
+14:27:34.381462 http.c:980              <= Recv header, 0000000023 bytes (0x00000017)
+14:27:34.381462 http.c:992              <= Recv header: X-Frame-Options: DENY
+14:27:34.381462 http.c:980              <= Recv header, 0000000059 bytes (0x0000003b)
+14:27:34.381462 http.c:992              <= Recv header: X-GitHub-Request-Id: 3AD1:26B8BF:1AA0563:2A16EAD:6AFD4556
+14:27:34.381462 http.c:980              <= Recv header, 0000000037 bytes (0x00000025)
+14:27:34.381462 http.c:992              <= Recv header: x-github-edge-region: southeastasia
+14:27:34.381462 http.c:980              <= Recv header, 0000000002 bytes (0x00000002)
+14:27:34.381462 http.c:992              <= Recv header:
+14:27:34.381462 http.c:1033             == Info: Connection #0 to host github.com:443 left intact
+14:27:34.382460 http.c:1033             == Info: Could not find host github.com in the .netrc file; using defaults
+14:27:34.382460 http.c:1033             == Info: Reusing existing https: connection with host github.com
+14:27:34.382460 http.c:1033             == Info: sending last upload chunk of 412 bytes
+14:27:34.382460 http.c:1033             == Info: Curl_xfer_send(len=412, eos=1) -> 0, 412
+14:27:34.382460 http.c:980              => Send header, 0000000292 bytes (0x00000124)
+14:27:34.382460 http.c:992              => Send header: POST /CXR-max/foodai.git/git-upload-pack HTTP/1.1
+14:27:34.382460 http.c:992              => Send header: Host: github.com
+14:27:34.382460 http.c:992              => Send header: User-Agent: git/2.56.0.windows.3
+14:27:34.382460 http.c:992              => Send header: Accept-Encoding: deflate, gzip, br, zstd
+14:27:34.382460 http.c:992              => Send header: Content-Type: application/x-git-upload-pack-request
+14:27:34.382460 http.c:992              => Send header: Accept: application/x-git-upload-pack-result
+14:27:34.382460 http.c:992              => Send header: Git-Protocol: version=2
+14:27:34.382460 http.c:992              => Send header: Content-Length: 120
+14:27:34.382460 http.c:992              => Send header:
+14:27:34.382460 http.c:1033             == Info: upload completely sent off: 120 bytes
+14:27:53.649858 http.c:1033             == Info: Recv failure: Connection was reset
+14:27:53.649858 http.c:1033             == Info: schannel: recv returned error 56
+14:27:53.649858 http.c:1033             == Info: sendrecv_dl() -> 56
+14:27:53.649858 http.c:1033             == Info: Curl_sendrecv() -> 56
+14:27:53.649858 http.c:1033             == Info: Connection died, retrying a fresh connect (retry count: 1)
+14:27:53.649858 http.c:1033             == Info: shutting down connection #0
+14:27:53.650842 http.c:1033             == Info: Issue another request to this URL: 'https://github.com/CXR-max/foodai.git/git-upload-pack'
+14:27:53.651841 http.c:1033             == Info: Could not find host github.com in the .netrc file; using defaults
+14:27:53.651841 http.c:1033             == Info: Hostname github.com was found in DNS cache
+14:27:53.651841 http.c:1033             == Info: Host github.com:443 was resolved.
+14:27:53.651841 http.c:1033             == Info: IPv6: (none)
+14:27:53.651841 http.c:1033             == Info: IPv4: 20.205.243.166
+14:27:53.651841 http.c:1033             == Info:   Trying 20.205.243.166:443...
+14:28:08.771752 http.c:1033             == Info: schannel: SSL/TLS connection with github.com port 443 (step 1/3)
+14:28:08.771752 http.c:1033             == Info: schannel: reusing existing credential handle
+14:28:08.771752 http.c:1033             == Info: schannel: incremented credential handle refcount = 2
+14:28:08.771752 http.c:1033             == Info: ALPN: curl offers http/1.1
+14:28:08.773760 http.c:1033             == Info: schannel: sending initial handshake data: sending 536 bytes.
+14:28:08.774754 http.c:1033             == Info: schannel: sent initial handshake data: sent 536 bytes
+14:28:08.774754 http.c:1033             == Info: schannel: SSL/TLS connection with github.com port 443 (step 2/3)
+14:28:08.774754 http.c:1033             == Info: schannel: failed to receive handshake, need more data
+14:28:08.827240 http.c:1033             == Info: schannel: SSL/TLS connection with github.com port 443 (step 2/3)
+14:28:08.827240 http.c:1033             == Info: schannel: failed to receive handshake, need more data
+14:28:08.862048 http.c:1033             == Info: schannel: SSL/TLS connection with github.com port 443 (step 2/3)
+14:28:08.866047 http.c:1033             == Info: schannel: sending next handshake data: sending 64 bytes.
+14:28:08.866047 http.c:1033             == Info: schannel: SSL/TLS handshake complete
+14:28:08.866047 http.c:1033             == Info: schannel: SSL/TLS connection with github.com port 443 (step 3/3)
+14:28:08.866047 http.c:1033             == Info: ALPN: server accepted http/1.1
+14:28:08.866047 http.c:1033             == Info: Established connection to github.com (20.205.243.166 port 443) from 172.20.10.7 port 28376 
+14:28:08.866047 http.c:1033             == Info: using HTTP/1.x
+14:28:08.866047 http.c:1033             == Info: sending last upload chunk of 412 bytes
+14:28:08.866047 http.c:1033             == Info: Curl_xfer_send(len=412, eos=1) -> 0, 412
+14:28:08.866047 http.c:980              => Send header, 0000000292 bytes (0x00000124)
+14:28:08.866047 http.c:992              => Send header: POST /CXR-max/foodai.git/git-upload-pack HTTP/1.1
+14:28:08.866047 http.c:992              => Send header: Host: github.com
+14:28:08.866047 http.c:992              => Send header: User-Agent: git/2.56.0.windows.3
+14:28:08.866047 http.c:992              => Send header: Accept-Encoding: deflate, gzip, br, zstd
+14:28:08.866047 http.c:992              => Send header: Content-Type: application/x-git-upload-pack-request
+14:28:08.866047 http.c:992              => Send header: Accept: application/x-git-upload-pack-result
+14:28:08.866047 http.c:992              => Send header: Git-Protocol: version=2
+14:28:08.866047 http.c:992              => Send header: Content-Length: 120
+14:28:08.866047 http.c:992              => Send header:
+14:28:08.866047 http.c:1033             == Info: upload completely sent off: 120 bytes
+14:28:08.942034 http.c:1033             == Info: schannel: remote party requests renegotiation
+14:28:08.942034 http.c:1033             == Info: schannel: renegotiating SSL/TLS connection
+14:28:08.942034 http.c:1033             == Info: schannel: SSL/TLS connection with github.com port 443 (step 2/3)
+14:28:08.942034 http.c:1033             == Info: schannel: SSL/TLS handshake complete
+14:28:08.942034 http.c:1033             == Info: schannel: SSL/TLS connection with github.com port 443 (step 3/3)
+14:28:08.942034 http.c:1033             == Info: schannel: SSL/TLS connection renegotiated
+14:28:08.942034 http.c:1033             == Info: schannel: remote party requests renegotiation
+14:28:08.942034 http.c:1033             == Info: schannel: renegotiating SSL/TLS connection
+14:28:08.942034 http.c:1033             == Info: schannel: SSL/TLS connection with github.com port 443 (step 2/3)
+14:28:08.943034 http.c:1033             == Info: schannel: SSL/TLS handshake complete
+14:28:08.943034 http.c:1033             == Info: schannel: SSL/TLS connection with github.com port 443 (step 3/3)
+14:28:08.943034 http.c:1033             == Info: schannel: SSL/TLS connection renegotiated
+14:28:09.189285 http.c:980              <= Recv header, 0000000017 bytes (0x00000011)
+14:28:09.189285 http.c:992              <= Recv header: HTTP/1.1 200 OK
+14:28:09.189285 http.c:980              <= Recv header, 0000000026 bytes (0x0000001a)
+14:28:09.189285 http.c:992              <= Recv header: Server: GitHub-Babel/3.0
+14:28:09.189285 http.c:980              <= Recv header, 0000000052 bytes (0x00000034)
+14:28:09.189285 http.c:992              <= Recv header: Content-Type: application/x-git-upload-pack-result
+14:28:09.189285 http.c:980              <= Recv header, 0000000054 bytes (0x00000036)
+14:28:09.189285 http.c:992              <= Recv header: Content-Security-Policy: default-src 'none'; sandbox
+14:28:09.189285 http.c:980              <= Recv header, 0000000040 bytes (0x00000028)
+14:28:09.189285 http.c:992              <= Recv header: expires: Fri, 01 Jan 1980 00:00:00 GMT
+14:28:09.189285 http.c:980              <= Recv header, 0000000018 bytes (0x00000012)
+14:28:09.189285 http.c:992              <= Recv header: pragma: no-cache
+14:28:09.189285 http.c:980              <= Recv header, 0000000053 bytes (0x00000035)
+14:28:09.189285 http.c:992              <= Recv header: Cache-Control: no-cache, max-age=0, must-revalidate
+14:28:09.189285 http.c:980              <= Recv header, 0000000023 bytes (0x00000017)
+14:28:09.189285 http.c:992              <= Recv header: Vary: Accept-Encoding
+14:28:09.189285 http.c:980              <= Recv header, 0000000045 bytes (0x0000002d)
+14:28:09.189285 http.c:992              <= Recv header: Strict-Transport-Security: max-age=31536000
+14:28:09.189285 http.c:980              <= Recv header, 0000000028 bytes (0x0000001c)
+14:28:09.189285 http.c:992              <= Recv header: Transfer-Encoding: chunked
+14:28:09.189285 http.c:980              <= Recv header, 0000000037 bytes (0x00000025)
+14:28:09.189285 http.c:992              <= Recv header: Date: Wed, 18 Nov 2026 06:28:09 GMT
+14:28:09.189285 http.c:980              <= Recv header, 0000000023 bytes (0x00000017)
+14:28:09.189285 http.c:992              <= Recv header: X-Frame-Options: DENY
+14:28:09.189285 http.c:980              <= Recv header, 0000000059 bytes (0x0000003b)
+14:28:09.189285 http.c:992              <= Recv header: X-GitHub-Request-Id: 3AD3:2DF2FE:1AB4E68:2A2A152:6AFD4579
+14:28:09.189285 http.c:980              <= Recv header, 0000000037 bytes (0x00000025)
+14:28:09.189285 http.c:992              <= Recv header: x-github-edge-region: southeastasia
+14:28:09.189285 http.c:980              <= Recv header, 0000000002 bytes (0x00000002)
+14:28:09.189285 http.c:992              <= Recv header:
+14:28:09.189285 http.c:1033             == Info: Connection #1 to host github.com:443 left intact
+c525033b047df0ace012a7a45fd1063bc57b7054	refs/heads/main

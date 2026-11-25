@@ -1,0 +1,26 @@
+<Slide style={{ width: 1280, height: 720, background: '#FAF6F1', padding: '48px 53px', position: 'relative' }}>
+    <Box style={{ flexDirection: 'row', height: 624, justifyContent: 'center', alignItems: 'center', gap: 80 }}>
+        <Box style={{ width: 330, flexDirection: 'column' }}>
+            <Box style={{ flexDirection: 'row' }}>
+                <Box style={{ background: '#C08A2E', borderRadius: 18, padding: '7px 18px' }}>
+                    <Text style={{ fontSize: 13, color: '#FFFFFF', fontWeight: 'bold', letterSpacing: 2 }}>模块④ · 组员4</Text>
+                </Box>
+            </Box>
+
+            <Text style={{ fontSize: 24, fontWeight: 900, color: '#262220', marginTop: 18, lineHeight: 1.55, letterSpacing: 0.5 }}>
+                <>今天该做什么<br />全在这一页</>
+            </Text>
+
+            <Text style={{ fontSize: 13.5, color: '#8C837A', marginTop: 10, lineHeight: 1.95 }}>
+                <>顶部三环看完成度<br />中间时间轴排任务，右侧饮水 · 睡眠 · 月历</>
+            </Text>
+        </Box>
+
+        <Image src="assets/m4_schedule.jpg" style={{ width: 500, height: 569, borderRadius: 10, border: '1px solid #EEE3D5', objectFit: 'cover' }} />
+    </Box>
+
+    <Box style={{ position: 'absolute', left: 53, bottom: 14, width: 1174, flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Text style={{ fontSize: 11, color: '#B3AAA1', letterSpacing: 1.5 }}>识膳智行 · SMART DIET</Text>
+        <Text style={{ fontSize: 11, color: '#B3AAA1', letterSpacing: 1.5 }}>10 / 11</Text>
+    </Box>
+</Slide>

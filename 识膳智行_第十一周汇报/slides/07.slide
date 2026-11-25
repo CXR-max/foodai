@@ -1,0 +1,80 @@
+<Slide style={{ width: 1280, height: 720, background: '#FAF6F1', padding: '48px 53px', position: 'relative' }}>
+    <Box style={{ flexDirection: 'column', height: 624 }}>
+        <Box style={{ flexDirection: 'row' }}>
+            <Box style={{ background: '#5F8A6E', borderRadius: 18, padding: '7px 18px' }}>
+                <Text style={{ fontSize: 13, color: '#FFFFFF', fontWeight: 'bold', letterSpacing: 2 }}>模块③ · 组员3</Text>
+            </Box>
+        </Box>
+
+        <Text style={{ fontSize: 34, fontWeight: 900, color: '#262220', marginTop: 16, letterSpacing: 1 }}>
+            今日三环与睡眠卡
+        </Text>
+
+        <Box style={{ flexDirection: 'row', gap: 20, flex: 1, marginTop: 24 }}>
+            <Box style={{ flex: 1, background: '#FFFFFF', borderRadius: 20, border: '1px solid #F0E6D9', padding: 24, flexDirection: 'column' }}>
+                <Text style={{ fontSize: 15.5, fontWeight: 'bold', color: '#262220', lineHeight: 1.4 }}>
+                    <><span style={{ color: '#5F8A6E' }}>①</span> 对标 Keep 的今日三环</>
+                </Text>
+                <Text style={{ fontSize: 13, color: '#4A4340', lineHeight: 1.95, marginTop: 14 }}>
+                    <>▸ 饮食摄入：拍照识别后自动汇总<br />▸ 活动消耗：手环导入包解析后回填<br />▸ 睡眠时长：手环睡眠数据直接带入</>
+                </Text>
+                <Box style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
+                    <Box style={{ background: '#EDF2ED', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#4F7159' }}>饮食</Text>
+                    </Box>
+                    <Box style={{ background: '#EDF2ED', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#4F7159' }}>活动</Text>
+                    </Box>
+                    <Box style={{ background: '#EDF2ED', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#4F7159' }}>睡眠</Text>
+                    </Box>
+                </Box>
+            </Box>
+
+            <Box style={{ flex: 1, background: '#FFFFFF', borderRadius: 20, border: '1px solid #F0E6D9', padding: 24, flexDirection: 'column' }}>
+                <Text style={{ fontSize: 15.5, fontWeight: 'bold', color: '#262220', lineHeight: 1.4 }}>
+                    <><span style={{ color: '#5F8A6E' }}>②</span> 睡眠卡：一晚看得懂</>
+                </Text>
+                <Text style={{ fontSize: 13, color: '#4A4340', lineHeight: 1.95, marginTop: 14 }}>
+                    <>▸ 最近一晚总睡眠时长，与目标时长并排对比<br />▸ 深睡 / 浅睡 / 快速眼动 / 清醒 分段结构条与占比<br />▸ 自动点评：作息是否规律、深睡占比是否正常</>
+                </Text>
+                <Box style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
+                    <Box style={{ background: '#EDF2ED', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#4F7159' }}>深睡 79 分</Text>
+                    </Box>
+                    <Box style={{ background: '#EDF2ED', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#4F7159' }}>浅睡 261 分</Text>
+                    </Box>
+                    <Box style={{ background: '#EDF2ED', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#4F7159' }}>快速眼动 84 分</Text>
+                    </Box>
+                </Box>
+            </Box>
+
+            <Box style={{ flex: 1, background: '#FFFFFF', borderRadius: 20, border: '1px solid #F0E6D9', padding: 24, flexDirection: 'column' }}>
+                <Text style={{ fontSize: 15.5, fontWeight: 'bold', color: '#262220', lineHeight: 1.4 }}>
+                    <><span style={{ color: '#5F8A6E' }}>③</span> 目标值 · 双端 · 趋势</>
+                </Text>
+                <Text style={{ fontSize: 13, color: '#4A4340', lineHeight: 1.95, marginTop: 14 }}>
+                    <>▸ 目标值按档案 BMR × 活动系数 × 热量目标逐人计算<br />▸ 手机端与桌面端自适应，双端截图均验证通过<br />▸ 新增近 7 天步数折线图，让手环数据看得见</>
+                </Text>
+                <Box style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
+                    <Box style={{ background: '#EDF2ED', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#4F7159' }}>BMR 1284</Text>
+                    </Box>
+                    <Box style={{ background: '#EDF2ED', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#4F7159' }}>双端自适应</Text>
+                    </Box>
+                    <Box style={{ background: '#EDF2ED', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#4F7159' }}>7 天趋势</Text>
+                    </Box>
+                </Box>
+            </Box>
+        </Box>
+    </Box>
+
+    <Box style={{ position: 'absolute', left: 53, bottom: 14, width: 1174, flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Text style={{ fontSize: 11, color: '#B3AAA1', letterSpacing: 1.5 }}>识膳智行 · SMART DIET</Text>
+        <Text style={{ fontSize: 11, color: '#B3AAA1', letterSpacing: 1.5 }}>07 / 11</Text>
+    </Box>
+</Slide>

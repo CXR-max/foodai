@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 健康档案页：基础信息 + 诉求 + 三组偏好 + BMI + 处方卡（为什么给你这个数）
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as profileApi from '@/api/profile'
@@ -8,6 +8,10 @@ import BasisPopover from '@/components/BasisPopover.vue'
 import TrendChart from '@/components/TrendChart.vue'
 import { useAuthStore } from '@/stores/auth'
 import { isMobile } from '@/composables/useIsMobile'
+import * as faceApi from '@/api/face'
+
+// 人脸组件依赖 MediaPipe（约 20MB），只在点击「绑定人脸」时加载
+const FaceCaptureDialog = defineAsyncComponent(() => import('@/components/FaceCaptureDialog.vue'))
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -25,6 +29,7 @@ const GOALS = [
 
 // 手机端底部只有 5 个 tab，其余功能从这里进（桌面端由左侧菜单承担，不显示这块）
 const moreEntries = [
+  { path: '/workout', title: '运动', icon: '🏃', desc: '跑步/快走/骑行记录与轨迹' },
   { path: '/stats', title: '数据追踪', icon: '📈', desc: '热量趋势、营养结构、体重变化' },
   { path: '/mall', title: '积分商城', icon: '🪙', desc: '用积分兑换奖励' },
   { path: '/achievements', title: '成就徽章', icon: '🏆', desc: '查看已解锁的成就' },
@@ -138,7 +143,34 @@ const weightOption = computed(() => ({
   }],
 }))
 
-onMounted(load)
+// ---- 人脸登录绑定 ----
+const faceBound = ref(false)
+const faceVisible = ref(false)
+
+async function loadFace() {
+  try {
+    faceBound.value = (await faceApi.myFace()).registered
+  } catch {
+    /* 未登录或接口异常时保持未绑定状态 */
+  }
+}
+
+async function onFaceCaptured(images: string[]) {
+  const r = await faceApi.enrollFace(images[0])
+  faceBound.value = true
+  ElMessage.success(r.provider === 'mock' ? '已绑定（演示模式）' : '人脸绑定成功')
+}
+
+async function doUnbindFace() {
+  await faceApi.unbindFace()
+  faceBound.value = false
+  ElMessage.success('已解绑人脸')
+}
+
+onMounted(() => {
+  load()
+  loadFace()
+})
 </script>
 
 <template>
@@ -258,6 +290,22 @@ onMounted(load)
         </div>
 
         <div class="page-card">
+          <h3 class="page-title">🔐 人脸登录</h3>
+          <p class="face-tip">
+            {{ faceBound ? '已绑定，可在登录页刷脸进入' : '未绑定，绑定后可在登录页刷脸进入' }}
+          </p>
+          <el-button v-if="!faceBound" type="success" plain style="width:100%" @click="faceVisible = true">
+            绑定人脸
+          </el-button>
+          <template v-else>
+            <el-button plain style="width:100%" @click="faceVisible = true">重新绑定</el-button>
+            <el-button text type="danger" style="width:100%;margin:6px 0 0" @click="doUnbindFace">
+              解绑
+            </el-button>
+          </template>
+        </div>
+
+        <div class="page-card">
           <h3 class="page-title">⚖️ 记录今日体重</h3>
           <div style="display:flex;gap:8px">
             <el-input-number v-model="newWeight" :min="20" :max="300" :precision="1" style="flex:1" placeholder="kg" />
@@ -288,6 +336,8 @@ onMounted(load)
         <span class="more-arrow">›</span>
       </div>
     </div>
+
+    <FaceCaptureDialog v-model:visible="faceVisible" title="绑定人脸" allow-upload @captured="onFaceCaptured" />
   </div>
 </template>
 
@@ -295,6 +345,55 @@ onMounted(load)
 .bmi { font-size: 42px; font-weight: 800; margin: 4px 0 8px; }
 .page-title { margin-top: 18px; }
 .bf-tip { margin: 0; font-size: 12px; color: #909399; line-height: 1.5; padding-top: 8px; }
+.face-tip { margin: 0 0 10px; font-size: 12px; color: #909399; line-height: 1.5; }
+
+/* 诉求四选一：诉求决定策略，不是按 BMI 一刀切 */
+.goal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+.goal-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid #e8eaf0;
+  border-radius: 10px;
+  background: #fbfcfe;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.goal-item:hover { border-color: #c6d4ea; background: #f5f9ff; }
+.goal-item.active { border-color: #67c23a; background: #f2fbef; box-shadow: 0 0 0 1px #67c23a inset; }
+.goal-name { font-size: 13px; font-weight: 600; color: #303133; }
+.goal-desc { font-size: 11px; color: #909399; line-height: 1.45; }
+
+/* 处方卡 */
+.rx-summary { margin: 0 0 10px; font-size: 12.5px; line-height: 1.6; color: #4b5563; }
+.rx-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
+.rx-cell {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 8px 10px; border-radius: 8px; background: #f7f9fc;
+}
+.rx-k { font-size: 11px; color: #8a94a6; }
+.rx-v { font-size: 14px; color: #303133; }
+.rx-targets { border-top: 1px dashed #eceff4; padding-top: 8px; margin-bottom: 10px; }
+.rx-line {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 12px; padding: 3px 0; color: #606266;
+}
+.rx-line-k { width: 56px; color: #8a94a6; flex: none; }
+.rx-line-v { flex: 1; color: #303133; font-variant-numeric: tabular-nums; }
+.rx-focus { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.rx-chip {
+  padding: 2px 8px; border-radius: 999px; background: #eef6ff;
+  color: #2b6cd4; font-size: 11px;
+}
+.rx-warn { margin: 4px 0 0; font-size: 11.5px; line-height: 1.55; color: #b07a1e; }
+.rx-basis { margin: 8px 0 0; font-size: 11px; color: #909399; line-height: 1.5; }
+.rx-foot { margin: 6px 0 0; font-size: 10.5px; color: #b6bcc8; line-height: 1.5; }
 
 /* 诉求四选一：诉求决定策略，不是按 BMI 一刀切 */
 .goal-grid {

@@ -2,6 +2,22 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "★ 查看手机地址（复制+二维码）",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}\\scripts\\show-mobile-url.ps1"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "★ 一键启动（网页端 + 手机端）",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}\\scripts\\start-mobile.ps1"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
       "label": "后端: 启动 FastAPI（热重载）",
       "type": "shell",
       "command": "${workspaceFolder}\\backend\\.venv\\Scripts\\python.exe",
@@ -83,7 +99,7 @@
       }
     },
     {
-      "label": "全栈: 一键停止",
+      "label": "★ 一键关闭（后端 + 前端 + 隧道）",
       "type": "shell",
       "command": "powershell.exe",
       "args": [

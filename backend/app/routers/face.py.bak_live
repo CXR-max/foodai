@@ -1,0 +1,188 @@
+"""人脸登录路由
+
+流程：
+1. 登录页输入用户名 → POST /auth/face/status 查是否已绑定
+2. 端上唤起摄像头 + 眨眼 → POST /auth/face/verify 拿到一次性 ticket
+3. 前端用 ticket 调 POST /auth/face/login 换正式 token
+
+底库照片存在 backend/data/faces/，不走 /uploads 静态目录，避免被直接访问。
+"""
+import base64
+import binascii
+import io
+import logging
+import time
+from datetime import datetime
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException
+from PIL import Image
+from sqlalchemy.orm import Session
+
+from app.core.config import settings
+from app.core.deps import get_current_user
+from app.core.security import create_face_ticket, create_token, take_face_ticket
+from app.db.session import get_db
+from app.models.user import User
+from app.models.user_face import UserFace
+from app.routers.auth import user_dict
+from app.schemas.face import (
+    FaceEnrollIn, FaceLoginIn, FaceStatusIn, FaceStatusOut,
+    FaceVerifyIn, FaceVerifyOut,
+)
+from app.services.face import FaceError, get_face_provider
+
+logger = logging.getLogger("face")
+router = APIRouter(prefix="/auth/face", tags=["人脸登录"])
+
+MAX_IMAGE_BYTES = 3 * 1024 * 1024      # 单张图上限 3MB
+RATE_WINDOW_SEC = 60                   # 每个用户名 60 秒内最多试 5 次
+RATE_MAX_TRIES = 5
+_tries: dict[str, list[float]] = {}
+
+
+def _decode_image(data: str) -> bytes:
+    """兼容 dataURL 与纯 base64，做大小与合法性校验"""
+    if not data:
+        raise HTTPException(status_code=400, detail="缺少人脸图片")
+    raw_b64 = data.split(",", 1)[1] if data.startswith("data:") else data
+    try:
+        raw = base64.b64decode(raw_b64, validate=True)
+    except (binascii.Error, ValueError):
+        raise HTTPException(status_code=400, detail="人脸图片编码不正确")
+    if len(raw) > MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=400, detail="人脸图片过大（限 3MB）")
+    if len(raw) < 1024:
+        raise HTTPException(status_code=400, detail="人脸图片太小，请重新拍摄")
+    return raw
+
+
+def _check_rate(username: str) -> None:
+    now = time.time()
+    hits = [t for t in _tries.get(username, []) if now - t < RATE_WINDOW_SEC]
+    if len(hits) >= RATE_MAX_TRIES:
+        raise HTTPException(status_code=429, detail="尝试过于频繁，请稍后再试")
+    hits.append(now)
+    _tries[username] = hits
+
+
+def _face_path(user_id: int) -> Path:
+    settings.FACE_DIR.mkdir(parents=True, exist_ok=True)
+    return settings.FACE_DIR / f"{user_id}.jpg"
+
+
+@router.post("/status", response_model=FaceStatusOut)
+def face_status(data: FaceStatusIn, db: Session = Depends(get_db)):
+    """登录页用：这个用户名有没有绑过人脸（不返回任何用户隐私）"""
+    user = db.query(User).filter(User.username == data.username).first()
+    record = (
+        db.query(UserFace).filter(UserFace.user_id == user.id).first() if user else None
+    )
+    return FaceStatusOut(
+        registered=bool(record),
+        provider=get_face_provider().name,
+        mock=get_face_provider().name == "mock",
+    )
+
+
+@router.get("/me")
+def my_face(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """个人中心用：当前账号是否已绑定人脸"""
+    record = db.query(UserFace).filter(UserFace.user_id == user.id).first()
+    return {"registered": bool(record), "provider": get_face_provider().name}
+
+
+@router.post("/enroll")
+def enroll(
+    data: FaceEnrollIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """绑定/更新人脸底库（需登录）。同一用户只保留一张。"""
+    raw = _decode_image(data.image)
+    path = _face_path(user.id)
+    path.write_bytes(raw)
+
+    record = db.query(UserFace).filter(UserFace.user_id == user.id).first()
+    if record:
+        record.image_path = str(path)
+        record.provider = get_face_provider().name
+        record.updated_at = datetime.now()
+    else:
+        db.add(UserFace(
+            user_id=user.id, image_path=str(path),
+            provider=get_face_provider().name,
+        ))
+    db.commit()
+    return {"ok": True, "provider": get_face_provider().name}
+
+
+@router.delete("/enroll")
+def unbind(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """解绑人脸：删底库记录与照片"""
+    record = db.query(UserFace).filter(UserFace.user_id == user.id).first()
+    if record:
+        try:
+            Path(record.image_path).unlink(missing_ok=True)
+        except OSError:
+            pass
+        db.delete(record)
+        db.commit()
+    return {"ok": True}
+
+
+def _check_frames_live(frames: list[bytes]) -> None:
+    """多帧一致性：如果把同一张图复制成多份提交，帧间差异会接近 0，直接拒绝。"""
+    try:
+        imgs = [Image.open(io.BytesIO(b)).convert("L").resize((64, 64)) for b in frames]
+    except Exception:
+        raise HTTPException(status_code=400, detail="人脸图片无法解析")
+
+    diffs = []
+    for a, b in zip(imgs, imgs[1:]):
+        pa, pb = a.tobytes(), b.tobytes()
+        diffs.append(sum(abs(x - y) for x, y in zip(pa, pb)) / len(pa))
+    if not diffs or max(diffs) < 4.0:
+        raise HTTPException(status_code=400, detail="检测到静态画面，请重新采集")
+
+
+@router.post("/verify", response_model=FaceVerifyOut)
+def verify(data: FaceVerifyIn, db: Session = Depends(get_db)):
+    """活体通过后：现场照 vs 底库照 1:1 比对，通过则发一次性 ticket"""
+    _check_rate(data.username)
+    user = db.query(User).filter(User.username == data.username).first()
+    record = (
+        db.query(UserFace).filter(UserFace.user_id == user.id).first() if user else None
+    )
+    # 统一提示，不暴露"用户不存在"还是"没绑人脸"
+    if not record:
+        raise HTTPException(status_code=400, detail="该账号未绑定人脸，请先用密码登录后绑定")
+
+    ref = Path(record.image_path)
+    if not ref.exists():
+        raise HTTPException(status_code=400, detail="人脸底库丢失，请重新绑定")
+
+    try:
+        score, passed = get_face_provider().compare(ref.read_bytes(), _decode_image(data.image))
+    except FaceError as e:
+        logger.warning("人脸比对失败：%s", e)
+        raise HTTPException(status_code=502, detail="人脸服务暂时不可用，请改用密码登录")
+
+    if not passed:
+        raise HTTPException(status_code=401, detail="人脸不匹配，请重试或改用密码登录")
+
+    ticket = create_face_ticket(user.id)
+    return FaceVerifyOut(ticket=ticket, score=score, expires_in=settings.FACE_TICKET_TTL)
+
+
+@router.post("/login")
+def login_by_face(data: FaceLoginIn, db: Session = Depends(get_db)):
+    """用一次性 ticket 换正式 token（ticket 2 分钟有效、只能用一次）"""
+    payload = take_face_ticket(data.ticket)
+    if payload is None:
+        raise HTTPException(status_code=401, detail="人脸凭证已失效，请重新验证")
+    user_id, _jti = payload
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=401, detail="用户不存在")
+    return {"token": create_token(user.id), "user": user_dict(user)}

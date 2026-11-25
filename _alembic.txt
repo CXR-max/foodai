@@ -1,0 +1,11 @@
+﻿python.exe : INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+所在位置 行:1 字符: 68
++ ... i\backend"; & ".\.venv\Scripts\python.exe" -m alembic upgrade head 2> ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (INFO  [alembic....mpl SQLiteImpl.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+ERROR [alembic.util.messaging] Multiple head revisions are present for given argument 'head'; please specify a specific
+ target revision, '<branchname>@head' to narrow to a specific head, or 'heads' for all heads
+FAILED: Multiple head revisions are present for given argument 'head'; please specify a specific target revision, '<branchname>@head' to narrow to a specific head, or 'heads' for all heads

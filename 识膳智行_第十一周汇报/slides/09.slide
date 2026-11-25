@@ -1,0 +1,83 @@
+<Slide style={{ width: 1280, height: 720, background: '#FAF6F1', padding: '48px 53px', position: 'relative' }}>
+    <Box style={{ flexDirection: 'column', height: 624 }}>
+        <Box style={{ flexDirection: 'row' }}>
+            <Box style={{ background: '#C08A2E', borderRadius: 18, padding: '7px 18px' }}>
+                <Text style={{ fontSize: 13, color: '#FFFFFF', fontWeight: 'bold', letterSpacing: 2 }}>模块④ · 组员4</Text>
+            </Box>
+        </Box>
+
+        <Text style={{ fontSize: 34, fontWeight: 900, color: '#262220', marginTop: 16, letterSpacing: 1 }}>
+            日程模块重构
+        </Text>
+
+        <Box style={{ flexDirection: 'row', gap: 20, flex: 1, marginTop: 24 }}>
+            <Box style={{ flex: 1, background: '#FFFFFF', borderRadius: 20, border: '1px solid #F0E6D9', padding: 24, flexDirection: 'column' }}>
+                <Text style={{ fontSize: 15.5, fontWeight: 'bold', color: '#262220', lineHeight: 1.4 }}>
+                    <><span style={{ color: '#C08A2E' }}>①</span> 打卡升级为每日任务</>
+                </Text>
+                <Text style={{ fontSize: 13, color: '#4A4340', lineHeight: 1.95, marginTop: 14 }}>
+                    <>▸ 原来「健康打卡」是独立一级，只有餐食 + 运动两类<br />▸ 现在它是每天执行任务的落脚点，扩到四类<br />▸ 任务按时间顺序排，做完一项勾一项</>
+                </Text>
+                <Box style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
+                    <Box style={{ background: '#FBF2E3', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#9B7222' }}>餐食</Text>
+                    </Box>
+                    <Box style={{ background: '#FBF2E3', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#9B7222' }}>运动</Text>
+                    </Box>
+                    <Box style={{ background: '#FBF2E3', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#9B7222' }}>睡眠</Text>
+                    </Box>
+                    <Box style={{ background: '#FBF2E3', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#9B7222' }}>饮水</Text>
+                    </Box>
+                </Box>
+            </Box>
+
+            <Box style={{ flex: 1, background: '#FFFFFF', borderRadius: 20, border: '1px solid #F0E6D9', padding: 24, flexDirection: 'column' }}>
+                <Text style={{ fontSize: 15.5, fontWeight: 'bold', color: '#262220', lineHeight: 1.4 }}>
+                    <><span style={{ color: '#C08A2E' }}>②</span> 新增睡眠与饮水打卡</>
+                </Text>
+                <Text style={{ fontSize: 13, color: '#4A4340', lineHeight: 1.95, marginTop: 14 }}>
+                    <>▸ 睡眠：记入睡与起床时间，自动算时长，手环有数据自动带入<br />▸ 饮水：按杯计数，目标按体重算<br />▸ 打卡即积分，原有积分发放规则不变</>
+                </Text>
+                <Box style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
+                    <Box style={{ background: '#FBF2E3', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#9B7222' }}>入睡 / 起床</Text>
+                    </Box>
+                    <Box style={{ background: '#FBF2E3', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#9B7222' }}>自动算时长</Text>
+                    </Box>
+                    <Box style={{ background: '#FBF2E3', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#9B7222' }}>目标 8 杯</Text>
+                    </Box>
+                </Box>
+            </Box>
+
+            <Box style={{ flex: 1, background: '#FFFFFF', borderRadius: 20, border: '1px solid #F0E6D9', padding: 24, flexDirection: 'column' }}>
+                <Text style={{ fontSize: 15.5, fontWeight: 'bold', color: '#262220', lineHeight: 1.4 }}>
+                    <><span style={{ color: '#C08A2E' }}>③</span> 版面重排，能力不丢</>
+                </Text>
+                <Text style={{ fontSize: 13, color: '#4A4340', lineHeight: 1.95, marginTop: 14 }}>
+                    <>▸ 顶部只显示当天完成度三环，中间按时间排任务流<br />▸ 右侧放饮水、睡眠与月历打卡热力图<br />▸ 方案导入日历、补签、防作弊校验、AI 点评全部保留</>
+                </Text>
+                <Box style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
+                    <Box style={{ background: '#FBF2E3', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#9B7222' }}>月历热力图</Text>
+                    </Box>
+                    <Box style={{ background: '#FBF2E3', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#9B7222' }}>补签 · 防作弊</Text>
+                    </Box>
+                    <Box style={{ background: '#FBF2E3', borderRadius: 12, padding: '5px 11px' }}>
+                        <Text style={{ fontSize: 11.5, color: '#9B7222' }}>AI 识别降为拍照入口</Text>
+                    </Box>
+                </Box>
+            </Box>
+        </Box>
+    </Box>
+
+    <Box style={{ position: 'absolute', left: 53, bottom: 14, width: 1174, flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Text style={{ fontSize: 11, color: '#B3AAA1', letterSpacing: 1.5 }}>识膳智行 · SMART DIET</Text>
+        <Text style={{ fontSize: 11, color: '#B3AAA1', letterSpacing: 1.5 }}>09 / 11</Text>
+    </Box>
+</Slide>

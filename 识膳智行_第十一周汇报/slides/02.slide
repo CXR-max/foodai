@@ -1,0 +1,68 @@
+<Slide style={{ width: 1280, height: 720, background: '#FAF6F1', padding: '48px 53px', position: 'relative' }}>
+    <Box style={{ flexDirection: 'column', height: 624 }}>
+        <Box style={{ flexDirection: 'row' }}>
+            <Box style={{ background: '#D2694C', borderRadius: 18, padding: '7px 18px' }}>
+                <Text style={{ fontSize: 13, color: '#FFFFFF', fontWeight: 'bold', letterSpacing: 2 }}>本周更新 · 一览</Text>
+            </Box>
+        </Box>
+
+        <Text style={{ fontSize: 34, fontWeight: 900, color: '#262220', marginTop: 16, letterSpacing: 1 }}>
+            本周优化
+        </Text>
+
+        <Box style={{ flexDirection: 'column', flex: 1, justifyContent: 'center', gap: 18 }}>
+            <Box style={{ flexDirection: 'row', gap: 18 }}>
+                <Box style={{ flex: 1, background: '#FFFFFF', borderRadius: 20, border: '1px solid #F0E6D9', padding: 24, flexDirection: 'column', gap: 14 }}>
+                    <Box style={{ flexDirection: 'row' }}>
+                        <Box style={{ background: '#D2694C', borderRadius: 14, padding: '5px 14px' }}>
+                            <Text style={{ fontSize: 12.5, color: '#FFFFFF', fontWeight: 'bold', letterSpacing: 1 }}>模块① 移动端架构 · 组长</Text>
+                        </Box>
+                    </Box>
+                    <Text style={{ fontSize: 14, color: '#4A4340', lineHeight: 1.8 }}>
+                        <>▸ 九个功能页收成五个模块：计划 / 日程 / 运动 / 社区 / 我的<br />▸ 按「一天的使用路径」重组，页面少了、路径短了<br />▸ 手环数据并入「我的」，三环与图表有真实数据支撑</>
+                    </Text>
+                </Box>
+
+                <Box style={{ flex: 1, background: '#FFFFFF', borderRadius: 20, border: '1px solid #F0E6D9', padding: 24, flexDirection: 'column', gap: 14 }}>
+                    <Box style={{ flexDirection: 'row' }}>
+                        <Box style={{ background: '#5B87B5', borderRadius: 14, padding: '5px 14px' }}>
+                            <Text style={{ fontSize: 12.5, color: '#FFFFFF', fontWeight: 'bold', letterSpacing: 1 }}>模块② 运动记录 · 组员2</Text>
+                        </Box>
+                    </Box>
+                    <Text style={{ fontSize: 14, color: '#4A4340', lineHeight: 1.8 }}>
+                        <>▸ 运动从「填一个表单」补成完整链路：记录 → 报告 → 历史<br />▸ 全屏跑步页：实时轨迹、配速、长按结束防误触<br />▸ 服务端重算距离配速，轨迹过滤 + 高德坐标校正</>
+                    </Text>
+                </Box>
+            </Box>
+
+            <Box style={{ flexDirection: 'row', gap: 18 }}>
+                <Box style={{ flex: 1, background: '#FFFFFF', borderRadius: 20, border: '1px solid #F0E6D9', padding: 24, flexDirection: 'column', gap: 14 }}>
+                    <Box style={{ flexDirection: 'row' }}>
+                        <Box style={{ background: '#5F8A6E', borderRadius: 14, padding: '5px 14px' }}>
+                            <Text style={{ fontSize: 12.5, color: '#FFFFFF', fontWeight: 'bold', letterSpacing: 1 }}>模块③ 三环与睡眠 · 组员3</Text>
+                        </Box>
+                    </Box>
+                    <Text style={{ fontSize: 14, color: '#4A4340', lineHeight: 1.8 }}>
+                        <>▸ 对标 Keep「今日概览三环」：饮食 / 活动 / 睡眠<br />▸ 睡眠卡：深浅睡结构条 + 自动点评，一晚看得懂<br />▸ 目标值按档案 BMR × 活动系数个性化计算</>
+                    </Text>
+                </Box>
+
+                <Box style={{ flex: 1, background: '#FFFFFF', borderRadius: 20, border: '1px solid #F0E6D9', padding: 24, flexDirection: 'column', gap: 14 }}>
+                    <Box style={{ flexDirection: 'row' }}>
+                        <Box style={{ background: '#D9A03F', borderRadius: 14, padding: '5px 14px' }}>
+                            <Text style={{ fontSize: 12.5, color: '#FFFFFF', fontWeight: 'bold', letterSpacing: 1 }}>模块④ 日程执行 · 组员4</Text>
+                        </Box>
+                    </Box>
+                    <Text style={{ fontSize: 14, color: '#4A4340', lineHeight: 1.8 }}>
+                        <>▸ 打卡升级为「每日任务」：餐食 / 运动 / 睡眠 / 饮水 四类<br />▸ 新增睡眠打卡与按杯饮水打卡，手环有数据自动带入<br />▸ 顶三环 + 时间轴任务流 + 月历热力图，一屏看完</>
+                    </Text>
+                </Box>
+            </Box>
+        </Box>
+    </Box>
+
+    <Box style={{ position: 'absolute', left: 53, bottom: 14, width: 1174, flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Text style={{ fontSize: 11, color: '#B3AAA1', letterSpacing: 1.5 }}>识膳智行 · SMART DIET</Text>
+        <Text style={{ fontSize: 11, color: '#B3AAA1', letterSpacing: 1.5 }}>02 / 11</Text>
+    </Box>
+</Slide>
