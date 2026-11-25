@@ -59,8 +59,13 @@ function exercisesOf(day: PlanDay): PlanExercise[] {
 /** 处置/动态调整的留痕：必须说清「变了什么」和「为什么」，只给一个数字用户看不懂 */
 function adjustText(day: PlanDay): string {
   const replan = day.day_flags?.replanned
+  const adapted = day.day_flags?.adapted
   const info = replan || day.day_flags?.adjusted
-  if (!info) return ''
+  if (!info) {
+    // 动态调整留痕：没有重排细节时，也要说清「按什么改的」
+    const reasons = (adapted?.reasons || []) as { action: string }[]
+    return reasons.length ? `这天按实际执行调过：${reasons.map((r) => r.action).join('、')}` : ''
+  }
   const moves = (info.changed || [])
     .filter((c) => c.to)
     .slice(0, 3)

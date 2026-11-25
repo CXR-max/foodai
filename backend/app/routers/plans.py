@@ -258,6 +258,11 @@ def repeated_dishes(meals: list[dict]) -> list[str]:
 
 def plan_day_dict(d: PlanDay) -> dict:
     exercises = d.exercises or ([d.exercise] if d.exercise else [])
+    # adapted.before 是撤销用的完整快照（含当天餐食），只在服务端回滚时读；
+    # 原样吐给前端会让方案详情多背一份整天的菜，剥掉再下发
+    flags = dict(d.day_flags or {})
+    if isinstance(flags.get("adapted"), dict):
+        flags["adapted"] = {k: v for k, v in flags["adapted"].items() if k != "before"}
     return {
         "id": d.id, "day_index": d.day_index, "date": str(d.date),
         "theme": d.theme or PLAN_THEMES[(d.day_index - 1) % len(PLAN_THEMES)],
@@ -270,7 +275,7 @@ def plan_day_dict(d: PlanDay) -> dict:
         "estimated_calories": d.estimated_calories,
         # 这天实排的七项营养 + 生成留痕（降级/放宽），详情页据此显示「这天纤维只有 22 g」
         "nutrition": d.nutrition,
-        "day_flags": d.day_flags,
+        "day_flags": flags,
     }
 
 

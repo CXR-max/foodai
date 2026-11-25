@@ -386,6 +386,7 @@ def diet_summary(targets: dict, calories: float | None = None, protein_g: float 
                     if item["key"] in relaxed_keys and item["status"] in ("over", "under")]
 
     status = "ok"
+    status_text = ""
     attribution = None
     hints: list[str] = []
 
@@ -407,6 +408,9 @@ def diet_summary(targets: dict, calories: float | None = None, protein_g: float 
             attribution = "user"
         worst = over_items[0]
         hints.append(_over_text(worst["key"], worst, blame_plan=False))
+        # 蛋白质没超、超的是脂肪/钠/糖时，别把标签挂到蛋白头上（用户会以为系统算错了）
+        if status == "protein_over" and not (pro and pro["status"] == "over"):
+            status_text = f"{worst['label']}超标"
         if attribution == "portion":
             # 份量问题可以矫正，但不能骂人：说清差在哪、给一个具体动作
             hints.append(
@@ -475,12 +479,18 @@ def diet_summary(targets: dict, calories: float | None = None, protein_g: float 
         item = items.get(key)
         if not item:
             return ""
-        shown = "—" if item["value"] is None else f"{item['value']:g}"
+        value = item["value"]
+        if value is None:
+            shown = "—"
+        elif key in ("calorie", "sodium"):
+            shown = f"{round(value)}"      # 热量/钠按整数显示，1202.8 看着像没算完
+        else:
+            shown = f"{value:g}"
         return f"{item['label']} {shown}/{item['range_text'].split(' ')[0]}"
 
     line = " · ".join(x for x in (piece("calorie"), piece("protein")) if x)
     if line:
-        line = f"{line} · {DIET_TEXT.get(status, '待记录')}"
+        line = f"{line} · {status_text or DIET_TEXT.get(status, '待记录')}"
 
     # 结构项直接复用逐项结果（带 unit/min/max），前端不用再拼单位
     structure = [
@@ -489,7 +499,7 @@ def diet_summary(targets: dict, calories: float | None = None, protein_g: float 
 
     return {
         "status": status,
-        "status_text": DIET_TEXT.get(status, "待记录"),
+        "status_text": status_text or DIET_TEXT.get(status, "待记录"),
         "factor": factor,
         "ok": status == "ok",
         "line": line,
