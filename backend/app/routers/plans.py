@@ -21,6 +21,7 @@ from app.schemas.plan import (
     PlanImportIn, ReusePlanIn,
 )
 from app.services import (
+    checkup_constraints,
     meal_recalc, nutrition, nutrition_check, plan_lifecycle, plan_review, plan_targets,
     points, schedule_import,
 )
@@ -361,8 +362,14 @@ def plan_stats(days: list[PlanDay]) -> dict:
     }
 
 
-def build_profile_ctx(profile: HealthProfile, data: GeneratePlanIn) -> dict:
-    """组装档案上下文（含前端偏好面板的覆盖）"""
+def build_profile_ctx(
+    profile: HealthProfile, data: GeneratePlanIn, db: Session | None = None
+) -> dict:
+    """组装档案上下文（含前端偏好面板的覆盖）
+
+    db 传了就用最近一次体检的实测体重/体脂/基础代谢覆盖档案值——
+    自报会过时，体检是称出来的。不传则完全按档案算，行为与以前一致。
+    """
     ctx = {
         "height_cm": profile.height_cm, "weight_kg": profile.weight_kg,
         "bmi": nutrition.calc_bmi(profile.weight_kg, profile.height_cm),
@@ -391,6 +398,11 @@ def build_profile_ctx(profile: HealthProfile, data: GeneratePlanIn) -> dict:
         ctx["dietary_restrictions"] = data.dietary_restrictions
     if data.exercise_preferences is not None:
         ctx["exercise_preferences"] = data.exercise_preferences
+    # 体检实测值优先于档案自报（体重/体脂/基础代谢），见 services/checkup_constraints.py
+    if db is not None:
+        checkup_constraints.apply_to_ctx(
+            ctx, checkup_constraints.latest_measured(db, profile.user_id)
+        )
     # 七项区间一并带进上下文：提示词只给总热量时，模型会按「高蛋白低碳」自由发挥
     # （实测蛋白顶到 3.3 g/kg、脂肪占 50% 能量），复核必然越界、整份方案被拒。
     ctx["targets"] = plan_targets.build_targets(ctx)
@@ -547,11 +559,14 @@ def generate_plan(
 ):
     """AI 生成方案（同步等待 LLM，前端此请求单独设置 120s 超时）"""
     profile = db.query(HealthProfile).filter(HealthProfile.user_id == user.id).first()
-    if not (profile and profile.height_cm and profile.weight_kg and profile.age):
+    measured = checkup_constraints.latest_measured(db, user.id)
+    # 档案没填体重但有体检实测值时也放行：体检称出来的比手填的准
+    if not (profile and profile.height_cm
+            and (profile.weight_kg or measured.get("weight_kg")) and profile.age):
         raise HTTPException(status_code=400, detail="请先完善健康档案（身高/体重/年龄），AI 才能为你定制方案")
 
     # 组装档案上下文 + 合并偏好面板与聊天文本
-    profile_ctx = build_profile_ctx(profile, data)
+    profile_ctx = build_profile_ctx(profile, data, db)
     combined_note = combine_note(data)
 
     provider = get_llm_provider()
@@ -626,10 +641,12 @@ def generate_plan_stream(
 ):
     """逐天流式生成方案（SSE）：每天生成完立即推送，全部完成后落库并返回 plan_id"""
     profile = db.query(HealthProfile).filter(HealthProfile.user_id == user.id).first()
-    if not (profile and profile.height_cm and profile.weight_kg and profile.age):
+    measured = checkup_constraints.latest_measured(db, user.id)
+    if not (profile and profile.height_cm
+            and (profile.weight_kg or measured.get("weight_kg")) and profile.age):
         raise HTTPException(status_code=400, detail="请先完善健康档案（身高/体重/年龄），AI 才能为你定制方案")
 
-    profile_ctx = build_profile_ctx(profile, data)
+    profile_ctx = build_profile_ctx(profile, data, db)
     combined_note = combine_note(data)
     provider = get_llm_provider()
     # 对话 → 当前有效约束（最新表态覆盖旧表态）→ 与勾选偏好合并

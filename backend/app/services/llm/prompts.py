@@ -336,3 +336,50 @@ def build_checkin_praise_messages(ctx: dict) -> list[dict]:
     lines.append("请输出点评（1~2 句，25~60 字）。")
     return [{"role": "system", "content": system},
             {"role": "user", "content": "\n".join(lines)}]
+
+
+# ---------- 体检报告识别 ----------
+
+# 目录里的 18 项，写进 prompt 让模型知道该找什么（但 name 仍要求照抄报告原文，
+# 映射交回后端别名表做，避免模型把「丙氨酸氨基转移酶」硬猜成某个 key）
+CHECKUP_ITEM_HINTS = (
+    "身高、体重、BMI、体脂率、基础代谢、腰围；空腹血糖、糖化血红蛋白、尿酸、"
+    "总胆固醇、甘油三酯、低密度脂蛋白、高密度脂蛋白；谷丙转氨酶、谷草转氨酶、"
+    "肌酐、尿素氮；血红蛋白、促甲状腺激素"
+)
+
+
+def build_checkup_prompt(report_text: str = "") -> str:
+    """体检报告抽取提示词。
+
+    接的是化验单/体检单，字小、项目名带英文缩写、单位五花八门，所以强调三件事：
+    照抄原文、不补全、看不清就跳过。换算与校验一律在后端做，不让模型算。
+    """
+    source = "下面是从 PDF 里抽出的报告文字：" if report_text else "图片是一份体检/化验报告。"
+    body = f"\n{report_text}\n" if report_text else ""
+    return f"""你是体检报告结构化助手。{source}{body}
+请把报告上能看清的检查项逐项抽出来，严格只输出一个 JSON 对象，不要解释、不要 markdown 代码块。
+
+关注这些项目（报告里常见，但不是每个都有）：
+{CHECKUP_ITEM_HINTS}
+
+规则：
+1. 只抽报告上真实出现的项和你真实看清的数值，绝对不要推算、补全或编造。
+2. name 照抄报告原文，包括括号里的英文缩写（如「谷丙转氨酶(ALT)」「GLU」），不要改写成别的名字。
+3. value 只保留数字：不带单位、箭头、星号、正负号；写成「<0.5」时填 0.5；写成「5.2 ↑」时填 5.2。
+4. unit 照抄报告上的单位（mmol/L、μmol/L、U/L、g/L、g/dL、%、mg/dL 等）。
+5. 只有项目名没有数值、或被遮挡看不清的，直接跳过这一项，不要猜。
+6. report_date 用 YYYY-MM-DD；hospital 是体检机构或医院名称。看不出来就留空字符串。
+7. 如果这张图明显不是体检报告（自拍、食物、风景等），is_report 填 false、items 给空数组。
+8. 最多输出 20 项，优先上面列举的项目（输出过长会被截断，反而丢数据）。
+
+输出格式：
+{{
+  "is_report": true,
+  "report_date": "2026-09-08",
+  "hospital": "XX 市第一人民医院",
+  "items": [
+    {{"name": "谷丙转氨酶(ALT)", "value": 32, "unit": "U/L"}},
+    {{"name": "空腹血糖", "value": 5.4, "unit": "mmol/L"}}
+  ]
+}}"""

@@ -14,8 +14,8 @@ from app.core.config import settings
 from app.db.session import SessionLocal
 from app.models.reward import Reward
 from app.routers import (
-    achievements, auth, checkins, coach, daily, devices, face, food_records, foods, plans,
-    points, profile, recognitions, rewards, stats, wellness, workouts,
+    achievements, auth, checkins, checkups, coach, daily, devices, face, food_records, foods,
+    plans, points, profile, recognitions, rewards, stats, wellness, workouts,
 )
 from app.services.achievement_seed import seed_achievements
 from app.services.food_seed import seed_foods_if_empty
@@ -116,7 +116,8 @@ app.mount("/uploads", StaticFiles(directory=str(settings.UPLOAD_DIR)), name="upl
 
 # 业务路由，统一挂 /api 前缀
 for r in (auth, profile, recognitions, food_records, foods, plans, checkins, daily,
-          wellness, face, workouts, stats, points, rewards, achievements, devices, coach):
+          wellness, face, workouts, stats, points, rewards, achievements, devices, coach,
+          checkups):
     app.include_router(r.router, prefix="/api")
 
 

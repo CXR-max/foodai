@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// 移动端「日程」：今日主卡（完成度圆环 + 5 项指标）+ 指标区间 + 打卡计划
-// + 饮食/饮水/睡眠 + 打卡日历 + 系统自查
+// 移动端「日程」：今日主卡（完成度圆环 + 5 项指标）+ 打卡日历 + 今日任务时间轴
+// + 快捷记录（喝水/拍照记餐/记体重/记睡眠）+ 个人分析 + 睡眠与自查
 // 视觉按《移动端五页演示》日程页落地；业务口径、接口调用与改造前完全一致
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -10,6 +10,9 @@ import type { CheckInItem, DayStat } from '@/api/checkin'
 import * as dayApi from '@/api/day'
 import * as planApi from '@/api/plan'
 import * as wellnessApi from '@/api/wellness'
+import * as profileApi from '@/api/profile'
+import * as checkupApi from '@/api/checkup'
+import type { CheckupAnalysis } from '@/api/checkup'
 import type { DaySummary, SleepRecord } from '@/api/wellness'
 import { useAuthStore } from '@/stores/auth'
 
@@ -26,6 +29,14 @@ const today = fmt(new Date())
 const selected = ref(today)
 const items = ref<CheckInItem[]>([])
 const summary = ref<DaySummary | null>(null)
+
+// 目标依据：基础代谢是算出来的（公式）还是体检测出来的，用户有权知道
+const prescription = computed(() => {
+  const t = summary.value?.targets as Record<string, any> | undefined
+  return (t?.prescription || null) as
+    | { bmr?: number | null; bmr_source?: string | null; tdee?: number | null }
+    | null
+})
 const water = ref<{ total_ml: number; target_ml: number; achieved: boolean; records?: { id: number; ml: number }[] } | null>(null)
 const sleep = ref<SleepRecord | null>(null)
 const loading = ref(true)
@@ -93,7 +104,6 @@ const structureText = computed(() =>
     .map((i) => `${i.label} ${i.value ?? '—'}${i.unit}${i.status === 'in_range' ? ' ✓' : ` ${i.status_text}`}`)
     .join(' · '),
 )
-const waterBand = computed(() => bands.value.find((b) => b.key === 'water'))
 const sleepBand = computed(() => bands.value.find((b) => b.key === 'sleep'))
 
 /** 指标条的区间段与当前位置：按演示稿口径，域上限取 max*1.35 */
@@ -270,14 +280,18 @@ const monthCells = computed(() => {
   return cells
 })
 
-/** 热力等级：按当天完成率分 4 档（0 无记录 / 1 少量 / 2 过半 / 3 打满） */
-function heatOf(stat?: DayStat) {
-  if (!stat?.total) return 0
+/** 当天状态：full 全满 / ok 达标 / low 偏少 / miss 缺卡
+ *
+ * 四档而不是五档：月历接口只有 total（当天该打几项）与 done（打了几项），
+ * 没有「热量超标」这一维，硬造一个红档就是假数据。等后端按月给出热量判定再补。
+ */
+function stateOf(stat?: DayStat): 'full' | 'ok' | 'low' | 'miss' {
+  if (!stat?.total) return 'miss'
   const p = stat.pct ?? Math.round(((stat.done || 0) / stat.total) * 100)
-  if (p >= 100) return 3
-  if (p >= 60) return 2
-  if (p > 0) return 1
-  return 0
+  if (p >= 100) return 'full'
+  if (p >= 70) return 'ok'
+  if (p > 0) return 'low'
+  return 'miss'
 }
 
 /** 本月达标天数 / 已过天数 */
@@ -286,7 +300,7 @@ const monthStat = computed(() => {
   const last = new Date(y, m, 0).getDate()
   const isCur = month.value === today.slice(0, 7)
   const upto = isCur ? Number(today.slice(8, 10)) : last
-  const ok = monthDays.value.filter((d) => d.date.slice(8, 10) <= `${upto}`.padStart(2, '0') && heatOf(d) === 3).length
+  const ok = monthDays.value.filter((d) => d.date.slice(8, 10) <= `${upto}`.padStart(2, '0') && stateOf(d) === 'full').length
   return { ok, upto }
 })
 
@@ -515,24 +529,11 @@ async function markDone(it: CheckInItem) {
   }
 }
 
-// ---- 饮水 ----
-const waterPct = computed(() => {
-  const t = water.value?.target_ml || 2000
-  return Math.min(100, Math.round(((water.value?.total_ml || 0) / t) * 100))
-})
-const waterTarget = computed(() => water.value?.target_ml || waterBand.value?.max || 2000)
-
+// ---- 饮水（快捷行只保留 +200，详细进度在时间轴的饮水任务里看） ----
 async function drink(ml: number) {
   if (ml <= 0) return
   const r = await wellnessApi.addWater(ml, selected.value)
   ElMessage.success(r.achieved ? `今日饮水达标 ${r.total_ml} ml 🎉` : `已喝 ${r.total_ml} / ${r.target_ml} ml`)
-  await load()
-}
-
-async function undoWater() {
-  const last = water.value?.records?.[water.value.records.length - 1]
-  if (!last) return
-  await wellnessApi.deleteWater(last.id)
   await load()
 }
 
@@ -587,6 +588,50 @@ async function saveSleep() {
 }
 
 // ---- 图标 ----
+// ---- 个人分析（体检报告 → 一行结论，详情在 /m/analysis）----
+const analysis = ref<CheckupAnalysis | null>(null)
+
+async function loadAnalysis() {
+  try {
+    analysis.value = await checkupApi.getAnalysis()
+  } catch {
+    analysis.value = null
+  }
+}
+
+function goAnalysis() {
+  router.push('/m/analysis')
+}
+
+// ---- 记体重（回写档案，方案目标会跟着变）----
+const weightOpen = ref(false)
+const weightForm = ref<number | null>(null)
+const weightSaving = ref(false)
+
+function openWeight() {
+  weightForm.value = analysis.value?.profile.weight_kg ?? null
+  weightOpen.value = true
+}
+
+async function submitWeight() {
+  const w = Number(weightForm.value)
+  if (!Number.isFinite(w) || w < 20 || w > 300) {
+    ElMessage.warning('请填写正确的体重')
+    return
+  }
+  weightSaving.value = true
+  try {
+    const r = await profileApi.addWeight({ weight_kg: w })
+    ElMessage.success(r.points_awarded ? `已记录 ${w} kg，+${r.points_awarded} 积分` : `已记录 ${w} kg`)
+    weightOpen.value = false
+    weightForm.value = w
+    await load()
+    await loadAnalysis()
+  } finally {
+    weightSaving.value = false
+  }
+}
+
 const ICON_PATHS: Record<string, string[]> = {
   bowl: [
     'M4 10.5h16',
@@ -611,10 +656,18 @@ const ICON_PATHS: Record<string, string[]> = {
     'M7 12.5h3l1.2-2.4 1.6 4 1.2-1.6h3',
   ],
   star: ['M12 3.8l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z'],
+  scale: [
+    'M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
+    'M8 16a4 4 0 0 1 8 0',
+    'M12 16l2.2-2.4',
+  ],
   chevron: ['M6 9.5l6 6 6-6'],
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  loadAnalysis()
+})
 </script>
 
 <template>
@@ -702,7 +755,7 @@ onMounted(load)
                   :key="i"
                   class="cal-cell"
                   :class="[
-                    `l${heatOf(c.stat)}`,
+                    `s-${stateOf(c.stat)}`,
                     {
                       empty: !c.day,
                       today: c.date === today,
@@ -713,18 +766,48 @@ onMounted(load)
                   :disabled="!c.day"
                   @click="pickDate(c.date)"
                 >
-                  <span>{{ c.day || '' }}</span>
+                  <span class="cc-day">{{ c.day || '' }}</span>
+                  <span v-if="c.day && c.stat?.total" class="cc-num">{{ c.stat.done }}/{{ c.stat.total }}</span>
                 </button>
               </div>
               <div class="cal-legend">
-                <span>少</span>
-                <i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i>
-                <span>多</span>
-                <span class="cal-legend-num">颜色越深完成度越高 · 点日期切当天</span>
+                <span class="cl-item"><i class="s-full"></i>全满</span>
+                <span class="cl-item"><i class="s-ok"></i>达标</span>
+                <span class="cl-item"><i class="s-low"></i>偏少</span>
+                <span class="cl-item"><i class="s-miss"></i>缺卡</span>
               </div>
+              <p class="cal-hint">点日期可切到当天</p>
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- ===== 快捷记录：四个入口一行，不占整块卡片 ===== -->
+      <div class="quick-acts">
+        <button class="qa" @click="drink(200)">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path v-for="(d, i) in ICON_PATHS.drop" :key="i" :d="d" />
+          </svg>
+          <span>喝水 +200</span>
+        </button>
+        <button class="qa" @click="router.push('/recognition')">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path v-for="(d, i) in ICON_PATHS.cam" :key="i" :d="d" />
+          </svg>
+          <span>拍照记餐</span>
+        </button>
+        <button class="qa" @click="openWeight">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path v-for="(d, i) in ICON_PATHS.scale" :key="i" :d="d" />
+          </svg>
+          <span>记体重</span>
+        </button>
+        <button class="qa" @click="openSleep">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path v-for="(d, i) in ICON_PATHS.moon" :key="i" :d="d" />
+          </svg>
+          <span>记睡眠</span>
+        </button>
       </div>
 
       <!-- ===== 今日任务（时间轴） ===== -->
@@ -782,55 +865,43 @@ onMounted(load)
         </div>
       </section>
 
-      <!-- ===== 饮水 ===== -->
-      <section class="card">
-        <div class="w-top">
-          <div>
-            <div class="w-k">饮水</div>
-            <div class="w-num"><b>{{ water?.total_ml || 0 }}</b><i>/ {{ waterTarget }} ml</i></div>
-          </div>
-          <span class="w-pct">{{ waterPct }}%</span>
-        </div>
-        <div class="w-bar"><span :style="{ width: `${waterPct}%` }"></span></div>
-        <div class="w-acts">
-          <button class="btn" @click="drink(200)">+200</button>
-          <button class="btn" @click="drink(300)">+300</button>
-          <button class="btn" @click="drink(500)">+500</button>
-          <button class="btn ghost" :disabled="!water?.records?.length" @click="undoWater">撤销</button>
-        </div>
-      </section>
-
-      <!-- ===== 睡眠 ===== -->
-      <section class="card">
+      <!-- ===== 个人分析：只放一行结论，详情另开页 ===== -->
+      <section class="card ana" role="button" tabindex="0" @click="goAnalysis" @keydown.enter.prevent="goAnalysis">
         <div class="card-head">
-          <h2>睡眠打卡</h2>
-          <span v-if="sleep" class="src-tag">{{ sleep.source === 'manual' ? '手动记录' : '手环同步' }}</span>
+          <h2>个人分析</h2>
+          <span class="head-tag">
+            {{ analysis?.has_report ? '基于体检报告与近 30 天打卡' : '导入体检后按你的基线算' }}
+          </span>
         </div>
-        <div class="sleep-num">
-          <b>{{ sleep?.duration_h ? sleep.duration_h.toFixed(1) : '—' }}</b><i>小时</i>
-        </div>
-        <div v-if="sleep" class="sleep-line">
-          {{ sleep.bedtime }} 入睡 · {{ sleep.wake_at }} 起床
-          <template v-if="sleep.quality_score"> · 质量 {{ sleep.quality_score }}/5</template>
-          <template v-if="sleepBand"> · 推荐 {{ sleepBand.range_text }} h</template>
-        </div>
-        <div v-else class="sleep-line">
-          还没记录昨晚睡眠<template v-if="sleepBand">，推荐 {{ sleepBand.range_text }} 小时</template>
-        </div>
-        <p v-if="sleepTip" class="sleep-tip">{{ sleepTip }}</p>
-        <div class="btn-row">
-          <button class="btn" @click="openSleep">{{ sleep ? '修改睡眠' : '记录睡眠' }}</button>
+
+        <template v-if="analysis?.has_report">
+          <div class="ana-type">{{ analysis.type }}</div>
+          <p class="ana-line">{{ analysis.headline }}</p>
+          <div v-if="analysis.chips.length" class="ana-chips">
+            <span v-for="c in analysis.chips" :key="c">{{ c }}</span>
+          </div>
+        </template>
+        <p v-else class="ana-line">
+          {{ analysis?.headline || '还没有体检报告。' }}
+        </p>
+
+        <div class="ana-foot">
+          <span>
+            {{ analysis?.has_report ? `最近体检 ${analysis.report?.check_date}` : '拍照 / PDF / 手动录入' }}
+          </span>
+          <b>{{ analysis?.has_report ? '查看分析' : '去导入' }} ›</b>
         </div>
       </section>
 
-      <!-- ===== 系统自查（折叠） ===== -->
+      <!-- ===== 睡眠与自查（折叠，原睡眠整卡收进来） ===== -->
       <div class="fold" :class="{ on: selfReviewOpen }">
         <button class="fold-bar" :aria-expanded="selfReviewOpen" @click="toggleSelfReview">
           <span class="fold-l">
             <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
-              <path v-for="(d, i) in ICON_PATHS.pulse" :key="i" :d="d" />
+              <path v-for="(d, i) in ICON_PATHS.moon" :key="i" :d="d" />
             </svg>
-            系统自查
+            睡眠与自查
+            <i class="fold-num">{{ sleep?.duration_h ? `${sleep.duration_h.toFixed(1)} h` : '未记录' }}</i>
           </span>
           <span class="fold-r">
             {{ selfReviewOpen ? '收起' : '展开' }}
@@ -838,6 +909,23 @@ onMounted(load)
           </span>
         </button>
         <div v-show="selfReviewOpen" class="panel on">
+          <!-- 睡眠一行：原来单独一张卡，现在收进折叠里 -->
+          <div class="sleep-mini">
+            <div class="sm-l">
+              <b>{{ sleep?.duration_h ? sleep.duration_h.toFixed(1) : '—' }}</b><i>小时</i>
+              <em v-if="sleepBand">推荐 {{ sleepBand.range_text }} h</em>
+            </div>
+            <div class="sm-r">
+              <span v-if="sleep">
+                {{ sleep.bedtime }} 入睡 · {{ sleep.wake_at }} 起床
+                <template v-if="sleep.quality_score"> · 质量 {{ sleep.quality_score }}/5</template>
+                <template v-if="sleep.source"> · {{ sleep.source === 'manual' ? '手动' : '手环' }}</template>
+              </span>
+              <span v-else>还没记录昨晚睡眠</span>
+            </div>
+            <button class="sm-btn" @click="openSleep">{{ sleep ? '修改' : '记录' }}</button>
+          </div>
+          <p v-if="sleepTip" class="sleep-tip">{{ sleepTip }}</p>
           <div v-if="selfReview" class="cal-panel">
             <p v-for="(line, i) in selfReview.lines" :key="i" class="review-line">{{ line }}</p>
             <p v-if="!selfReview.lines.length" class="review-line">
@@ -877,6 +965,14 @@ onMounted(load)
         <span class="head-tag">{{ bandOkCount }}/{{ bands.length }} 达标</span>
       </div>
       <p class="sheet-tip">区间为推荐值，落在浅色段内即达标；口径见「计划 → 每日目标」，超限可在计划详情里改餐或加运动。点空白处关闭。</p>
+      <!-- 目标从哪来的：体检测过的基础代谢优先，否则是公式估算 -->
+      <div v-if="prescription?.bmr" class="basis-line">
+        <span class="bl-label">基础代谢</span>
+        <b>{{ prescription.bmr }} kcal</b>
+        <em class="bl-src" :class="{ on: prescription.bmr_source === 'measured' }">
+          {{ prescription.bmr_source === 'measured' ? '体检实测' : '公式估算' }}
+        </em>
+      </div>
       <div class="sheet-body">
         <!-- 饮食一行汇总：七项判完给一条结论。方案排错不怪用户，额外加餐给出口不指责 -->
         <div v-if="summary?.diet?.line" class="diet-line" :class="dietCls">
@@ -979,6 +1075,34 @@ onMounted(load)
           </div>
         </div>
 
+      </div>
+    </div>
+
+    <!-- ===== 弹层：记体重 ===== -->
+    <div class="mask" :class="{ on: weightOpen }" @click="weightOpen = false"></div>
+    <div class="sheet" :class="{ on: weightOpen }" role="dialog" aria-modal="true" aria-label="记体重">
+      <div class="sheet-grab"></div>
+      <h3>记体重</h3>
+      <p class="sheet-tip">每天第一次记录 +2 积分。体重会同时更新方案的热量与蛋白目标。</p>
+      <div class="sheet-body">
+        <div class="field">
+          <span>体重（kg）</span>
+          <input
+            v-model.number="weightForm"
+            type="number"
+            inputmode="decimal"
+            step="0.1"
+            min="20"
+            max="300"
+            placeholder="例如 45.0"
+          />
+        </div>
+      </div>
+      <div class="sheet-acts">
+        <button class="btn" @click="weightOpen = false">取消</button>
+        <button class="btn btn-solid" :disabled="weightSaving" @click="submitWeight">
+          {{ weightSaving ? '保存中…' : '保存' }}
+        </button>
       </div>
     </div>
 
@@ -1248,6 +1372,31 @@ onMounted(load)
 .bands-sheet .card-head { margin-bottom: 4px; }
 .bands-sheet .sheet-tip { margin-bottom: 6px; }
 .bands-sheet .sheet-body { margin-top: 8px; gap: 10px; }
+
+/* 目标依据：基础代谢来自体检还是公式 */
+.basis-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--mint);
+  font-size: 13px;
+  color: var(--ink);
+}
+.basis-line b { font-weight: 500; }
+.bl-label { color: #5f6b4e; }
+.bl-src {
+  margin-left: auto;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  color: #5f6b4e;
+  font-style: normal;
+  font-size: 11px;
+}
+.bl-src.on { background: var(--teal); color: #2f3a20; }
 
 /* ============ 指标区间 ============ */
 .diet-line {
@@ -1573,54 +1722,99 @@ onMounted(load)
 .btn-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
 .btn-row .btn { flex: 1; min-width: 0; }
 
-/* ============ 饮水 ============ */
-.w-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.w-k { font-size: 11.5px; color: var(--muted); }
-.w-num { display: flex; align-items: baseline; gap: 4px; margin-top: 2px; font-variant-numeric: tabular-nums; }
-.w-num b { font-size: 28px; font-weight: 800; letter-spacing: -0.035em; }
-.w-num i { font-style: normal; font-size: 11.5px; color: var(--muted); }
-.w-pct {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--teal-tx);
+/* ============ 快捷记录（喝水 / 拍照记餐 / 记体重 / 记睡眠） ============ */
+.quick-acts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.qa {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 62px;
+  padding: 10px 4px;
+  border: 1px solid var(--glass-line);
+  border-radius: 18px;
   background: var(--mint);
-  padding: 3px 9px;
-  border-radius: 999px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
 }
-.w-bar { height: 8px; margin-top: 12px; border-radius: 999px; background: #eef3dc; overflow: hidden; }
-.w-bar span {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--teal);
-  transition: width 0.24s ease;
-}
-.w-acts { display: flex; gap: 7px; margin-top: 12px; }
-.w-acts .btn { flex: 1; min-width: 0; min-height: 38px; padding: 0 8px; font-size: 12.5px; }
-.w-acts .btn.ghost {
-  background: transparent;
-  border-color: var(--line);
-  color: var(--muted);
-  box-shadow: none;
-  flex: 0 0 auto;
-  padding: 0 14px;
-}
+.qa .ico { width: 20px; height: 20px; color: var(--ink-2); flex: 0 0 20px; }
+.qa:active { transform: scale(0.95); background: var(--mint-2); }
 
-/* ============ 睡眠 ============ */
-.sleep-num { display: flex; align-items: baseline; gap: 5px; font-variant-numeric: tabular-nums; }
-.sleep-num b { font-size: 30px; font-weight: 800; letter-spacing: -0.035em; }
-.sleep-num i { font-style: normal; font-size: 11.5px; color: var(--muted); }
-.sleep-line { margin-top: 6px; font-size: 11.5px; color: var(--ink-2); }
-.src-tag {
+/* ============ 个人分析 ============ */
+.ana { cursor: pointer; }
+.ana-type {
+  margin-top: 8px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.ana-line {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+  line-height: 1.62;
+}
+.ana-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.ana-chips span {
   font-size: 10.5px;
   font-weight: 700;
-  color: var(--teal-tx);
-  background: var(--mint);
   padding: 3px 9px;
   border-radius: 999px;
+  background: var(--mint);
+  color: var(--ink-2);
 }
-.sleep-tip {
+.ana-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+  font-size: 11px;
+  color: var(--muted);
+}
+.ana-foot b { color: var(--teal-tx); font-weight: 800; flex: 0 0 auto; }
+
+/* ============ 睡眠（收进折叠里的一行） ============ */
+.sleep-mini {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--mint);
+}
+.sm-l { display: flex; align-items: baseline; gap: 3px; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+.sm-l b { font-size: 22px; font-weight: 800; letter-spacing: -0.03em; }
+.sm-l i { font-style: normal; font-size: 10.5px; color: var(--muted); }
+.sm-l em { font-style: normal; margin-left: 4px; font-size: 9.5px; color: var(--muted); }
+.sm-r { flex: 1; min-width: 0; font-size: 10.5px; color: var(--ink-2); line-height: 1.5; }
+.sm-btn {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--teal);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.sm-btn:active { background: var(--teal-dk); }
+.sleep-tip {
+  margin-top: 8px;
   padding: 9px 11px;
   border-radius: 12px;
   background: #f8faef;
@@ -1705,45 +1899,48 @@ onMounted(load)
 .cal-cell {
   aspect-ratio: 1 / 1;
   border: none;
-  border-radius: 9px;
+  border-radius: 11px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 0;
   background: #fff;
-  box-shadow: inset 0 0 0 1px var(--line);
-  display: grid;
-  place-items: center;
-  font-size: 11.5px;
-  font-weight: 600;
   color: var(--ink-2);
   font-variant-numeric: tabular-nums;
-  padding: 0;
   transition: transform 0.12s ease;
 }
 .cal-cell:active { transform: scale(0.93); }
 .cal-cell.empty { visibility: hidden; }
-.cal-cell.l1 { background: #e9f3cc; color: var(--ink); box-shadow: none; }
-.cal-cell.l2 { background: #d5e9a0; color: var(--ink); box-shadow: none; }
-.cal-cell.l3 {
-  background: linear-gradient(160deg, var(--teal), var(--teal-dk));
-  color: var(--ink);
-  font-weight: 800;
-  box-shadow: 0 6px 14px -10px rgba(122, 152, 40, 0.9);
-}
-.cal-cell.future { opacity: 0.42; }
-.cal-cell.today { outline: 2px solid rgba(122, 152, 40, 0.55); outline-offset: 1px; }
-.cal-cell.sel { outline: 2px solid rgba(23, 26, 20, 0.35); outline-offset: 1px; }
+.cc-day { font-size: 15px; font-weight: 600; line-height: 1.1; }
+.cc-num { font-size: 9.5px; line-height: 1; opacity: 0.7; letter-spacing: -0.2px; }
+
+/* 状态色：整格填实色，颜色对比拉开，扫一眼能挑出没打满的日子 */
+.cal-cell.s-full { background: #7fa83c; color: #1f2a10; }
+.cal-cell.s-full .cc-num { opacity: 0.8; }
+.cal-cell.s-ok { background: #c5de8f; color: #2f3a20; }
+.cal-cell.s-low { background: #f0b563; color: #4a3113; }
+.cal-cell.s-miss { background: #ecebe4; color: #a3a096; }
+
+.cal-cell.future { opacity: 0.4; }
+.cal-cell.today { outline: 2px solid rgba(23, 26, 20, 0.45); outline-offset: 1px; }
+.cal-cell.sel { outline: 2px solid rgba(122, 152, 40, 0.6); outline-offset: 1px; }
 .cal-legend {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 12px;
   margin-top: 11px;
   font-size: 10px;
   color: var(--muted);
 }
-.cal-legend i { width: 10px; height: 10px; border-radius: 3px; display: block; box-shadow: inset 0 0 0 1px var(--line); background: #fff; }
-.cal-legend i.l1 { background: #e9f3cc; box-shadow: none; }
-.cal-legend i.l2 { background: #d5e9a0; box-shadow: none; }
-.cal-legend i.l3 { background: linear-gradient(160deg, var(--teal), var(--teal-dk)); box-shadow: none; }
-.cal-legend-num { margin-left: auto; font-variant-numeric: tabular-nums; }
-.cal-hint { margin-top: 8px; font-size: 10.5px; color: var(--muted); line-height: 1.6; }
+.cl-item { display: inline-flex; align-items: center; gap: 4px; }
+.cal-legend i { width: 10px; height: 10px; border-radius: 3px; display: block; }
+.cal-legend i.s-full { background: #7fa83c; }
+.cal-legend i.s-ok { background: #c5de8f; }
+.cal-legend i.s-low { background: #f0b563; }
+.cal-legend i.s-miss { background: #ecebe4; }
+.cal-hint { margin-top: 8px; font-size: 10.5px; color: var(--muted); line-height: 1.6; text-align: center; }
 
 /* ============ 系统自查 ============ */
 .review-line {

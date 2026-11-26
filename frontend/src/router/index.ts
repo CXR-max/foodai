@@ -27,6 +27,7 @@ const router = createRouter({
         { path: 'm/sport', name: 'm-sport', component: () => import('@/views/mobile/MobileSportView.vue'), meta: { title: '运动', mobile: true } },
         { path: 'm/community', name: 'm-community', component: () => import('@/views/mobile/MobileCommunityView.vue'), meta: { title: '社区', mobile: true } },
         { path: 'm/me', name: 'm-me', component: () => import('@/views/mobile/MobileMeView.vue'), meta: { title: '我的', mobile: true } },
+        { path: 'm/analysis', name: 'm-analysis', component: () => import('@/views/mobile/MobileAnalysisView.vue'), meta: { title: '个人分析', mobile: true } },
         // 融合：手环数据（设备页），手机端从「我的」进入
         { path: 'm/band', name: 'm-band', component: () => import('@/views/DeviceView.vue'), meta: { title: '手环数据', mobile: true } },
 

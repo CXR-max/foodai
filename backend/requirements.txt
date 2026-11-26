@@ -10,6 +10,8 @@ httpx>=0.27
 openai>=1.40
 python-multipart>=0.0.9
 pillow>=10
+# 体检报告 PDF：电子版直接抽文字层，扫描版按 dpi 渲染成图后再走视觉模型
+pymupdf>=2.0
 opencc-python-reimplemented>=0.1.7
 # 约束求解器（方案引擎 solver 用；本地运行，不联网、不付费）
 ortools>=9.10

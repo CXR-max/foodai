@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from app.models.check_in import CheckIn
 from app.models.diet_plan import DietPlan, PlanDay
 from app.models.health_profile import HealthProfile
-from app.services import plan_targets
+from app.services import checkup_constraints, plan_targets
 
 # 现算目标与方案快照偏差超过这个比例，就提示「档案变了，建议重新生成」
 DRIFT_RATIO = 0.08
@@ -118,6 +118,8 @@ def profile_targets(db: Session, user_id: int) -> dict:
         "daily_target_calories": profile.daily_calorie_target,
         "sleep_time": profile.sleep_time, "wake_time": profile.wake_time,
     }
+    # 最近一次体检的实测体重/体脂/基础代谢优先（体检称出来的比自报准）
+    checkup_constraints.apply_to_ctx(ctx, checkup_constraints.latest_measured(db, user_id))
     return plan_targets.build_targets(ctx)
 
 
