@@ -1,15 +1,18 @@
 <script setup lang="ts">
-// 移动端「日程」：当天目标条 + 任务打卡 + 食物/饮水/睡眠三个模块 + 打卡日历
-// 食物与饮水合成一个独立模块，拍照识别是食物模块里的一个功能（计划页另有快捷入口）
+// 移动端「日程」：今日主卡（完成度圆环 + 5 项指标）+ 打卡日历 + 今日任务时间轴
+// + 快捷记录（喝水/拍照记餐/记体重/记睡眠）+ 个人分析 + 睡眠与自查
+// 视觉按《移动端五页演示》日程页落地；业务口径、接口调用与改造前完全一致
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as checkinApi from '@/api/checkin'
 import type { CheckInItem, DayStat } from '@/api/checkin'
 import * as dayApi from '@/api/day'
-import * as foodApi from '@/api/food'
 import * as planApi from '@/api/plan'
 import * as wellnessApi from '@/api/wellness'
+import * as profileApi from '@/api/profile'
+import * as checkupApi from '@/api/checkup'
+import type { CheckupAnalysis } from '@/api/checkup'
 import type { DaySummary, SleepRecord } from '@/api/wellness'
 import { useAuthStore } from '@/stores/auth'
 
@@ -22,39 +25,69 @@ function fmt(d: Date) {
   return `${d.getFullYear()}-${m}-${day}`
 }
 
-const selected = ref(fmt(new Date()))
+const today = fmt(new Date())
+const selected = ref(today)
 const items = ref<CheckInItem[]>([])
 const summary = ref<DaySummary | null>(null)
+
+// 目标依据：基础代谢是算出来的（公式）还是体检测出来的，用户有权知道
+const prescription = computed(() => {
+  const t = summary.value?.targets as Record<string, any> | undefined
+  return (t?.prescription || null) as
+    | { bmr?: number | null; bmr_source?: string | null; tdee?: number | null }
+    | null
+})
 const water = ref<{ total_ml: number; target_ml: number; achieved: boolean; records?: { id: number; ml: number }[] } | null>(null)
 const sleep = ref<SleepRecord | null>(null)
-const records = ref<any[]>([])
-const foodSummary = ref<{ total_calories: number }>({ total_calories: 0 })
 const loading = ref(true)
 const busyId = ref<number | null>(null)
 
+// ---- 日期 / 进度 ----
 const dateLabel = computed(() => {
   const d = new Date(`${selected.value}T00:00:00`)
-  const week = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d.getDay()]
-  return `${d.getMonth() + 1}月${d.getDate()}日 ${week}`
+  return `${d.getMonth() + 1}月${d.getDate()}日`
 })
-const pct = computed(() => summary.value?.tasks.pct || 0)
+const weekLabel = computed(() => {
+  const d = new Date(`${selected.value}T00:00:00`)
+  const week = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d.getDay()]
+  return selected.value === today ? `${week} · 今天` : week
+})
+const doneCount = computed(() => summary.value?.tasks.done || 0)
+const totalCount = computed(() => summary.value?.tasks.total || items.value.length || 0)
+const pct = computed(() => (totalCount.value ? Math.round((doneCount.value / totalCount.value) * 100) : 0))
 
-// 每日指标区间：热量/蛋白/饮水/睡眠/运动，都由后端 metric_bands 算好（区间 + 浮动容忍）
+// 圆环：r=34，周长 213.6
+const RING_C = 2 * Math.PI * 34
+const ringDash = computed(() => `${((RING_C * pct.value) / 100).toFixed(1)} ${RING_C.toFixed(1)}`)
+
+// 待打卡项文案
+const pendingText = computed(() => {
+  const left = items.value.filter((i) => i.status !== 'done').map((i) => i.label)
+  if (!items.value.length) return '这一天还没有任务'
+  if (!left.length) return '今天的打卡全部完成'
+  return `${left.join('、')} ${left.length} 项待打卡`
+})
+
+// ---- 指标区间 ----
 const bands = computed(() => summary.value?.bands || [])
 const heroBands = computed(() =>
   ['calorie', 'protein', 'water', 'sleep', 'exercise']
     .map((k) => bands.value.find((b) => b.key === k))
     .filter(Boolean) as NonNullable<DaySummary['bands']>,
 )
+const bandOkCount = computed(
+  () => bands.value.filter((b) => b.status === 'in_range' || b.status === 'low' || b.status === 'high').length,
+)
+
 // 蛋白不足不算「错误」：菜已经在方案里排好，按方案吃完就够，只在汇总里灰字提示，不标红
 const bandCls = (status?: string, key?: string) => {
-  // 还有餐没打卡：只是没吃完，用中性灰，不用红色
   if (status === 'in_progress') return 'muted'
   if (key === 'protein' && status === 'under') return 'muted'
   return status === 'in_range' ? 'ok'
     : status === 'low' || status === 'high' ? 'warn'
       : status === 'under' || status === 'over' ? 'bad' : ''
 }
+
 // 方案排错不是用户的错：用中性提示色，别跟着一起标红
 const dietCls = computed(() => {
   const d = summary.value?.diet
@@ -64,14 +97,43 @@ const dietCls = computed(() => {
   if (d.status === 'in_progress') return 'progress'
   return 'warn'
 })
+
 // 结构项折叠一行：脂肪/碳水/纤维/钠/糖，只展示不卡打卡
 const structureText = computed(() =>
   (summary.value?.diet?.structure || [])
     .map((i) => `${i.label} ${i.value ?? '—'}${i.unit}${i.status === 'in_range' ? ' ✓' : ` ${i.status_text}`}`)
     .join(' · '),
 )
-const waterBand = computed(() => bands.value.find((b) => b.key === 'water'))
 const sleepBand = computed(() => bands.value.find((b) => b.key === 'sleep'))
+
+/** 指标条的区间段与当前位置：按演示稿口径，域上限取 max*1.35 */
+function trackOf(b: any) {
+  const min = Number(b?.min) || 0
+  const max = Number(b?.max) || 0
+  const actual = Number(b?.actual)
+  const domainMax = max * 1.35 || 1
+  const zoneL = Math.max(0, Math.min(100, (min / domainMax) * 100))
+  const zoneW = Math.max(2, Math.min(100 - zoneL, ((max - min) / domainMax) * 100))
+  const dot = Number.isFinite(actual) ? Math.max(2, Math.min(98, (actual / domainMax) * 100)) : null
+  return {
+    zoneL: `${zoneL.toFixed(1)}%`,
+    zoneW: `${zoneW.toFixed(1)}%`,
+    dot: dot == null ? '' : `${dot.toFixed(1)}%`,
+    hasActual: dot != null && b?.actual != null,
+  }
+}
+
+/** 数值展示：小时保留一位，其余取整 */
+function numText(v: any, unit?: string) {
+  if (v == null || v === '') return '—'
+  const n = Number(v)
+  if (!Number.isFinite(n)) return String(v)
+  return unit === 'h' ? n.toFixed(1) : `${Math.round(n)}`
+}
+function rangeText(b: any) {
+  if (!b) return ''
+  return `${numText(b.min, b.unit)}~${numText(b.max, b.unit)}`
+}
 
 // ---- 偏离处置 / 当日模式 ----
 // 结论跟时间走：上午不判（还没吃完）、21:30 后只调明天，所以选项必须由后端按当前时刻算
@@ -165,20 +227,17 @@ async function doRevert(day: string) {
 async function load() {
   loading.value = true
   try {
-    const [day, foods, sum, w, s] = await Promise.all([
+    const [day, sum, w, s] = await Promise.all([
       checkinApi.getDay(selected.value),
-      foodApi.getFoodRecords(selected.value),
       wellnessApi.getDaySummary(selected.value),
       wellnessApi.getWater(selected.value),
       wellnessApi.getSleep(selected.value),
     ])
     items.value = day.items
-    records.value = foods.records
-    foodSummary.value = foods.summary
     summary.value = sum
     water.value = w
     sleep.value = s.sleep
-    await Promise.all([loadMonth(), loadDayState()])
+    await Promise.all([loadMonth(), loadDayState(), loadStreak()])
   } catch {
     // 拦截器已统一提示
   } finally {
@@ -187,15 +246,30 @@ async function load() {
 }
 
 // ---- 打卡日历 ----
-const calendarOpen = ref(false)
 const month = ref(selected.value.slice(0, 7))
 const monthDays = ref<DayStat[]>([])
+
+// 日历折叠：记住用户上次的选择，首次进来默认展开（紧贴主卡，一眼能看到热力图）
+const CAL_KEY = 'foodai:schedCalendar'
+const calendarOpen = ref(localStorage.getItem(CAL_KEY) !== '0')
+function toggleCalendar() {
+  calendarOpen.value = !calendarOpen.value
+  try {
+    localStorage.setItem(CAL_KEY, calendarOpen.value ? '1' : '0')
+  } catch {
+    /* 隐私模式下写不了也不影响使用 */
+  }
+}
+
+// 今日指标详情：点主卡上的指标才弹出，不占页面
+const bandsOpen = ref(false)
 
 const monthCells = computed(() => {
   const [y, m] = month.value.split('-').map(Number)
   const first = new Date(y, m - 1, 1)
   const daysInMonth = new Date(y, m, 0).getDate()
-  const lead = first.getDay()
+  // 热力图按周一起排（一 二 三 四 五 六 日）
+  const lead = (first.getDay() + 6) % 7
   const statMap = new Map(monthDays.value.map((d) => [d.date, d]))
   const cells: { date: string; day: number; stat?: DayStat }[] = []
   for (let i = 0; i < lead; i += 1) cells.push({ date: '', day: 0 })
@@ -204,6 +278,35 @@ const monthCells = computed(() => {
     cells.push({ date: key, day: d, stat: statMap.get(key) })
   }
   return cells
+})
+
+/** 当天状态：full 全满 / ok 达标 / low 偏少 / miss 缺卡
+ *
+ * 四档而不是五档：月历接口只有 total（当天该打几项）与 done（打了几项），
+ * 没有「热量超标」这一维，硬造一个红档就是假数据。等后端按月给出热量判定再补。
+ */
+function stateOf(stat?: DayStat): 'full' | 'ok' | 'low' | 'miss' {
+  if (!stat?.total) return 'miss'
+  const p = stat.pct ?? Math.round(((stat.done || 0) / stat.total) * 100)
+  if (p >= 100) return 'full'
+  if (p >= 70) return 'ok'
+  if (p > 0) return 'low'
+  return 'miss'
+}
+
+/** 本月达标天数 / 已过天数 */
+const monthStat = computed(() => {
+  const [y, m] = month.value.split('-').map(Number)
+  const last = new Date(y, m, 0).getDate()
+  const isCur = month.value === today.slice(0, 7)
+  const upto = isCur ? Number(today.slice(8, 10)) : last
+  const ok = monthDays.value.filter((d) => d.date.slice(8, 10) <= `${upto}`.padStart(2, '0') && stateOf(d) === 'full').length
+  return { ok, upto }
+})
+
+const monthLabel = computed(() => {
+  const [y, m] = month.value.split('-').map(Number)
+  return `${y} 年 ${m} 月`
 })
 
 async function loadMonth() {
@@ -224,9 +327,40 @@ async function pickDate(date: string) {
   await load()
 }
 
-/** 日历格子里的小点：取前 4 项任务看完成态（早/午/晚/加餐优先） */
-function cellDots(stat?: DayStat) {
-  return (stat?.tasks || []).slice(0, 4)
+// ---- 连续天数：本月 + 上月的月历打点自己算，不额外加后端接口 ----
+const streakMap = ref<Record<string, DayStat>>({})
+const streak = ref(0)
+
+async function loadStreak() {
+  try {
+    const [y, m] = selected.value.split('-').map(Number)
+    const curKey = `${y}-${`${m}`.padStart(2, '0')}`
+    const pm = new Date(y, m - 2, 1)
+    const prevKey = `${pm.getFullYear()}-${`${pm.getMonth() + 1}`.padStart(2, '0')}`
+    const [a, b] = await Promise.all([checkinApi.getMonth(curKey), checkinApi.getMonth(prevKey)])
+    const map: Record<string, DayStat> = {}
+    for (const d of [...b.days, ...a.days]) map[d.date] = d
+    streakMap.value = map
+    let n = 0
+    const cursor = new Date(`${selected.value}T00:00:00`)
+    for (let i = 0; i < 90; i += 1) {
+      const key = fmt(cursor)
+      const st = map[key]
+      if (!st) break
+      const p = st.pct || 0
+      // 今天还没打完不算断，继续往前数
+      if (key === selected.value && p < 100) {
+        cursor.setDate(cursor.getDate() - 1)
+        continue
+      }
+      if (p >= 100) n += 1
+      else break
+      cursor.setDate(cursor.getDate() - 1)
+    }
+    streak.value = n
+  } catch {
+    streak.value = 0
+  }
 }
 
 /** 当天没有任务时的兜底：把进行中的方案一键导入（过期会自动顺延到今天） */
@@ -249,26 +383,129 @@ async function quickImport() {
   }
 }
 
-// ---- 任务 ----
-function taskSub(it: any) {
+// ---- 时间轴任务流 ----
+// 后端任务不带时间字段，按任务类型给常规时段；方案里若自带 time 优先用
+const TASK_TIME: Record<string, string> = {
+  meal_breakfast: '07:30',
+  meal_snack: '10:20',
+  meal_lunch: '12:30',
+  water: '15:00',
+  exercise: '18:30',
+  manual_exercise: '18:30',
+  meal_dinner: '19:10',
+  sleep: '23:00',
+}
+const TASK_ORDER: Record<string, number> = {
+  meal_breakfast: 1,
+  meal_snack: 2,
+  meal_lunch: 3,
+  water: 4,
+  exercise: 5,
+  manual_exercise: 6,
+  meal_dinner: 7,
+  sleep: 8,
+}
+const IN_LABEL: Record<string, string> = { light: '低强度', moderate: '中强度', intense: '高强度' }
+
+/** 按时间先后排，时间轴才是顺的 */
+const flowItems = computed(() =>
+  [...items.value].sort((a, b) => (TASK_ORDER[a.task_key] ?? 5) - (TASK_ORDER[b.task_key] ?? 5)),
+)
+
+function taskTime(it: any) {
+  return it?.detail?.time || it?.detail?.planned_time || TASK_TIME[it.task_key] || ''
+}
+
+/** 尾部热量：饮食取方案给的 calories，运动完成取实际消耗 */
+function taskKcal(it: any): number | null {
+  if (it.task_key?.startsWith('meal_')) {
+    const c = Number(it.detail?.calories)
+    if (Number.isFinite(c) && c > 0) return Math.round(c)
+    const list = it.detail?.items || it.detail?.dishes || []
+    const sum = Array.isArray(list) ? list.reduce((s: number, d: any) => s + (Number(d.calories) || 0), 0) : 0
+    return sum > 0 ? Math.round(sum) : null
+  }
+  if (it.check_type === 'exercise' && it.status === 'done') {
+    const v = Number(it.calories_burned ?? it.detail?.calories_burned)
+    return Number.isFinite(v) && v > 0 ? Math.round(v) : null
+  }
+  return null
+}
+
+interface TkChip { text: string; kind: 'pos' | 'warn' | 'ghost' }
+
+function taskChips(it: any): TkChip[] {
+  const out: TkChip[] = []
+  if (it.status === 'done' && it.points_awarded) out.push({ text: `+${it.points_awarded} 分`, kind: 'pos' })
+  if (it.task_key?.startsWith('meal_')) {
+    out.push({ text: it.plan_day_id ? '方案餐' : '手动记', kind: 'ghost' })
+  } else if (it.task_key === 'water') {
+    const cup = 250
+    const had = Math.round((water.value?.total_ml || 0) / cup)
+    const goal = Math.max(1, Math.round((water.value?.target_ml || 2000) / cup))
+    out.push({ text: `${had} / ${goal} 杯`, kind: had >= goal ? 'pos' : 'warn' })
+  } else if (it.task_key === 'sleep') {
+    const h = summary.value?.targets?.sleep_min_h
+    out.push({ text: h ? `目标 ${h} 小时` : '新增', kind: 'ghost' })
+  } else if (it.check_type === 'exercise') {
+    if (it.task_key === 'manual_exercise') out.push({ text: '手动记录', kind: 'ghost' })
+    else if (it.exercise_type) out.push({ text: `${it.exercise_type}${it.intensity ? ` · ${IN_LABEL[it.intensity] || ''}` : ''}`, kind: 'ghost' })
+    else out.push({ text: '方案下发', kind: 'ghost' })
+  }
+  return out
+}
+
+/** 副标题拆成分段，模板用圆点分隔 */
+function taskSubParts(it: any): string[] {
   if (it.check_type === 'exercise') {
-    const list = Array.isArray(it.detail) ? it.detail : it.detail ? [it.detail] : []
-    if (list.length) return list.map((e: any) => `${e.type} ${e.duration_min} 分钟`).join(' + ')
-    return [it.exercise_type, it.duration_min ? `${it.duration_min} 分钟` : ''].filter(Boolean).join(' · ') || '按计划运动'
+    const list = Array.isArray(it.detail) ? it.detail : it.detail?.type ? [it.detail] : []
+    if (!it.exercise_type && list.length) return list.map((e: any) => `${e.type} ${e.duration_min} 分钟`)
+    const parts: string[] = []
+    if (it.exercise_type) parts.push(it.exercise_type)
+    const dur = it.duration_min
+    if (dur) parts.push(`${dur} 分钟`)
+    const burn = it.calories_burned ?? it.detail?.calories_burned
+    if (burn) parts.push(`预计消耗 ${Math.round(Number(burn))} kcal`)
+    if (!burn && !dur) parts.push('完成后自动算 MET')
+    return parts.length ? parts : ['按计划运动']
   }
   if (it.task_key === 'sleep') {
-    if (sleep.value?.duration_min) return `已睡 ${(sleep.value.duration_min / 60).toFixed(1)} 小时`
+    if (sleep.value?.duration_min) {
+      const p = [`已睡 ${(sleep.value.duration_min / 60).toFixed(1)} 小时`]
+      if (sleep.value.bedtime) p.push(`${sleep.value.bedtime} 到 ${sleep.value.wake_at}`)
+      return p
+    }
     const s = it.detail || {}
-    return s.bedtime ? `计划 ${s.bedtime} 入睡 · ${s.wake_at} 起床` : '记录昨晚睡眠'
+    return s.bedtime ? [`计划 ${s.bedtime} 入睡 · ${s.wake_at} 起床`] : ['记入睡 / 起床时间']
   }
   if (it.task_key === 'water') {
-    return `已喝 ${water.value?.total_ml || 0} / ${water.value?.target_ml || it.detail?.water_ml || 2000} ml`
+    return [`目标 ${water.value?.target_ml || it.detail?.water_ml || 2000} ml`]
   }
   const dishes = it.detail?.dishes || []
-  if (dishes.length) return dishes.map((d: any) => d.name).filter(Boolean).join('、')
-  const meals = it.detail?.items
-  if (Array.isArray(meals) && meals.length) return meals.map((d: any) => d.name).filter(Boolean).join('、')
-  return it.detail?.meal_type ? '方案餐食' : ''
+  const meals = it.detail?.items || []
+  const names = (dishes.length ? dishes : meals).map((d: any) => d.name).filter(Boolean).join(' · ')
+  if (names) return [names, it.status === 'done' ? '已完成' : '还没记录']
+  return [it.detail?.meal_type ? '方案餐食' : '还没记录']
+}
+
+type CtaAct = 'water' | 'sleep' | 'shot' | 'done'
+
+/** 尾部操作：有 CTA 就顶掉热量，避免窄屏挤成两行 */
+function taskCta(it: any): { label: string; act: CtaAct } | null {
+  if (it.task_key === 'water') return { label: '+1 杯', act: 'water' }
+  if (it.task_key === 'sleep') return { label: sleep.value ? '改一下' : '记录', act: 'sleep' }
+  if (it.status !== 'done' && it.task_key?.startsWith('meal_')) return { label: '拍照', act: 'shot' }
+  if (it.status !== 'done' && it.check_type === 'exercise') return { label: '去打卡', act: 'done' }
+  return null
+}
+
+async function runCta(it: any) {
+  const c = taskCta(it)
+  if (!c) return
+  if (c.act === 'water') return void (await drink(200))
+  if (c.act === 'sleep') return openSleep()
+  if (c.act === 'shot') return void router.push('/recognition')
+  if (c.act === 'done') return markDone(it)
 }
 
 async function markDone(it: CheckInItem) {
@@ -292,18 +529,11 @@ async function markDone(it: CheckInItem) {
   }
 }
 
-// ---- 饮水 ----
+// ---- 饮水（快捷行只保留 +200，详细进度在时间轴的饮水任务里看） ----
 async function drink(ml: number) {
   if (ml <= 0) return
   const r = await wellnessApi.addWater(ml, selected.value)
   ElMessage.success(r.achieved ? `今日饮水达标 ${r.total_ml} ml 🎉` : `已喝 ${r.total_ml} / ${r.target_ml} ml`)
-  await load()
-}
-
-async function undoWater() {
-  const last = water.value?.records?.[water.value.records.length - 1]
-  if (!last) return
-  await wellnessApi.deleteWater(last.id)
   await load()
 }
 
@@ -312,11 +542,24 @@ const sleepOpen = ref(false)
 const sleepForm = ref({ bedtime: '23:00', wakeAt: '07:00', quality: 4 })
 const sleepSaving = ref(false)
 
+const sleepTip = computed(() => {
+  const s = summary.value?.plan?.sleep
+  if (s?.tips) return s.tips
+  if (!sleep.value?.duration_min) {
+    return summary.value?.plan?.sleep
+      ? `计划 ${s?.bedtime || '23:00'} 入睡 · ${s?.wake_at || '07:00'} 起床，至少 ${summary.value?.targets?.sleep_min_h || 7} 小时。`
+      : '还没有昨晚的记录，填一下入睡和起床时间，按计划时长自动判达标。'
+  }
+  return ''
+})
+
+// 方案里的作息建议（没有计划时为 undefined），模板里直接读，避免在模板写类型断言
+const planSleep = computed(() => (summary.value?.plan?.sleep || {}) as { bedtime?: string; wake_at?: string })
+
 function openSleep() {
-  const s = summary.value?.plan?.sleep || {}
   sleepForm.value = {
-    bedtime: sleep.value?.bedtime || s.bedtime || '23:00',
-    wakeAt: sleep.value?.wake_at || s.wake_at || '07:00',
+    bedtime: sleep.value?.bedtime || planSleep.value.bedtime || '23:00',
+    wakeAt: sleep.value?.wake_at || planSleep.value.wake_at || '07:00',
     quality: sleep.value?.quality_score || 4,
   }
   sleepOpen.value = true
@@ -344,84 +587,413 @@ async function saveSleep() {
   }
 }
 
-// ---- 手动记一餐（食物打卡模块内）----
-const showManual = ref(false)
-const saving = ref(false)
-const manual = ref({ dish_name: '', portion_g: 200, meal_type: 'lunch' })
+// ---- 图标 ----
+// ---- 个人分析（体检报告 → 一行结论，详情在 /m/analysis）----
+const analysis = ref<CheckupAnalysis | null>(null)
 
-async function submitManual() {
-  if (!manual.value.dish_name.trim()) {
-    ElMessage.warning('请先填写菜名')
-    return
-  }
-  saving.value = true
+async function loadAnalysis() {
   try {
-    await foodApi.createFoodRecord({
-      dish_name: manual.value.dish_name.trim(),
-      portion_g: manual.value.portion_g,
-      meal_type: manual.value.meal_type,
-    })
-    ElMessage.success('已记入当日饮食')
-    showManual.value = false
-    manual.value = { dish_name: '', portion_g: 200, meal_type: 'lunch' }
-    await load()
-  } finally {
-    saving.value = false
+    analysis.value = await checkupApi.getAnalysis()
+  } catch {
+    analysis.value = null
   }
 }
 
-onMounted(load)
+function goAnalysis() {
+  router.push('/m/analysis')
+}
+
+// ---- 记体重（回写档案，方案目标会跟着变）----
+const weightOpen = ref(false)
+const weightForm = ref<number | null>(null)
+const weightSaving = ref(false)
+
+function openWeight() {
+  weightForm.value = analysis.value?.profile.weight_kg ?? null
+  weightOpen.value = true
+}
+
+async function submitWeight() {
+  const w = Number(weightForm.value)
+  if (!Number.isFinite(w) || w < 20 || w > 300) {
+    ElMessage.warning('请填写正确的体重')
+    return
+  }
+  weightSaving.value = true
+  try {
+    const r = await profileApi.addWeight({ weight_kg: w })
+    ElMessage.success(r.points_awarded ? `已记录 ${w} kg，+${r.points_awarded} 积分` : `已记录 ${w} kg`)
+    weightOpen.value = false
+    weightForm.value = w
+    await load()
+    await loadAnalysis()
+  } finally {
+    weightSaving.value = false
+  }
+}
+
+const ICON_PATHS: Record<string, string[]> = {
+  bowl: [
+    'M4 10.5h16',
+    'M5.5 10.5c.5 5.2 3.1 8.2 6.5 8.2s6-3 6.5-8.2',
+    'M9 7.4c0-1.4 1-1.6 1-3M14 7.4c0-1.4 1-1.6 1-3',
+  ],
+  drop: ['M12 3.5c3.2 4.2 5.5 6.9 5.5 9.8a5.5 5.5 0 0 1-11 0c0-2.9 2.3-5.6 5.5-9.8z'],
+  moon: ['M20 13.6A8 8 0 0 1 9.6 3.8a7.6 7.6 0 1 0 10.4 9.8z'],
+  run: ['M3.5 12h4l2.5-6 4.5 12 2.5-6h4'],
+  check: ['M5 12.5l4.5 4.5L19 7.5'],
+  cam: [
+    'M3 10a4 4 0 0 1 4-4h1.5l1.2-2h4.6l1.2 2H17a4 4 0 0 1 4 4v6a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z',
+    'M12 15.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  ],
+  pen: ['M4 20h4l10-10-4-4-10 10v4z', 'M14 6l4 4'],
+  cal: [
+    'M4 6.5a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v11a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z',
+    'M8 2.5v4M16 2.5v4M4 10h16',
+  ],
+  pulse: [
+    'M12 20s-7-4.4-7-9.3A4 4 0 0 1 12 7a4 4 0 0 1 7 3.7C19 15.6 12 20 12 20z',
+    'M7 12.5h3l1.2-2.4 1.6 4 1.2-1.6h3',
+  ],
+  star: ['M12 3.8l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z'],
+  scale: [
+    'M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
+    'M8 16a4 4 0 0 1 8 0',
+    'M12 16l2.2-2.4',
+  ],
+  chevron: ['M6 9.5l6 6 6-6'],
+}
+
+onMounted(() => {
+  load()
+  loadAnalysis()
+})
 </script>
 
 <template>
-  <div class="m-page">
-    <!-- 今日进度 + 目标条 -->
-    <div class="hero">
-      <div class="hero-top">
-        <span class="date">{{ dateLabel }}</span>
-        <span class="ratio">{{ summary?.tasks.done || 0 }}/{{ summary?.tasks.total || 0 }} 项</span>
-      </div>
-      <el-progress :percentage="pct" :stroke-width="8" :show-text="false" color="#fff" />
-      <div class="hero-targets">
-        <div v-for="b in heroBands" :key="b.key" class="ht" :class="bandCls(b.status, b.key)">
-          <span>{{ b.label }}</span>
-          <b>{{ b.actual != null ? b.actual : '—' }}</b>
-          <em>{{ b.min }}~{{ b.max }}{{ b.unit === 'h' ? 'h' : '' }}</em>
+  <div class="sched">
+    <div class="app">
+      <!-- ===== 主卡：今日打卡 ===== -->
+      <section class="hero">
+        <div class="hero-top">
+          <div class="hero-date">
+            <b>{{ dateLabel }}</b>
+            <span>{{ weekLabel }}</span>
+          </div>
+          <span v-if="streak > 0" class="hero-chip">连续 {{ streak }} 天</span>
+        </div>
+
+        <div class="hero-mid">
+          <div>
+            <div class="hero-k">今日打卡</div>
+            <div class="hero-num">
+              <b>{{ doneCount }}</b><i>/{{ totalCount }}</i><u>项</u>
+            </div>
+            <p class="hero-sub">{{ pendingText }}</p>
+          </div>
+          <div class="ring">
+            <svg viewBox="0 0 84 84" aria-hidden="true">
+              <circle cx="42" cy="42" r="34" fill="none" stroke="rgba(23,26,20,0.16)" stroke-width="7" />
+              <circle
+                cx="42" cy="42" r="34" fill="none" stroke="#171A14" stroke-width="7"
+                stroke-linecap="round" :stroke-dasharray="ringDash" transform="rotate(-90 42 42)"
+              />
+            </svg>
+            <div class="ring-txt">
+              <b>{{ pct }}%</b><span>完成度</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-metrics">
+          <div
+            v-for="b in heroBands"
+            :key="b.key"
+            class="hm"
+            :class="bandCls(b.status, b.key)"
+            role="button"
+            tabindex="0"
+            aria-label="查看今日指标明细"
+            @click="bandsOpen = true"
+            @keydown.enter.prevent="bandsOpen = true"
+          >
+            <span>{{ b.label }}</span>
+            <b>{{ numText(b.actual, b.unit) }}<i>{{ b.actual != null ? b.unit : '' }}</i></b>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 打卡日历（紧贴主卡，可折叠） ===== -->
+      <div class="fold cal-fold" :class="{ on: calendarOpen }">
+        <button class="fold-bar" :aria-expanded="calendarOpen" @click="toggleCalendar">
+          <span class="fold-l">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+              <path v-for="(d, i) in ICON_PATHS.cal" :key="i" :d="d" />
+            </svg>
+            {{ month.split('-')[1] }} 月打卡日历
+            <i class="fold-num">{{ monthStat.ok }}/{{ monthStat.upto }} 天打满</i>
+          </span>
+          <span class="fold-r">
+            {{ calendarOpen ? '收起' : '展开' }}
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6" /></svg>
+          </span>
+        </button>
+        <div v-show="calendarOpen" class="panel on">
+          <div class="card cal-card">
+            <div class="cal-panel">
+              <div class="cal-head">
+                <button class="cal-nav" aria-label="上个月" @click="shiftMonth(-1)">‹</button>
+                <b>{{ monthLabel }}</b>
+                <button class="cal-nav" aria-label="下个月" @click="shiftMonth(1)">›</button>
+              </div>
+              <div class="cal-week">
+                <span v-for="w in ['一', '二', '三', '四', '五', '六', '日']" :key="w">{{ w }}</span>
+              </div>
+              <div class="cal-grid">
+                <button
+                  v-for="(c, i) in monthCells"
+                  :key="i"
+                  class="cal-cell"
+                  :class="[
+                    `s-${stateOf(c.stat)}`,
+                    {
+                      empty: !c.day,
+                      today: c.date === today,
+                      future: !!c.date && c.date > today,
+                      sel: c.date === selected && c.date !== today,
+                    },
+                  ]"
+                  :disabled="!c.day"
+                  @click="pickDate(c.date)"
+                >
+                  <span class="cc-day">{{ c.day || '' }}</span>
+                  <span v-if="c.day && c.stat?.total" class="cc-num">{{ c.stat.done }}/{{ c.stat.total }}</span>
+                </button>
+              </div>
+              <div class="cal-legend">
+                <span class="cl-item"><i class="s-full"></i>全满</span>
+                <span class="cl-item"><i class="s-ok"></i>达标</span>
+                <span class="cl-item"><i class="s-low"></i>偏少</span>
+                <span class="cl-item"><i class="s-miss"></i>缺卡</span>
+              </div>
+              <p class="cal-hint">点日期可切到当天</p>
+            </div>
+          </div>
         </div>
       </div>
-      <p v-if="summary?.band_note" class="hero-note">{{ summary.band_note }}</p>
+
+      <!-- ===== 快捷记录：四个入口一行，不占整块卡片 ===== -->
+      <div class="quick-acts">
+        <button class="qa" @click="drink(200)">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path v-for="(d, i) in ICON_PATHS.drop" :key="i" :d="d" />
+          </svg>
+          <span>喝水 +200</span>
+        </button>
+        <button class="qa" @click="router.push('/recognition')">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path v-for="(d, i) in ICON_PATHS.cam" :key="i" :d="d" />
+          </svg>
+          <span>拍照记餐</span>
+        </button>
+        <button class="qa" @click="openWeight">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path v-for="(d, i) in ICON_PATHS.scale" :key="i" :d="d" />
+          </svg>
+          <span>记体重</span>
+        </button>
+        <button class="qa" @click="openSleep">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path v-for="(d, i) in ICON_PATHS.moon" :key="i" :d="d" />
+          </svg>
+          <span>记睡眠</span>
+        </button>
+      </div>
+
+      <!-- ===== 今日任务（时间轴） ===== -->
+      <section class="card">
+        <div class="card-head">
+          <h2>今日任务</h2>
+          <span v-if="items.length" class="head-tag">{{ doneCount }}/{{ totalCount }} · 点圆圈打卡</span>
+        </div>
+
+        <div v-if="loading" class="skeleton">
+          <span v-for="i in 4" :key="i" class="sk-row"></span>
+        </div>
+
+        <div v-else-if="!items.length" class="empty">
+          <p class="empty-t">这一天还没有任务</p>
+          <p class="empty-s">导入一份进行中的方案，就能按天打卡</p>
+          <div class="btn-row">
+            <button class="btn btn-solid" :disabled="quickImporting" @click="quickImport">
+              {{ quickImporting ? '导入中…' : '一键导入方案' }}
+            </button>
+            <button class="btn" @click="router.push('/m/plan')">去计划页</button>
+          </div>
+        </div>
+
+        <div v-else class="flow">
+          <div v-for="it in flowItems" :key="it.id" class="tk" :class="{ done: it.status === 'done' }">
+            <div class="tk-time">{{ taskTime(it) }}</div>
+            <button
+              class="tk-node"
+              :aria-label="it.status === 'done' ? `取消打卡：${it.label}` : `打卡：${it.label}`"
+              :disabled="busyId === it.id"
+              @click="markDone(it)"
+            >
+              <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 12.5l4.5 4.5L19 7.5" />
+              </svg>
+            </button>
+            <div class="tk-body">
+              <div class="tk-title">
+                <span class="t">{{ it.label }}</span>
+                <span v-for="c in taskChips(it)" :key="c.text" class="tchip" :class="c.kind">{{ c.text }}</span>
+              </div>
+              <div class="tk-sub">
+                <template v-for="(p, pi) in taskSubParts(it)" :key="pi">
+                  <span v-if="pi" class="sep"></span>
+                  <span>{{ p }}</span>
+                </template>
+              </div>
+            </div>
+            <div class="tk-tail">
+              <button v-if="taskCta(it)" class="tk-cta" @click="runCta(it)">{{ taskCta(it)?.label }}</button>
+              <span v-else-if="taskKcal(it)" class="tk-kcal">{{ taskKcal(it) }}<small>kcal</small></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 个人分析：只放一行结论，详情另开页 ===== -->
+      <section class="card ana" role="button" tabindex="0" @click="goAnalysis" @keydown.enter.prevent="goAnalysis">
+        <div class="card-head">
+          <h2>个人分析</h2>
+          <span class="head-tag">
+            {{ analysis?.has_report ? '基于体检报告与近 30 天打卡' : '导入体检后按你的基线算' }}
+          </span>
+        </div>
+
+        <template v-if="analysis?.has_report">
+          <div class="ana-type">{{ analysis.type }}</div>
+          <p class="ana-line">{{ analysis.headline }}</p>
+          <div v-if="analysis.chips.length" class="ana-chips">
+            <span v-for="c in analysis.chips" :key="c">{{ c }}</span>
+          </div>
+        </template>
+        <p v-else class="ana-line">
+          {{ analysis?.headline || '还没有体检报告。' }}
+        </p>
+
+        <div class="ana-foot">
+          <span>
+            {{ analysis?.has_report ? `最近体检 ${analysis.report?.check_date}` : '拍照 / PDF / 手动录入' }}
+          </span>
+          <b>{{ analysis?.has_report ? '查看分析' : '去导入' }} ›</b>
+        </div>
+      </section>
+
+      <!-- ===== 睡眠与自查（折叠，原睡眠整卡收进来） ===== -->
+      <div class="fold" :class="{ on: selfReviewOpen }">
+        <button class="fold-bar" :aria-expanded="selfReviewOpen" @click="toggleSelfReview">
+          <span class="fold-l">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+              <path v-for="(d, i) in ICON_PATHS.moon" :key="i" :d="d" />
+            </svg>
+            睡眠与自查
+            <i class="fold-num">{{ sleep?.duration_h ? `${sleep.duration_h.toFixed(1)} h` : '未记录' }}</i>
+          </span>
+          <span class="fold-r">
+            {{ selfReviewOpen ? '收起' : '展开' }}
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6" /></svg>
+          </span>
+        </button>
+        <div v-show="selfReviewOpen" class="panel on">
+          <!-- 睡眠一行：原来单独一张卡，现在收进折叠里 -->
+          <div class="sleep-mini">
+            <div class="sm-l">
+              <b>{{ sleep?.duration_h ? sleep.duration_h.toFixed(1) : '—' }}</b><i>小时</i>
+              <em v-if="sleepBand">推荐 {{ sleepBand.range_text }} h</em>
+            </div>
+            <div class="sm-r">
+              <span v-if="sleep">
+                {{ sleep.bedtime }} 入睡 · {{ sleep.wake_at }} 起床
+                <template v-if="sleep.quality_score"> · 质量 {{ sleep.quality_score }}/5</template>
+                <template v-if="sleep.source"> · {{ sleep.source === 'manual' ? '手动' : '手环' }}</template>
+              </span>
+              <span v-else>还没记录昨晚睡眠</span>
+            </div>
+            <button class="sm-btn" @click="openSleep">{{ sleep ? '修改' : '记录' }}</button>
+          </div>
+          <p v-if="sleepTip" class="sleep-tip">{{ sleepTip }}</p>
+          <div v-if="selfReview" class="cal-panel">
+            <p v-for="(line, i) in selfReview.lines" :key="i" class="review-line">{{ line }}</p>
+            <p v-if="!selfReview.lines.length" class="review-line">
+              最近没有连续偏离，也没有挂例外，口径和你的实际吃得对得上。
+            </p>
+            <div v-if="selfReview.proposal" class="recalc-box">
+              <p class="recalc-target">
+                每日目标 {{ selfReview.proposal.old_target }} → {{ selfReview.proposal.new_target }} kcal
+                <i v-if="selfReview.proposal.bmr">（不低于基础代谢 {{ selfReview.proposal.bmr }}）</i>
+              </p>
+              <p class="recalc-why">{{ selfReview.proposal.reason }}</p>
+              <button class="btn btn-solid" :disabled="recalcBusy" @click="doRecalc">
+                {{ recalcBusy ? '重算中…' : '按实际数据重算' }}
+              </button>
+            </div>
+            <p class="review-foot">
+              这是系统的自查，不是你的评分。建议不实用会换成「改餐食」，而不是「加练」。
+            </p>
+          </div>
+          <div v-else class="cal-panel"><p class="review-line">加载中…</p></div>
+        </div>
+      </div>
     </div>
 
-    <!-- 指标区间：每项给确切上下限 + 实际值 + 判定，超限才提示怎么补 -->
-    <section v-if="bands.length" class="block">
-      <h3 class="block-title">
-        今日指标区间
-        <em>{{ bands.filter((b) => b.status === 'in_range' || b.status === 'low' || b.status === 'high').length }}/{{ bands.length }} 达标</em>
-      </h3>
-      <div class="card bands-card">
+    <!-- ===== 弹层：今日指标明细 ===== -->
+    <div class="mask" :class="{ on: bandsOpen }" @click="bandsOpen = false"></div>
+    <div
+      class="sheet bands-sheet"
+      :class="{ on: bandsOpen }"
+      role="dialog"
+      aria-modal="true"
+      aria-label="今日指标明细"
+    >
+      <div class="sheet-grab"></div>
+      <div class="card-head">
+        <h2>今日指标明细</h2>
+        <span class="head-tag">{{ bandOkCount }}/{{ bands.length }} 达标</span>
+      </div>
+      <p class="sheet-tip">区间为推荐值，落在浅色段内即达标；口径见「计划 → 每日目标」，超限可在计划详情里改餐或加运动。点空白处关闭。</p>
+      <!-- 目标从哪来的：体检测过的基础代谢优先，否则是公式估算 -->
+      <div v-if="prescription?.bmr" class="basis-line">
+        <span class="bl-label">基础代谢</span>
+        <b>{{ prescription.bmr }} kcal</b>
+        <em class="bl-src" :class="{ on: prescription.bmr_source === 'measured' }">
+          {{ prescription.bmr_source === 'measured' ? '体检实测' : '公式估算' }}
+        </em>
+      </div>
+      <div class="sheet-body">
         <!-- 饮食一行汇总：七项判完给一条结论。方案排错不怪用户，额外加餐给出口不指责 -->
         <div v-if="summary?.diet?.line" class="diet-line" :class="dietCls">
-          <span class="diet-text">{{ summary.diet.line }}</span>
-          <span class="diet-tag">{{ summary.diet.status_text }}</span>
+          <span class="dl-text">{{ summary.diet.line }}</span>
+          <span class="dl-tag">{{ summary.diet.status_text }}</span>
         </div>
         <p v-if="summary?.diet?.hint" class="diet-hint">{{ summary.diet.hint }}</p>
 
         <!-- 当日模式：聚餐/生病/出差…只改今天的判定口径，第二天自动恢复 -->
         <div class="mode-bar">
           <span v-if="currentMode" class="mode-tag">
-            {{ currentMode.label }}
-            <em v-if="currentMode.note_text">{{ currentMode.note_text }}</em>
+            {{ currentMode.label }}<i v-if="currentMode.note_text">{{ currentMode.note_text }}</i>
           </span>
           <span v-else class="mode-idle">今天一切正常</span>
-          <span class="mode-action" @click="modePickerOpen = true">
-            {{ currentMode ? '换' : '今天有特殊情况？' }}
-          </span>
+          <button class="mode-btn" @click="modePickerOpen = true">
+            {{ currentMode ? '换一个' : '有特殊情况？' }}
+          </button>
         </div>
 
         <!-- 结算时点：为什么现在不判/还能做什么，先讲清楚再看数字 -->
-        <p v-if="settlementInfo" class="settle-hint" :class="settlementInfo.point">
-          {{ settlementInfo.message }}
-        </p>
+        <p v-if="settlementInfo" class="settle">{{ settlementInfo.message }}</p>
 
         <!-- 动态调整：系统自动改了方案什么（每条带为什么，可单独撤销） -->
         <div v-if="adaptApplied.length" class="adapt-wrap">
@@ -429,11 +1001,7 @@ onMounted(load)
             <div class="adapt-head">
               <span class="adapt-tag">方案已自动调整</span>
               <span class="adapt-day">{{ item.day }}</span>
-              <button
-                class="adapt-revert"
-                :disabled="revertingDay === item.day"
-                @click="doRevert(item.day)"
-              >
+              <button class="adapt-revert" :disabled="revertingDay === item.day" @click="doRevert(item.day)">
                 撤销
               </button>
             </div>
@@ -483,475 +1051,1026 @@ onMounted(load)
         <div v-if="summary?.intake?.estimated" class="diet-est">
           {{ summary.intake.note }}，记下实际吃了什么会更准
         </div>
-        <div v-for="b in bands" :key="b.key" class="band-row" :class="bandCls(b.status, b.key)">
-          <div class="band-head">
-            <span class="band-name">{{ b.label }}</span>
-            <span class="band-status">{{ b.status_text }}</span>
-          </div>
-          <div class="band-mid">
-            <span class="band-range">推荐 {{ b.range_text }}</span>
-            <span class="band-value">
-              <b>{{ b.actual != null ? b.actual : '—' }}</b>
-              <em v-if="b.actual != null">{{ b.unit }}</em>
-            </span>
-          </div>
-          <p class="band-hint">{{ b.hint }}</p>
-        </div>
-        <p class="band-foot">
-          区间为推荐值，绿色=区间内，黄色=在浮动容忍内也算达标，红色=明显偏离。
-          口径见「计划 → 每日目标」，超限可在计划详情里改餐或加运动。
-        </p>
-      </div>
-    </section>
 
-    <!-- 日历入口 -->
-    <div class="cal-bar" @click="calendarOpen = !calendarOpen">
-      <span>📅 {{ month }} 打卡日历</span>
-      <span class="cal-toggle">{{ calendarOpen ? '收起' : '展开' }}</span>
+        <div class="metrics">
+          <div v-for="b in bands" :key="b.key" class="m-row" :class="bandCls(b.status, b.key)">
+            <div class="m-top">
+              <span class="m-name">{{ b.label }}</span>
+              <span class="m-status">{{ b.status_text }}</span>
+            </div>
+            <div class="m-mid">
+              <div class="m-val">
+                <b>{{ numText(b.actual, b.unit) }}</b><i v-if="b.actual != null">{{ b.unit }}</i>
+              </div>
+              <span class="m-range">{{ rangeText(b) }} {{ b.unit }}</span>
+            </div>
+            <div class="m-track">
+              <span
+                class="m-zone"
+                :style="{ left: trackOf(b).zoneL, width: trackOf(b).zoneW }"
+              ></span>
+              <span v-if="trackOf(b).hasActual" class="m-dot" :style="{ left: trackOf(b).dot }"></span>
+            </div>
+            <p class="m-hint">{{ b.hint }}</p>
+          </div>
+        </div>
+
+      </div>
     </div>
 
-    <div v-if="calendarOpen" class="calendar">
-      <div class="cal-head">
-        <el-button text size="small" @click="shiftMonth(-1)">‹</el-button>
-        <b>{{ month }}</b>
-        <el-button text size="small" @click="shiftMonth(1)">›</el-button>
-      </div>
-      <div class="cal-week">
-        <span v-for="w in ['日', '一', '二', '三', '四', '五', '六']" :key="w">{{ w }}</span>
-      </div>
-      <div class="cal-grid">
-        <div
-          v-for="(c, i) in monthCells"
-          :key="i"
-          class="cal-cell"
-          :class="{
-            empty: !c.day,
-            active: c.date === selected,
-            plan: c.stat?.has_plan,
-            part: (c.stat?.pct || 0) > 0 && (c.stat?.pct || 0) < 100,
-            full: (c.stat?.pct || 0) >= 100,
-          }"
-          @click="pickDate(c.date)"
-        >
-          <span class="cal-day">{{ c.day || '' }}</span>
-          <span v-if="cellDots(c.stat).length" class="cal-dots">
-            <i
-              v-for="(t, ti) in cellDots(c.stat)"
-              :key="ti"
-              :class="['dot', t.status === 'done' ? 'on' : 'off']"
-            ></i>
-          </span>
-          <span v-else-if="c.stat?.has_plan" class="cal-plan-dot"></span>
+    <!-- ===== 弹层：记体重 ===== -->
+    <div class="mask" :class="{ on: weightOpen }" @click="weightOpen = false"></div>
+    <div class="sheet" :class="{ on: weightOpen }" role="dialog" aria-modal="true" aria-label="记体重">
+      <div class="sheet-grab"></div>
+      <h3>记体重</h3>
+      <p class="sheet-tip">每天第一次记录 +2 积分。体重会同时更新方案的热量与蛋白目标。</p>
+      <div class="sheet-body">
+        <div class="field">
+          <span>体重（kg）</span>
+          <input
+            v-model.number="weightForm"
+            type="number"
+            inputmode="decimal"
+            step="0.1"
+            min="20"
+            max="300"
+            placeholder="例如 45.0"
+          />
         </div>
       </div>
-      <p class="cal-hint">点某天看当日简约打卡计划；点可直接打卡</p>
+      <div class="sheet-acts">
+        <button class="btn" @click="weightOpen = false">取消</button>
+        <button class="btn btn-solid" :disabled="weightSaving" @click="submitWeight">
+          {{ weightSaving ? '保存中…' : '保存' }}
+        </button>
+      </div>
+    </div>
 
-      <!-- 当日简约打卡计划（在日历里看，也能直接打卡） -->
-      <div v-if="items.length" class="day-plan">
-        <div class="dp-head">
-          <b>{{ dateLabel }} · 简约计划</b>
-          <span>{{ summary?.tasks.done || 0 }}/{{ summary?.tasks.total || 0 }}</span>
+    <!-- ===== 弹层：记录睡眠 ===== -->
+    <div class="mask" :class="{ on: sleepOpen }" @click="sleepOpen = false"></div>
+    <div class="sheet" :class="{ on: sleepOpen }" role="dialog" aria-modal="true" aria-label="记录睡眠">
+      <div class="sheet-grab"></div>
+      <h3>记录昨晚睡眠</h3>
+      <p class="sheet-tip">
+        <template v-if="summary?.plan?.sleep">
+          计划 {{ planSleep.bedtime }} 入睡 · {{ planSleep.wake_at }} 起床，
+          至少 {{ summary.targets?.sleep_min_h || 7 }} 小时。
+        </template>
+        <template v-else>填入睡和起床时间，系统按时长判达标。</template>
+      </p>
+      <div class="sheet-body">
+        <div class="field">
+          <span>入睡 / 起床</span>
+          <div class="time-row">
+            <input v-model="sleepForm.bedtime" type="time" />
+            <span class="time-sep">到</span>
+            <input v-model="sleepForm.wakeAt" type="time" />
+          </div>
         </div>
-        <div class="dp-chips">
-          <button
-            v-for="it in items"
-            :key="it.id"
-            :class="['dp-chip', { on: it.status === 'done' }]"
-            @click="markDone(it)"
-          >
-            <span class="dpc-label">{{ it.label }}</span>
-            <span class="dpc-sub">{{ taskSub(it) || (it.task_key === 'exercise' ? '按计划运动' : '按计划完成') }}</span>
+        <div class="field">
+          <span>睡眠质量</span>
+          <div class="stars">
+            <button
+              v-for="n in 5"
+              :key="n"
+              :class="{ on: sleepForm.quality >= n }"
+              :aria-label="`${n} 星`"
+              @click="sleepForm.quality = n"
+            >
+              <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+                <path v-for="(d, i) in ICON_PATHS.star" :key="i" :d="d" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="sheet-acts">
+        <button class="btn" @click="sleepOpen = false">取消</button>
+        <button class="btn btn-solid" :disabled="sleepSaving" @click="saveSleep">
+          {{ sleepSaving ? '保存中…' : '保存并打卡' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== 弹层：今日特殊情况 ===== -->
+    <div class="mask" :class="{ on: modePickerOpen }" @click="modePickerOpen = false"></div>
+    <div class="sheet" :class="{ on: modePickerOpen }" role="dialog" aria-modal="true" aria-label="今日特殊情况">
+      <div class="sheet-grab"></div>
+      <h3>今天有什么特殊情况？</h3>
+      <p class="sheet-tip">只影响今天的判定口径，明天自动恢复。不是找借口，是让标准符合现实。</p>
+      <div class="sheet-body">
+        <div class="mode-list">
+          <button v-for="m in dayApi.MODE_OPTIONS" :key="m.value" class="mode-item" @click="chooseMode(m.value)">
+            <b>{{ m.label }}</b><span>{{ m.desc }}</span>
+          </button>
+          <button class="mode-item normal" @click="chooseMode('normal')">
+            <b>恢复正常</b><span>按平常口径判，不做任何放宽</span>
           </button>
         </div>
       </div>
-      <p v-else class="cal-hint">这一天还没有任务</p>
     </div>
-
-    <!-- 今日任务 -->
-    <section class="block">
-      <h3 class="block-title">
-        打卡计划
-        <em v-if="items.length">{{ summary?.tasks.done || 0 }}/{{ items.length }}</em>
-      </h3>
-      <div v-if="loading" class="skeleton">加载中…</div>
-      <el-empty v-else-if="!items.length" description="这一天还没有任务，导入一份计划就能打卡" :image-size="70">
-        <el-button type="success" size="small" :loading="quickImporting" @click="quickImport">
-          一键导入进行中的方案
-        </el-button>
-        <el-button size="small" plain @click="router.push('/m/plan')">去计划页</el-button>
-      </el-empty>
-      <div v-for="it in items" v-else :key="it.id" class="task" :class="{ done: it.status === 'done' }">
-        <div class="task-main">
-          <div class="task-label">{{ it.label }}</div>
-          <div v-if="taskSub(it)" class="task-sub">{{ taskSub(it) }}</div>
-        </div>
-        <el-button
-          size="small"
-          :type="it.status === 'done' ? 'success' : 'primary'"
-          :plain="it.status === 'done'"
-          :loading="busyId === it.id"
-          @click="markDone(it)"
-        >
-          {{ it.status === 'done' ? '已完成' : '打卡' }}
-        </el-button>
-      </div>
-    </section>
-
-    <!-- 食物 + 饮水 打卡模块 -->
-    <section class="block">
-      <h3 class="block-title">饮食打卡</h3>
-      <div class="card">
-        <div class="row">
-          <span>今日已记 {{ records.length }} 餐</span>
-          <b>{{ Math.round(foodSummary.total_calories) }} kcal</b>
-        </div>
-        <div v-if="records.length" class="chips">
-          <span v-for="r in records.slice(0, 4)" :key="r.id" class="chip">{{ r.dish_name }}</span>
-          <span v-if="records.length > 4" class="chip muted">+{{ records.length - 4 }}</span>
-        </div>
-        <div class="actions">
-          <el-button type="success" @click="router.push('/recognition')">📷 拍照识别热量</el-button>
-          <el-button plain @click="showManual = true">手动记一餐</el-button>
-        </div>
-      </div>
-
-      <!-- 饮水：与食物同属一个模块 -->
-      <div class="card water-card">
-        <div class="row">
-          <span>💧 饮水</span>
-          <b>{{ water?.total_ml || 0 }} / {{ waterBand?.range_text || `${water?.target_ml || 2000} ml` }}</b>
-        </div>
-        <el-progress
-          :percentage="Math.min(100, Math.round(((water?.total_ml || 0) / (water?.target_ml || 2000)) * 100))"
-          :stroke-width="8"
-          :show-text="false"
-          color="#409eff"
-          style="margin-top: 8px"
-        />
-        <div class="water-actions">
-          <el-button size="small" @click="drink(200)">+200</el-button>
-          <el-button size="small" @click="drink(300)">+300</el-button>
-          <el-button size="small" @click="drink(500)">+500</el-button>
-          <el-button size="small" text :disabled="!water?.records?.length" @click="undoWater">撤销</el-button>
-        </div>
-      </div>
-    </section>
-
-    <!-- 睡眠打卡 -->
-    <section class="block">
-      <h3 class="block-title">睡眠打卡</h3>
-      <div class="card">
-        <div class="row">
-          <span>昨晚睡眠</span>
-          <b>{{ sleep?.duration_h ? `${sleep.duration_h.toFixed(1)} 小时` : '未记录' }}</b>
-        </div>
-        <div v-if="sleep" class="sleep-line">
-          {{ sleep.bedtime }} 入睡 · {{ sleep.wake_at }} 起床
-          <el-tag size="small" effect="plain" :type="sleep.source === 'manual' ? 'info' : 'success'">
-            {{ sleep.source === 'manual' ? '手动' : '手环同步' }}
-          </el-tag>
-        </div>
-        <div v-else-if="summary?.plan?.sleep" class="sleep-line">
-          计划 {{ summary.plan.sleep.bedtime }} 入睡 · {{ summary.plan.sleep.wake_at }} 起床
-          <span v-if="sleepBand">，推荐 {{ sleepBand.range_text }}</span>
-        </div>
-        <div v-if="summary?.plan?.sleep?.tips" class="sleep-tips">{{ summary.plan.sleep.tips }}</div>
-        <div class="actions">
-          <el-button type="success" @click="openSleep">{{ sleep ? '修改睡眠' : '记录睡眠' }}</el-button>
-        </div>
-      </div>
-    </section>
-
-    <!-- 手动记一餐 -->
-    <el-dialog v-model="showManual" title="手动记一餐" width="86%" align-center>
-      <el-form label-position="top">
-        <el-form-item label="菜名">
-          <el-input v-model="manual.dish_name" placeholder="例如：番茄炒蛋" />
-        </el-form-item>
-        <el-form-item label="份量（克）">
-          <el-input-number v-model="manual.portion_g" :min="10" :max="1500" :step="50" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="餐次">
-          <el-radio-group v-model="manual.meal_type">
-            <el-radio-button value="breakfast">早餐</el-radio-button>
-            <el-radio-button value="lunch">午餐</el-radio-button>
-            <el-radio-button value="dinner">晚餐</el-radio-button>
-            <el-radio-button value="snack">加餐</el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showManual = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="submitManual">保存</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 记录睡眠 -->
-    <el-drawer v-model="sleepOpen" title="记录昨晚睡眠" direction="btt" size="56%">
-      <div class="sleep-form">
-        <div class="sf-row">
-          <span>入睡</span>
-          <el-input v-model="sleepForm.bedtime" placeholder="23:00" style="width: 100px" />
-          <span>起床</span>
-          <el-input v-model="sleepForm.wakeAt" placeholder="07:00" style="width: 100px" />
-        </div>
-        <div class="sf-row">
-          <span>睡眠质量</span>
-          <el-rate v-model="sleepForm.quality" :max="5" />
-        </div>
-        <div v-if="summary?.plan?.sleep" class="sf-plan">
-          计划目标：{{ summary.plan.sleep.bedtime }}–{{ summary.plan.sleep.wake_at }}，
-          至少 {{ summary.targets.sleep_min_h }} 小时
-        </div>
-        <el-button type="success" style="width: 100%; margin-top: 8px" :loading="sleepSaving" @click="saveSleep">
-          保存并打卡
-        </el-button>
-      </div>
-    </el-drawer>
-
-    <!-- 系统自省：连续偏离要重算目标（而不是继续压摄入），处置有效性也能看见 -->
-    <section class="block">
-      <div class="review-bar" @click="toggleSelfReview">
-        <span>🩺 系统自查</span>
-        <span class="cal-toggle">{{ selfReviewOpen ? '收起' : '展开' }}</span>
-      </div>
-      <div v-if="selfReviewOpen && selfReview" class="card review-card">
-        <p v-for="(line, i) in selfReview.lines" :key="i" class="review-line">{{ line }}</p>
-        <p v-if="!selfReview.lines.length" class="review-line muted">
-          最近没有连续偏离，也没有挂例外，口径和你的实际吃得对得上。
-        </p>
-        <div v-if="selfReview.proposal" class="recalc-box">
-          <p class="recalc-target">
-            每日目标 {{ selfReview.proposal.old_target }} → {{ selfReview.proposal.new_target }} kcal
-            <em v-if="selfReview.proposal.bmr">（不低于基础代谢 {{ selfReview.proposal.bmr }}）</em>
-          </p>
-          <p class="recalc-why">{{ selfReview.proposal.reason }}</p>
-          <el-button type="success" size="small" :loading="recalcBusy" @click="doRecalc">
-            按实际数据重算
-          </el-button>
-        </div>
-        <p class="review-foot">
-          这是系统的自查，不是你的评分。采纳率低说明建议不实用，会换成「改餐食」而不是「加练」。
-        </p>
-      </div>
-    </section>
-
-    <!-- 当日模式选择 -->
-    <el-dialog v-model="modePickerOpen" title="今天有什么特殊情况？" width="92%" style="max-width: 420px">
-      <p class="mode-tip">只影响今天的判定口径，明天自动恢复；不是给自己找借口，是让标准符合现实。</p>
-      <div class="mode-list">
-        <button v-for="m in dayApi.MODE_OPTIONS" :key="m.value" class="mode-item" @click="chooseMode(m.value)">
-          <b>{{ m.label }}</b>
-          <span>{{ m.desc }}</span>
-        </button>
-        <button class="mode-item normal" @click="chooseMode('normal')">
-          <b>恢复正常</b>
-          <span>按平常的口径判，不做任何放宽</span>
-        </button>
-      </div>
-    </el-dialog>
   </div>
 </template>
 
 <style scoped>
-.m-page { display: flex; flex-direction: column; gap: 12px; }
-.hero { background: linear-gradient(135deg, #67c23a, #95d475); border-radius: 14px; padding: 14px 16px; color: #fff; }
-.hero-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
-.hero-top .date { font-size: 15px; font-weight: 600; }
-.hero-top .ratio { font-size: 12px; opacity: 0.9; }
-.hero-targets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-top: 10px; }
-.ht { display: flex; flex-direction: column; align-items: center; }
-.ht span { font-size: 10.5px; opacity: 0.85; }
-.ht b { font-size: 14px; }
-.ht em { font-style: normal; font-size: 9px; opacity: 0.8; white-space: nowrap; }
-.ht.bad b { color: #ffe0e0; }
-.ht.warn b { color: #fff3c4; }
-.hero-note { font-size: 11px; line-height: 1.5; margin: 8px 0 0; opacity: 0.9; }
-/* 指标区间卡片 */
-.bands-card { padding: 2px 12px 10px; }
-/* 饮食一行汇总 */
+/* ============ 设计 token（仅本页作用域，不动全局样式） ============ */
+.sched {
+  --paper: #f0f7de;
+  --surface: #ffffff;
+  --teal: #c2e07c;
+  --teal-dk: #b4d46a;
+  --teal-tx: #171a14;
+  --mint: #e9f3cc;
+  --mint-2: #d3e79f;
+  --ink: #171a14;
+  --ink-2: #3f4639;
+  --muted: #6d7565;
+  --line: #e6edd6;
+  --amber: #b8791a;
+  --red: #be4a3c;
+  --r-xl: 26px;
+  --r-lg: 22px;
+  --r-md: 16px;
+  --shadow: 0 10px 28px rgba(28, 36, 22, 0.07);
+  --shadow-lime: 0 18px 38px rgba(122, 152, 40, 0.2);
+  --glass: rgba(255, 255, 255, 0.66);
+  --glass-mint: rgba(233, 243, 204, 0.78);
+  --glass-line: rgba(255, 255, 255, 0.7);
+
+  /* 吃掉 el-main 的 10px 内边距与底部 tabBar 预留；左右用阴影补齐，避免负 margin 撑出横向滚动 */
+  margin: -10px 0 calc(-70px - env(safe-area-inset-bottom, 0px));
+  padding: 0 0 calc(72px + env(safe-area-inset-bottom, 0px));
+  min-height: calc(100vh - 52px);
+  background: var(--paper);
+  box-shadow: 0 0 0 10px var(--paper);
+  color: var(--ink);
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'HarmonyOS Sans SC',
+    'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.sched *,
+.sched *::before,
+.sched *::after { box-sizing: border-box; }
+
+.sched h2,
+.sched h3,
+.sched p { margin: 0; }
+.sched button { font: inherit; color: inherit; cursor: pointer; }
+
+.ico {
+  width: 1em;
+  height: 1em;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.app {
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 12px 16px 0;
+}
+
+/* ============ 主卡 ============ */
+.hero {
+  position: relative;
+  overflow: hidden;
+  background: var(--teal);
+  border-radius: var(--r-xl);
+  padding: 18px;
+  color: var(--ink);
+  box-shadow: var(--shadow-lime);
+}
+.hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.hero-date b {
+  display: block;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.hero-date span { display: block; margin-top: 2px; font-size: 11.5px; color: var(--ink-2); }
+.hero-chip {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(23, 26, 20, 0.1);
+  border: 1px solid rgba(23, 26, 20, 0.12);
+  white-space: nowrap;
+}
+.hero-mid { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 14px; }
+.hero-k { font-size: 11.5px; color: var(--ink-2); }
+.hero-num {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.hero-num b {
+  font-size: clamp(34px, 9.5vw, 44px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+.hero-num i { font-style: normal; font-size: 16px; font-weight: 700; color: var(--ink-2); }
+.hero-num u { text-decoration: none; font-size: 11px; color: var(--muted); margin-left: 3px; }
+.hero-sub { margin-top: 7px; font-size: 11.5px; line-height: 1.5; color: var(--ink-2); }
+
+.ring { position: relative; width: 84px; height: 84px; flex: 0 0 84px; }
+.ring svg { width: 100%; height: 100%; display: block; }
+.ring-txt { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.ring-txt b { font-size: 20px; font-weight: 800; letter-spacing: -0.03em; }
+.ring-txt span { display: block; font-size: 9.5px; color: var(--ink-2); margin-top: 1px; }
+
+.hero-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-top: 15px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(23, 26, 20, 0.16);
+}
+.hm { min-width: 0; padding: 0 4px; }
+.hm:first-child { padding-left: 0; }
+.hm + .hm { border-left: 1px solid rgba(23, 26, 20, 0.16); }
+.hm span { display: block; font-size: 10px; color: var(--ink-2); white-space: nowrap; }
+.hm b {
+  display: block;
+  margin-top: 2px;
+  font-size: clamp(12px, 3.5vw, 14px);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  letter-spacing: -0.02em;
+}
+.hm b i {
+  font-style: normal;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-left: 1px;
+  letter-spacing: 0;
+}
+.hm.bad b { color: #8f2f24; }
+.hm.warn b { color: #7c5210; }
+.hm.muted b { color: var(--ink-2); }
+
+/* ============ 通用卡片 ============ */
+.card {
+  margin-top: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.card-head h2 { font-size: 15px; font-weight: 800; letter-spacing: -0.01em; }
+.head-tag { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+
+/* 主卡 5 项指标可点：点开「今日指标明细」抽屉 */
+.hm { cursor: pointer; transition: opacity 0.15s ease; }
+.hm:active { opacity: 0.55; }
+.hm:focus-visible { outline: 2px solid rgba(23, 26, 20, 0.45); outline-offset: 2px; border-radius: 6px; }
+
+/* 日历紧贴主卡：折叠条 + 极简面板，去掉内层 panel 的二次边框与留白 */
+.cal-fold { margin-top: 14px; }
+.cal-fold .panel .card { margin-top: 10px; }
+.fold-num {
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-left: 2px;
+  white-space: nowrap;
+}
+.cal-card { padding: 14px 16px 12px; }
+.cal-card .cal-panel {
+  margin-top: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+.cal-card .cal-legend { margin-top: 10px; }
+
+/* 指标明细抽屉：标题与正文更紧凑 */
+.bands-sheet .card-head { margin-bottom: 4px; }
+.bands-sheet .sheet-tip { margin-bottom: 6px; }
+.bands-sheet .sheet-body { margin-top: 8px; gap: 10px; }
+
+/* 目标依据：基础代谢来自体检还是公式 */
+.basis-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--mint);
+  font-size: 13px;
+  color: var(--ink);
+}
+.basis-line b { font-weight: 500; }
+.bl-label { color: #5f6b4e; }
+.bl-src {
+  margin-left: auto;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  color: #5f6b4e;
+  font-style: normal;
+  font-size: 11px;
+}
+.bl-src.on { background: var(--teal); color: #2f3a20; }
+
+/* ============ 指标区间 ============ */
 .diet-line {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  margin: 9px 0 3px; padding: 8px 10px; border-radius: 8px;
-  background: #f7f9fc; font-size: 12px; color: #606266;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--mint);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-2);
 }
-.diet-line.ok { background: #f2fbef; }
-.diet-line.warn { background: #fdf6ec; }
-/* 还有餐没打卡：只是没吃完，用中性蓝灰，不用警告色 */
-.diet-line.progress { background: #f2f6fd; }
-.diet-line.progress .diet-tag { background: #e6eefc; color: #4a72b8; }
-/* 方案排错：是系统的问题，用中性提示色，不能跟着标红让用户自责 */
-.diet-line.notice { background: #f4f4f7; }
-.diet-line.notice .diet-tag { background: #e8e8ef; color: #6b6b7d; }
-.diet-hint { margin: 2px 2px 4px; font-size: 11.5px; line-height: 1.5; color: #909399; }
-/* 结构项一行：脂肪/碳水/纤维，只展示不卡打卡 */
-.diet-struct { margin: 0 2px 6px; font-size: 11px; color: #a8abb2; line-height: 1.5; }
-.diet-est { margin: 0 0 3px; padding: 0 2px; font-size: 11px; color: #a0a6b3; }
+.dl-text { min-width: 0; flex: 1; }
+.dl-tag {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(23, 26, 20, 0.1);
+  color: var(--teal-tx);
+}
+.diet-line.warn { background: #fbf4e7; }
+.diet-line.warn .dl-tag { background: rgba(184, 121, 26, 0.14); color: var(--amber); }
+.diet-line.progress { background: #f3f7fb; }
+.diet-line.progress .dl-tag { background: rgba(74, 114, 184, 0.14); color: #4a72b8; }
+/* 方案排错是系统的问题，用中性灰，别让用户自责 */
+.diet-line.notice { background: #f4f4f6; }
+.diet-line.notice .dl-tag { background: rgba(109, 117, 101, 0.12); color: var(--muted); }
+.diet-hint { margin: 8px 2px 0; font-size: 11.5px; color: var(--muted); line-height: 1.55; }
+.diet-struct { margin: 8px 2px 0; font-size: 10.5px; color: #9aa392; line-height: 1.6; }
+.diet-est { margin: 6px 2px 0; font-size: 10.5px; color: #9aa392; line-height: 1.6; }
 
-/* ---- 当日模式 ---- */
 .mode-bar {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  margin: 6px 0 4px; padding: 6px 8px; border-radius: 8px; background: #f7f8fa;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-radius: var(--r-md);
+  background: #f8faef;
+  border: 1px solid var(--line);
 }
-.mode-tag { font-size: 11.5px; color: #409eff; font-weight: 600; }
-.mode-tag em { font-style: normal; font-weight: 400; color: #909399; margin-left: 4px; }
-.mode-idle { font-size: 11.5px; color: #b0b3b8; }
-.mode-action { font-size: 11.5px; color: #409eff; white-space: nowrap; }
-.mode-tip { margin: 0 0 10px; font-size: 12px; color: #909399; line-height: 1.6; }
-.mode-list { display: flex; flex-direction: column; gap: 8px; }
-.mode-item {
-  text-align: left; border: 1px solid #e4e7ed; background: #fff; border-radius: 10px;
-  padding: 9px 12px; display: flex; flex-direction: column; gap: 2px; cursor: pointer;
+.mode-idle { font-size: 11.5px; color: var(--muted); }
+.mode-tag { font-size: 11.5px; font-weight: 700; color: var(--teal-tx); }
+.mode-tag i { font-style: normal; font-weight: 400; color: var(--muted); margin-left: 4px; }
+.mode-btn {
+  flex: 0 0 auto;
+  border: 1px solid var(--glass-line);
+  background: var(--glass-mint);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  backdrop-filter: blur(12px) saturate(160%);
+  color: var(--teal-tx);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
-.mode-item b { font-size: 13.5px; color: #303133; }
-.mode-item span { font-size: 11.5px; color: #909399; line-height: 1.5; }
-.mode-item.normal { border-style: dashed; }
 
-/* ---- 结算时点 ---- */
-.settle-hint { margin: 0 0 6px; padding: 5px 8px; border-radius: 6px; font-size: 11px; line-height: 1.5; }
-.settle-hint.open { background: #f4f4f5; color: #909399; }
-.settle-hint.midday { background: #fdf6ec; color: #b88230; }
-.settle-hint.evening { background: #f0f9eb; color: #529b2e; }
-.settle-hint.final { background: #f4f4f5; color: #909399; }
+.settle {
+  margin-top: 10px;
+  padding: 8px 11px;
+  border-radius: 12px;
+  background: #f8faef;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--muted);
+}
 
-/* ---- 超限应对 ---- */
-.disp-wrap { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 4px; }
-.disp-card { border: 1px solid #f3d19e; background: #fffbf5; border-radius: 10px; padding: 9px 10px; }
-.disp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-.disp-name { font-size: 12.5px; font-weight: 600; color: #b88230; }
-.disp-tag { font-size: 10px; padding: 1px 6px; border-radius: 8px; background: #f4f4f5; color: #909399; }
-.disp-tag.plan { background: #f4f4f5; color: #909399; }
+.metrics { margin-top: 4px; }
+.m-row { padding: 12px 0 4px; border-top: 1px solid var(--line); }
+.m-row:first-child { border-top: none; padding-top: 8px; }
+.m-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.m-name { font-size: 13.5px; font-weight: 700; }
+.m-status {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--mint);
+  color: var(--teal-tx);
+  white-space: nowrap;
+}
+.m-row.warn .m-status { background: #fbf4e7; color: var(--amber); }
+.m-row.bad .m-status { background: #fbeeec; color: var(--red); }
+.m-row.muted .m-status { background: #f2f6f4; color: var(--muted); }
+
+.m-mid { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 3px; }
+.m-val { min-width: 0; }
+.m-val b {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.m-val i { font-style: normal; font-size: 11px; color: var(--muted); margin-left: 3px; }
+.m-range { font-size: 11px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+.m-track { position: relative; height: 6px; margin-top: 8px; border-radius: 999px; background: #eef3dc; }
+.m-zone { position: absolute; top: 0; bottom: 0; border-radius: 999px; background: var(--mint-2); }
+.m-dot {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--teal-tx);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 3px rgba(23, 26, 20, 0.12);
+}
+.m-row.warn .m-dot { background: var(--amber); box-shadow: 0 0 0 3px rgba(184, 121, 26, 0.14); }
+.m-row.bad .m-dot { background: var(--red); box-shadow: 0 0 0 3px rgba(190, 74, 60, 0.14); }
+.m-row.muted .m-dot { background: #a9b39f; box-shadow: 0 0 0 3px rgba(109, 117, 101, 0.12); }
+.m-hint { margin-top: 7px; padding-bottom: 8px; font-size: 11.5px; color: var(--muted); line-height: 1.55; }
+
+.card-foot {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 10.5px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* ============ 动态调整 / 超限应对 ============ */
+.adapt-wrap { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.adapt-card { background: #f4f8ff; border: 1px solid #dce8f7; border-radius: var(--r-md); padding: 10px 12px; }
+.adapt-head { display: flex; align-items: center; gap: 8px; }
+.adapt-tag {
+  font-size: 10.5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #dcebfa;
+  color: #2b6cb0;
+  flex: none;
+  font-weight: 700;
+}
+.adapt-day { font-size: 11.5px; color: var(--muted); flex: 1; }
+.adapt-revert {
+  font-size: 11px;
+  color: #2b6cb0;
+  background: transparent;
+  border: 1px solid #b9d3ec;
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+.adapt-revert:disabled { opacity: 0.5; }
+.adapt-reason { font-size: 11.5px; line-height: 1.6; color: #4a5568; margin: 6px 0 0; }
+.adapt-reason b { font-weight: 700; color: #2b6cb0; }
+
+.disp-wrap { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.disp-card { border: 1px solid #f0dcb8; background: #fffdf7; border-radius: var(--r-md); padding: 10px 11px; }
+.disp-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+.disp-name { font-size: 12px; font-weight: 700; color: var(--amber); }
+.disp-tag { font-size: 10px; padding: 1px 7px; border-radius: 999px; background: #f4f4f5; color: var(--muted); }
 .disp-tag.extra { background: #ecf5ff; color: #409eff; }
-.disp-tag.intake { background: #fdf6ec; color: #b88230; }
+.disp-tag.intake { background: #fdf6ec; color: var(--amber); }
 .disp-opts { display: flex; flex-direction: column; gap: 6px; }
 .disp-opt {
-  text-align: left; border: 1px solid #e4e7ed; background: #fff; border-radius: 8px;
-  padding: 7px 9px; display: flex; flex-direction: column; gap: 3px; cursor: pointer;
-}
-.disp-opt b { font-size: 12.5px; color: #303133; display: flex; align-items: center; gap: 4px; }
-.disp-opt b i {
-  font-style: normal; font-size: 9.5px; background: #67c23a; color: #fff;
-  padding: 0 4px; border-radius: 6px; line-height: 14px;
-}
-.disp-opt span { font-size: 11.5px; color: #606266; line-height: 1.55; }
-.disp-opt em.safety { font-style: normal; font-size: 10.5px; color: #e6a23c; line-height: 1.5; }
-.disp-opt.rec { border-color: #b3e19d; background: #fbfef9; }
-.disp-opt.unsafe { opacity: .62; }
-.disp-opt:disabled { opacity: .5; }
-
-/* ---- 自省卡 ---- */
-.review-bar {
-  display: flex; align-items: center; justify-content: space-between;
-  margin: 14px 2px 6px; font-size: 12.5px; color: #606266;
-}
-.review-card { padding: 10px 12px; }
-.review-line { margin: 0 0 6px; font-size: 11.5px; line-height: 1.6; color: #606266; }
-.review-line.muted { color: #a8abb2; }
-.recalc-box { margin-top: 8px; padding: 9px 10px; border-radius: 8px; background: #f0f9eb; }
-.recalc-target { margin: 0 0 4px; font-size: 12.5px; font-weight: 600; color: #529b2e; }
-.recalc-target em { font-style: normal; font-weight: 400; font-size: 11px; color: #909399; }
-.recalc-why { margin: 0 0 8px; font-size: 11.5px; color: #606266; line-height: 1.6; }
-.review-foot { margin: 8px 0 0; font-size: 11px; color: #b0b3b8; line-height: 1.5; }
-.diet-text { font-variant-numeric: tabular-nums; }
-.diet-tag {
-  flex: none; padding: 1px 7px; border-radius: 999px;
-  background: #eef1f6; color: #8a94a6; font-size: 11px;
-}
-.diet-line.ok .diet-tag { background: #e2f5da; color: #4a9b23; }
-.diet-line.warn .diet-tag { background: #f8e6c8; color: #a06000; }
-.band-row { padding: 10px 0 9px; border-bottom: 1px solid #f2f3f5; }
-.band-row:last-of-type { border-bottom: none; }
-.band-head { display: flex; align-items: center; justify-content: space-between; }
-.band-name { font-size: 13.5px; font-weight: 600; color: #303133; }
-.band-mid { display: flex; align-items: baseline; justify-content: space-between; margin-top: 2px; }
-.band-range { font-size: 11.5px; color: #909399; }
-.band-value b { font-size: 17px; color: #303133; }
-.band-value em { font-style: normal; font-size: 10.5px; color: #a8abb2; margin-left: 2px; }
-.band-status { font-size: 11px; padding: 1px 7px; border-radius: 4px; background: #f2f3f5; color: #909399; }
-.band-row.ok .band-status { background: #f0f9eb; color: #4f9d2f; }
-.band-row.ok .band-value b { color: #4f9d2f; }
-.band-row.warn .band-status { background: #fdf6ec; color: #c98a1b; }
-.band-row.warn .band-value b { color: #c98a1b; }
-.band-row.bad .band-status { background: #fef0f0; color: #d94a4a; }
-.band-row.bad .band-value b { color: #d94a4a; }
-/* 蛋白不足：灰字即可，不标红（方案里已排好菜） */
-.band-row.muted .band-status { background: #f4f4f6; color: #8a94a6; }
-.band-row.muted .band-value b { color: #8a94a6; }
-.ht.muted b { color: rgba(255, 255, 255, 0.82); }
-.band-hint { font-size: 11.5px; line-height: 1.6; color: #909399; margin: 3px 0 0; }
-.band-foot { font-size: 11px; line-height: 1.7; color: #a8abb2; margin: 6px 0 0; }
-.cal-bar { display: flex; justify-content: space-between; align-items: center; background: #fff; border-radius: 10px; padding: 10px 12px; font-size: 13px; color: #606266; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
-.cal-toggle { font-size: 12px; color: #4f9d2f; }
-.calendar { background: #fff; border-radius: 12px; padding: 10px 12px 6px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
-.cal-head { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #303133; }
-.cal-week { display: grid; grid-template-columns: repeat(7, 1fr); margin-top: 6px; font-size: 11px; color: #a8abb2; text-align: center; }
-.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-top: 4px; }
-.cal-cell { min-height: 40px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; color: #606266; }
-.cal-cell.empty { visibility: hidden; }
-.cal-cell.plan { background: #f6faf2; }
-.cal-cell.active { outline: 2px solid #67c23a; }
-.cal-day { font-weight: 500; }
-.cal-dot { font-size: 9.5px; color: #909399; }
-.cal-cell.full .cal-dot { color: #4f9d2f; }
-.cal-plan-dot { width: 4px; height: 4px; border-radius: 50%; background: #95d475; }
-.cal-hint { font-size: 11px; color: #a8abb2; margin: 6px 0 2px; }
-.cal-dots { display: flex; gap: 2px; margin-top: 2px; }
-.dot { width: 4px; height: 4px; border-radius: 50%; display: inline-block; }
-.dot.on { background: #67c23a; }
-.dot.off { background: #dcdfe6; }
-.cal-cell.part { background: #f7fbf3; }
-.day-plan { margin-top: 8px; border-top: 1px dashed #eef0f2; padding-top: 8px; }
-.dp-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; color: #303133; }
-.dp-head span { font-size: 11px; color: #909399; }
-.dp-chips { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 8px; }
-.dp-chip {
   text-align: left;
-  border: 1px solid #eef0f2;
-  background: #fafbfc;
-  border-radius: 8px;
-  padding: 6px 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.disp-opt b { font-size: 12px; display: flex; align-items: center; gap: 5px; }
+.disp-opt b i {
+  font-style: normal;
+  font-size: 9.5px;
+  background: var(--teal);
+  color: var(--ink);
+  padding: 0 5px;
+  border-radius: 6px;
+  line-height: 15px;
+  font-weight: 700;
+}
+.disp-opt span { font-size: 11px; color: var(--ink-2); line-height: 1.55; }
+.disp-opt em.safety { font-style: normal; font-size: 10.5px; color: var(--amber); line-height: 1.5; }
+.disp-opt.rec { border-color: var(--mint-2); background: #fbfef5; }
+.disp-opt.unsafe { opacity: 0.62; }
+.disp-opt:disabled { opacity: 0.5; }
+
+/* ============ 打卡计划（时间轴任务流） ============ */
+.flow { position: relative; margin-top: 2px; }
+.flow::before {
+  content: '';
+  position: absolute;
+  left: 57px;
+  top: 13px;
+  bottom: 20px;
+  width: 1.5px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(150, 190, 60, 0.5), rgba(150, 190, 60, 0.05));
+}
+.tk {
+  position: relative;
+  display: grid;
+  grid-template-columns: 38px 22px minmax(0, 1fr) auto;
+  gap: 0 8px;
+  align-items: start;
+  padding: 12px 0;
+}
+.tk:first-child { padding-top: 4px; }
+.tk-time {
+  padding-top: 3px;
+  text-align: right;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.tk-node {
+  position: relative;
+  z-index: 1;
+  justify-self: center;
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: inset 0 0 0 1.6px rgba(126, 143, 96, 0.42);
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  transition: background 0.16s ease, box-shadow 0.16s ease, transform 0.12s ease;
+}
+.tk-node .ico { width: 10px; height: 10px; stroke-width: 3.4; opacity: 0; }
+.tk-node:active { transform: scale(0.9); }
+.tk-node:disabled { opacity: 0.55; }
+.tk.done .tk-node {
+  background: linear-gradient(160deg, var(--teal), var(--teal-dk));
+  box-shadow: 0 3px 9px -4px rgba(122, 152, 40, 0.9);
+}
+.tk.done .tk-node .ico { opacity: 1; }
+.tk-body { min-width: 0; }
+.tk-title { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tk-title .t { font-size: 14px; font-weight: 800; letter-spacing: -0.01em; }
+.tk.done .tk-title .t {
+  color: var(--muted);
+  font-weight: 700;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+.tchip {
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.tchip.pos { background: rgba(194, 224, 124, 0.55); color: var(--ink); }
+.tchip.warn { background: rgba(240, 214, 140, 0.6); color: #6b5a29; }
+.tchip.ghost { background: transparent; box-shadow: inset 0 0 0 1px var(--line); color: var(--muted); font-weight: 600; }
+.tk-sub {
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.tk-sub .sep { width: 3px; height: 3px; border-radius: 50%; background: rgba(126, 143, 96, 0.55); }
+.tk-tail { display: flex; align-items: center; padding-top: 2px; }
+.tk-kcal {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--ink);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.tk-kcal small { margin-left: 2px; font-size: 9.5px; font-weight: 500; color: var(--muted); }
+.tk-cta {
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--teal);
+  color: var(--ink);
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 6px 14px -8px rgba(122, 152, 40, 0.9);
+}
+.tk-cta:active { transform: translateY(1px); }
+
+/* ============ 按钮 ============ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-line);
+  background: var(--glass-mint);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+  backdrop-filter: blur(16px) saturate(170%);
+  box-shadow: 0 6px 16px rgba(28, 36, 22, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  color: var(--teal-tx);
+  font-size: 13px;
+  font-weight: 700;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+.btn .ico { width: 16px; height: 16px; }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.55; }
+.btn-solid {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #171a14;
+  box-shadow: 0 10px 24px rgba(23, 26, 20, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.34);
+}
+.btn-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.btn-row .btn { flex: 1; min-width: 0; }
+
+/* ============ 快捷记录（喝水 / 拍照记餐 / 记体重 / 记睡眠） ============ */
+.quick-acts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.qa {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 62px;
+  padding: 10px 4px;
+  border: 1px solid var(--glass-line);
+  border-radius: 18px;
+  background: var(--mint);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.qa .ico { width: 20px; height: 20px; color: var(--ink-2); flex: 0 0 20px; }
+.qa:active { transform: scale(0.95); background: var(--mint-2); }
+
+/* ============ 个人分析 ============ */
+.ana { cursor: pointer; }
+.ana-type {
+  margin-top: 8px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.ana-line {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+  line-height: 1.62;
+}
+.ana-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.ana-chips span {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--mint);
+  color: var(--ink-2);
+}
+.ana-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+  font-size: 11px;
+  color: var(--muted);
+}
+.ana-foot b { color: var(--teal-tx); font-weight: 800; flex: 0 0 auto; }
+
+/* ============ 睡眠（收进折叠里的一行） ============ */
+.sleep-mini {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--mint);
+}
+.sm-l { display: flex; align-items: baseline; gap: 3px; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+.sm-l b { font-size: 22px; font-weight: 800; letter-spacing: -0.03em; }
+.sm-l i { font-style: normal; font-size: 10.5px; color: var(--muted); }
+.sm-l em { font-style: normal; margin-left: 4px; font-size: 9.5px; color: var(--muted); }
+.sm-r { flex: 1; min-width: 0; font-size: 10.5px; color: var(--ink-2); line-height: 1.5; }
+.sm-btn {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--teal);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.sm-btn:active { background: var(--teal-dk); }
+.sleep-tip {
+  margin-top: 8px;
+  padding: 9px 11px;
+  border-radius: 12px;
+  background: #f8faef;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+/* ============ 折叠条 ============ */
+.fold { margin-top: 14px; }
+.fold-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--glass-line);
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+  backdrop-filter: blur(16px) saturate(170%);
+  box-shadow: 0 6px 18px rgba(28, 36, 22, 0.06);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.fold-l { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.fold-l .ico { width: 18px; height: 18px; color: var(--teal-tx); flex: 0 0 18px; }
+.fold-r {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+.fold-r .ico { width: 14px; height: 14px; transition: transform 0.2s ease; }
+.fold.on .fold-r .ico { transform: rotate(180deg); }
+
+.panel.on { animation: fade 0.22s ease both; }
+@keyframes fade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ============ 日历 ============ */
+/* ============ 打卡日历（热力图） ============ */
+.cal-panel {
+  margin-top: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+.cal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cal-head b { font-size: 13.5px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.cal-nav {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: #f9fbf0;
+  color: var(--ink-2);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  line-height: 1;
+}
+.cal-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin-top: 10px;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+}
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; margin-top: 4px; }
+.cal-cell {
+  aspect-ratio: 1 / 1;
+  border: none;
+  border-radius: 11px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 0;
+  background: #fff;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  transition: transform 0.12s ease;
+}
+.cal-cell:active { transform: scale(0.93); }
+.cal-cell.empty { visibility: hidden; }
+.cc-day { font-size: 15px; font-weight: 600; line-height: 1.1; }
+.cc-num { font-size: 9.5px; line-height: 1; opacity: 0.7; letter-spacing: -0.2px; }
+
+/* 状态色：整格填实色，颜色对比拉开，扫一眼能挑出没打满的日子 */
+.cal-cell.s-full { background: #7fa83c; color: #1f2a10; }
+.cal-cell.s-full .cc-num { opacity: 0.8; }
+.cal-cell.s-ok { background: #c5de8f; color: #2f3a20; }
+.cal-cell.s-low { background: #f0b563; color: #4a3113; }
+.cal-cell.s-miss { background: #ecebe4; color: #a3a096; }
+
+.cal-cell.future { opacity: 0.4; }
+.cal-cell.today { outline: 2px solid rgba(23, 26, 20, 0.45); outline-offset: 1px; }
+.cal-cell.sel { outline: 2px solid rgba(122, 152, 40, 0.6); outline-offset: 1px; }
+.cal-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 11px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.cl-item { display: inline-flex; align-items: center; gap: 4px; }
+.cal-legend i { width: 10px; height: 10px; border-radius: 3px; display: block; }
+.cal-legend i.s-full { background: #7fa83c; }
+.cal-legend i.s-ok { background: #c5de8f; }
+.cal-legend i.s-low { background: #f0b563; }
+.cal-legend i.s-miss { background: #ecebe4; }
+.cal-hint { margin-top: 8px; font-size: 10.5px; color: var(--muted); line-height: 1.6; text-align: center; }
+
+/* ============ 系统自查 ============ */
+.review-line {
+  font-size: 11.5px;
+  color: var(--ink-2);
+  line-height: 1.6;
+  padding: 7px 0;
+  border-top: 1px solid var(--line);
+}
+.review-line:first-child { border-top: none; }
+.recalc-box { margin-top: 10px; padding: 12px; border-radius: var(--r-md); background: var(--mint); }
+.recalc-target { font-size: 12.5px; font-weight: 700; color: var(--teal-tx); font-variant-numeric: tabular-nums; }
+.recalc-target i { font-style: normal; font-weight: 400; font-size: 10.5px; color: var(--muted); }
+.recalc-why { margin-top: 4px; font-size: 11px; color: var(--ink-2); line-height: 1.6; }
+.recalc-box .btn { margin-top: 10px; min-height: 38px; font-size: 12.5px; }
+.review-foot { margin-top: 10px; font-size: 10.5px; color: var(--muted); line-height: 1.6; }
+
+/* ============ 空态 / 骨架 ============ */
+.empty { padding: 10px 0 2px; text-align: center; }
+.empty-t { font-size: 13.5px; font-weight: 700; color: var(--ink-2); }
+.empty-s { font-size: 11.5px; color: var(--muted); margin-top: 4px; line-height: 1.55; }
+.skeleton { display: flex; flex-direction: column; gap: 10px; padding: 4px 0; }
+.sk-row {
+  display: block;
+  height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #f4f7ea 25%, #eef3dc 37%, #f4f7ea 63%);
+  background-size: 400% 100%;
+  animation: shine 1.3s ease infinite;
+}
+@keyframes shine {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+/* ============ 弹层 ============ */
+.mask {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(23, 26, 20, 0.42);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease;
+}
+.mask.on { opacity: 1; pointer-events: auto; }
+
+.sheet {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  z-index: 1201;
+  width: min(100%, 460px);
+  max-height: 86vh;
+  overflow-y: auto;
+  transform: translate(-50%, 102%);
+  transition: transform 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+  background: var(--paper);
+  border-radius: 26px 26px 0 0;
+  padding: 10px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -12px 40px rgba(23, 26, 20, 0.22);
+}
+.sheet.on { transform: translate(-50%, 0); }
+.sheet-grab { width: 38px; height: 4px; border-radius: 999px; background: #dfe6cb; margin: 0 auto 12px; }
+.sheet h3 { font-size: 16px; font-weight: 800; letter-spacing: -0.02em; }
+.sheet-tip { margin-top: 4px; font-size: 11.5px; color: var(--muted); line-height: 1.6; }
+.sheet-body { margin-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > span { font-size: 12px; font-weight: 700; color: var(--ink-2); }
+.field input {
+  width: 100%;
+  height: 44px;
+  padding: 0 13px;
+  border-radius: 13px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+}
+.field input:focus { outline: 2px solid rgba(23, 26, 20, 0.35); outline-offset: -1px; }
+.time-row { display: flex; align-items: center; gap: 8px; }
+.time-row input { flex: 1; min-width: 0; }
+.time-sep { font-size: 12px; color: var(--muted); flex: 0 0 auto; }
+
+.seg { display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: var(--mint); }
+.seg button {
+  flex: 1;
+  min-height: 36px;
+  border: none;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.seg button.on { background: rgba(23, 26, 20, 0.94); color: #fff; box-shadow: 0 4px 12px rgba(23, 26, 20, 0.26); }
+
+.stars { display: flex; gap: 6px; }
+.stars button {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: #c3cdb4;
+  display: grid;
+  place-items: center;
+}
+.stars button.on { color: var(--teal-tx); border-color: var(--mint-2); background: var(--mint); }
+.stars .ico { width: 20px; height: 20px; stroke-width: 1.4; fill: none; }
+.stars button.on .ico { fill: currentColor; stroke: currentColor; }
+
+.sheet-acts { display: flex; gap: 8px; margin-top: 16px; }
+.sheet-acts .btn { flex: 1; }
+
+.mode-list { display: flex; flex-direction: column; gap: 8px; }
+.mode-item {
+  text-align: left;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: var(--r-md);
+  padding: 11px 13px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  cursor: pointer;
-  min-width: 0;
 }
-.dp-chip.on { background: #f2f8ec; border-color: #dceecd; }
-.dpc-label { font-size: 12px; color: #303133; font-weight: 500; }
-.dp-chip.on .dpc-label { color: #4f9d2f; }
-.dpc-sub { font-size: 10.5px; color: #a0a8b3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.block-title em { font-style: normal; font-size: 11.5px; font-weight: 400; color: #909399; margin-left: auto; }
-.block-title { font-size: 14px; font-weight: 600; color: #303133; margin: 4px 2px 8px; display: flex; align-items: center; gap: 6px; }
-.card { background: #fff; border-radius: 12px; padding: 12px 14px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
-.water-card { margin-top: 10px; }
-.row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #606266; }
-.row b { color: #303133; }
-.task { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #fff; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
-.task.done { background: #f6faf2; }
-.task-main { min-width: 0; }
-.task-label { font-size: 14px; color: #303133; font-weight: 500; }
-.task-sub { font-size: 12px; color: #909399; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.chip { font-size: 12px; color: #4f9d2f; background: #f2f8ec; border-radius: 4px; padding: 2px 6px; }
-.chip.muted { color: #909399; background: #f4f4f5; }
-.actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-.actions :deep(.el-button) { margin-left: 0; flex: 1; }
-.water-actions { display: flex; gap: 6px; margin-top: 10px; }
-.water-actions :deep(.el-button) { margin-left: 0; flex: 1; }
-.sleep-line { font-size: 12px; color: #606266; margin-top: 8px; display: flex; align-items: center; gap: 6px; }
-.sleep-tips { font-size: 12px; color: #a0a8b3; margin-top: 6px; line-height: 1.5; }
-.sleep-form { display: flex; flex-direction: column; gap: 14px; }
-.sf-row { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #606266; }
-.sf-plan { font-size: 12px; color: #909399; background: #f7f8fa; border-radius: 8px; padding: 8px 10px; line-height: 1.6; }
-.skeleton { font-size: 13px; color: #909399; padding: 16px; text-align: center; }
-/* 动态调整：是「系统做过的事」，中性蓝；撤销按钮低调但可点 */
-.adapt-wrap { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-.adapt-card { background: #f2f7fc; border: 1px solid #d8e6f3; border-radius: 10px; padding: 9px 11px; }
-.adapt-head { display: flex; align-items: center; gap: 8px; }
-.adapt-tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: #dcebfa; color: #2b6cb0; flex: none; }
-.adapt-day { font-size: 12px; color: #606266; flex: 1; }
-.adapt-revert { font-size: 11.5px; color: #2b6cb0; background: transparent; border: 1px solid #b9d3ec; border-radius: 999px; padding: 1px 10px; cursor: pointer; }
-.adapt-revert:disabled { opacity: 0.5; cursor: default; }
-.adapt-reason { font-size: 12px; line-height: 1.6; color: #4a5568; margin: 6px 0 0; }
-.adapt-reason b { font-weight: 500; color: #2b6cb0; }
+.mode-item b { font-size: 13.5px; color: var(--ink); }
+.mode-item span { font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+.mode-item.normal { border-style: dashed; background: transparent; }
 </style>

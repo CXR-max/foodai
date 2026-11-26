@@ -40,12 +40,30 @@ class VisionRecognitionResult(BaseModel):
     dishes: list[RecognizedDish] = Field(default_factory=list)  # 多菜：每道菜单独一项
 
 
+# ---------- 体检报告识别 ----------
+
+class CheckupRawItem(BaseModel):
+    """模型抽到的一项指标（name 用报告原文，映射到目录 key 由 checkup_scan 做）"""
+    name: str = ""
+    value: float | str | None = None   # "<0.5" 这类原始写法原样保留
+    unit: str = ""
+
+
+class CheckupScanResult(BaseModel):
+    """体检报告识别结果：只抽报告上真实存在的项，不补全、不估算"""
+    is_report: bool = True             # 传错图（自拍/食物）时为 false，前端可提示换图
+    report_date: str = ""              # YYYY-MM-DD，报告上没有就留空
+    hospital: str = ""
+    items: list[CheckupRawItem] = Field(default_factory=list)
+
+
 # ---------- 方案生成 ----------
 
 class PlanMealItem(BaseModel):
     """一餐里的单个菜品"""
     name: str
     portion_g: float = Field(default=100, ge=0)
+    ingredients: list[str] = Field(default_factory=list)  # 主要食材，供购物清单聚合
 
 
 class PlanMeal(BaseModel):

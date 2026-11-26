@@ -21,6 +21,7 @@ from app.schemas.plan import (
     PlanImportIn, ReusePlanIn,
 )
 from app.services import (
+    checkup_constraints,
     meal_recalc, nutrition, nutrition_check, plan_lifecycle, plan_review, plan_targets,
     points, schedule_import,
 )
@@ -240,6 +241,22 @@ def normalize_meals(meals: list[dict]) -> list[dict]:
     return sorted(meals, key=lambda m: MEAL_ORDER.get(m.get("meal_type", "snack"), 9))
 
 
+def enrich_meal_ingredients(meals: list[dict]) -> list[dict]:
+    """按菜名从营养库反查食材，补到每道菜的 ingredients（购物清单聚合用）。
+
+    只在菜品已有食材为空时反查，避免覆盖 LLM / 求解器返回的更准确食材。
+    食物库只有部分菜带 ingredients，反查不到就留空，前端会自动回退列菜名。
+    """
+    for meal in meals or []:
+        for item in meal.get("items") or []:
+            if item.get("ingredients"):
+                continue
+            entry = foods_data.find_food(item.get("name", ""))
+            if entry:
+                item["ingredients"] = list(entry.get("ingredients") or [])
+    return meals
+
+
 def repeated_dishes(meals: list[dict]) -> list[str]:
     """同一天里出现在两个及以上餐次的菜（同一餐多吃两份不算，跨餐才算重复）。
 
@@ -345,8 +362,14 @@ def plan_stats(days: list[PlanDay]) -> dict:
     }
 
 
-def build_profile_ctx(profile: HealthProfile, data: GeneratePlanIn) -> dict:
-    """组装档案上下文（含前端偏好面板的覆盖）"""
+def build_profile_ctx(
+    profile: HealthProfile, data: GeneratePlanIn, db: Session | None = None
+) -> dict:
+    """组装档案上下文（含前端偏好面板的覆盖）
+
+    db 传了就用最近一次体检的实测体重/体脂/基础代谢覆盖档案值——
+    自报会过时，体检是称出来的。不传则完全按档案算，行为与以前一致。
+    """
     ctx = {
         "height_cm": profile.height_cm, "weight_kg": profile.weight_kg,
         "bmi": nutrition.calc_bmi(profile.weight_kg, profile.height_cm),
@@ -375,6 +398,14 @@ def build_profile_ctx(profile: HealthProfile, data: GeneratePlanIn) -> dict:
         ctx["dietary_restrictions"] = data.dietary_restrictions
     if data.exercise_preferences is not None:
         ctx["exercise_preferences"] = data.exercise_preferences
+    # 体检实测值优先于档案自报（体重/体脂/基础代谢），见 services/checkup_constraints.py
+    if db is not None:
+        checkup_constraints.apply_to_ctx(
+            ctx, checkup_constraints.latest_measured(db, profile.user_id)
+        )
+    # 七项区间一并带进上下文：提示词只给总热量时，模型会按「高蛋白低碳」自由发挥
+    # （实测蛋白顶到 3.3 g/kg、脂肪占 50% 能量），复核必然越界、整份方案被拒。
+    ctx["targets"] = plan_targets.build_targets(ctx)
     return ctx
 
 
@@ -417,7 +448,17 @@ def normalize_generated_day(
         from app.services import planner
 
         try:
-            fallback = planner.build_day(profile_ctx, day_index, 7, prior_days or [])
+            try:
+                fallback = planner.build_day(profile_ctx, day_index, 7, prior_days or [])
+            except Exception as first_exc:  # noqa: BLE001
+                if not prior_days:
+                    raise
+                # 第 4 天起「跨天不重复」累积 3 天以上，可行域被压得很窄，
+                # 加时也排不出解。去掉跨天约束再排一次：宁可少量重复，
+                # 也别让整份 7 天方案卡在中途被拒收。
+                logger.warning("第 %d 天带跨天约束重排失败（%s），去掉跨天约束重试",
+                               day_index, first_exc)
+                fallback = planner.build_day(profile_ctx, day_index, 7, [])
             meals = normalize_meals([m.model_dump() for m in fallback.meals])
             meals = meal_recalc.recalc_meals(meals)["meals"]
             calibrated = True
@@ -473,7 +514,7 @@ def normalize_generated_day(
     return {
         "day_index": day_index,
         "theme": day.theme or PLAN_THEMES[(day_index - 1) % len(PLAN_THEMES)],
-        "meals": meals,
+        "meals": enrich_meal_ingredients(meals),
         "exercise": extra["exercise"],
         "exercises": extra["exercises"],
         "sleep": extra["sleep"],
@@ -518,11 +559,14 @@ def generate_plan(
 ):
     """AI 生成方案（同步等待 LLM，前端此请求单独设置 120s 超时）"""
     profile = db.query(HealthProfile).filter(HealthProfile.user_id == user.id).first()
-    if not (profile and profile.height_cm and profile.weight_kg and profile.age):
+    measured = checkup_constraints.latest_measured(db, user.id)
+    # 档案没填体重但有体检实测值时也放行：体检称出来的比手填的准
+    if not (profile and profile.height_cm
+            and (profile.weight_kg or measured.get("weight_kg")) and profile.age):
         raise HTTPException(status_code=400, detail="请先完善健康档案（身高/体重/年龄），AI 才能为你定制方案")
 
     # 组装档案上下文 + 合并偏好面板与聊天文本
-    profile_ctx = build_profile_ctx(profile, data)
+    profile_ctx = build_profile_ctx(profile, data, db)
     combined_note = combine_note(data)
 
     provider = get_llm_provider()
@@ -597,10 +641,12 @@ def generate_plan_stream(
 ):
     """逐天流式生成方案（SSE）：每天生成完立即推送，全部完成后落库并返回 plan_id"""
     profile = db.query(HealthProfile).filter(HealthProfile.user_id == user.id).first()
-    if not (profile and profile.height_cm and profile.weight_kg and profile.age):
+    measured = checkup_constraints.latest_measured(db, user.id)
+    if not (profile and profile.height_cm
+            and (profile.weight_kg or measured.get("weight_kg")) and profile.age):
         raise HTTPException(status_code=400, detail="请先完善健康档案（身高/体重/年龄），AI 才能为你定制方案")
 
-    profile_ctx = build_profile_ctx(profile, data)
+    profile_ctx = build_profile_ctx(profile, data, db)
     combined_note = combine_note(data)
     provider = get_llm_provider()
     # 对话 → 当前有效约束（最新表态覆盖旧表态）→ 与勾选偏好合并
@@ -1035,6 +1081,7 @@ def _apply_meals(plan: DietPlan, day: PlanDay, meals_in: list, rebalance: str | 
     elif info["status"] == "high" and rebalance == "exercise":
         exercise = plan_lifecycle.rebalance_by_exercise(plan, day, info["excess_kcal"])
 
+    recalculated["meals"] = enrich_meal_ingredients(recalculated["meals"])
     return recalculated, info, exercise
 
 

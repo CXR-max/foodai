@@ -20,6 +20,7 @@ from app.models.plan_chat import PlanChatMessage
 from app.models.check_in import CheckIn
 from app.models.workout import Workout
 from app.models.user_face import UserFace
+from app.models.plan_constraint_state import PlanConstraintState
 from app.models.points_log import PointsLog
 from app.models.weight_log import WeightLog
 from app.models.reward import Reward
@@ -30,6 +31,10 @@ from app.models.sleep_log import SleepLog
 from app.models.water_log import WaterLog
 from app.models.territory import (TerritoryCell, TerritoryChallenge, TerritoryEvent,
                                   TerritoryPref, TerritoryRun, UserFriend)
+# 体检报告（个人化分析的基线数据）
+from app.models.checkup import Checkup
+# 手环接入（融合自 feat/personalized-burn）：设备登记 / 每日指标 / 分钟级实时样本
+from app.models.device import Device, DeviceMetric, DeviceSample
 from app.models.food import (
     Food,
     FoodAlias,
@@ -45,10 +50,13 @@ __all__ = [
     "DietPlan", "PlanDay", "CheckIn", "Workout", "PointsLog",
     "DietDeviation", "PlanAdjustment", "DayMode",
     "WeightLog", "Reward", "Redemption", "PlanChatMessage",
-    "Achievement", "UserAchievement", "UserFace",
+    "Achievement", "UserAchievement", "UserFace", "PlanConstraintState",
     "WeeklyReportCache",
     "SleepLog", "WaterLog",
-    "TerritoryCell", "TerritoryRun", "TerritoryPref", "TerritoryEvent", "UserFriend",
+    "TerritoryCell", "TerritoryRun", "TerritoryPref", "TerritoryEvent",
+    "TerritoryChallenge", "UserFriend",
+    "Checkup",
+    "Device", "DeviceMetric", "DeviceSample",
     "Food", "FoodAlias", "FoodRelation", "FoodIngredient",
     "FoodRecipe", "FoodRecipeItem", "ImportBatch",
 ]

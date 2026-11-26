@@ -471,18 +471,40 @@ onMounted(loadAll)
 </template>
 
 <style scoped>
-.m-page { display: flex; flex-direction: column; gap: 12px; }
-.hero {
-  background: linear-gradient(135deg, #4f9d2f, #7bc043);
-  border-radius: 14px;
-  padding: 16px;
-  color: #fff;
-}
-.hero-label { font-size: 12px; opacity: 0.9; }
-.hero-value { font-size: 30px; font-weight: 600; line-height: 1.2; }
-.hero-value span { font-size: 13px; font-weight: 400; opacity: 0.9; }
-.hero-sub { font-size: 12px; opacity: 0.9; margin-top: 2px; }
+/* ============ 设计 token（仅本页作用域，不动全局样式） ============ */
+.m-page {
+  --paper: #f0f7de;
+  --teal: #c2e07c;
+  --teal-dk: #b4d46a;
+  --mint: #e9f3cc;
+  --mint-2: #d3e79f;
+  --ink: #171a14;
+  --ink-2: #3f4639;
+  --muted: #6d7565;
+  --line: #e6edd6;
+  --amber: #b8791a;
+  --r-xl: 26px;
+  --r-lg: 22px;
+  --r-md: 16px;
+  --shadow: 0 10px 28px rgba(28, 36, 22, 0.07);
+  --shadow-lime: 0 18px 38px rgba(122, 152, 40, 0.2);
 
+  display: flex; flex-direction: column; gap: 12px;
+  /* 吃掉 el-main 的 10px 内边距，左右用同色阴影补齐，不产生横向滚动 */
+  margin: -10px 0 calc(-70px - env(safe-area-inset-bottom, 0px));
+  padding: 10px 0 calc(72px + env(safe-area-inset-bottom, 0px));
+  min-height: calc(100vh - 52px);
+  background: var(--paper);
+  box-shadow: 0 0 0 10px var(--paper);
+  color: var(--ink);
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'HarmonyOS Sans SC',
+    'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 领地跑英雄卡（本地功能，保留） ---------- */
 .territory-hero {
   position: relative; height: 196px; border-radius: 18px; overflow: hidden;
   background: linear-gradient(135deg, #dfe9f5, #eef4e8);
@@ -519,66 +541,183 @@ onMounted(loadAll)
   border-radius: 14px; padding: 4px 9px; backdrop-filter: blur(4px);
 }
 
-.block-title { font-size: 14px; font-weight: 600; color: #303133; margin: 4px 2px 8px; display: flex; align-items: center; gap: 6px; }
-.block-title em { font-style: normal; font-size: 11px; font-weight: 400; color: #a8abb2; }
-.card { background: #fff; border-radius: 12px; padding: 14px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
+/* ---------- 今日消耗：柠檬绿主卡 ---------- */
+.hero {
+  background: var(--teal);
+  border-radius: var(--r-xl);
+  padding: 18px 20px 20px;
+  color: var(--ink);
+  box-shadow: var(--shadow-lime);
+}
+.hero-label { font-size: 12px; color: var(--ink-2); letter-spacing: 0.2px; }
+.hero-value {
+  font-size: 34px; font-weight: 800; line-height: 1.15;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.5px;
+}
+.hero-value span { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.hero-sub { font-size: 12px; color: var(--ink-2); margin-top: 4px; }
+.m-page :deep(.hero .el-progress-bar__outer) { background: rgba(23, 26, 20, 0.14); }
+.m-page :deep(.hero .el-progress-bar__inner) { background: var(--ink) !important; }
 
-.rx-row { padding: 8px 0; border-bottom: 1px dashed #f0f1f3; }
+/* ---------- 区块标题 ---------- */
+.block-title {
+  font-size: 14.5px; font-weight: 800; color: var(--ink);
+  margin: 8px 4px 8px; display: flex; align-items: center; gap: 6px;
+  letter-spacing: 0.1px;
+}
+.block-title em { font-style: normal; font-size: 11.5px; font-weight: 500; color: var(--muted); }
+
+.card {
+  background: #fff;
+  border-radius: var(--r-lg);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+/* ---------- 今日运动处方 ---------- */
+.rx-row { padding: 10px 0; border-bottom: 1px dashed var(--line); }
 .rx-row:last-of-type { border-bottom: none; }
-.rx-main { display: flex; flex-direction: column; gap: 2px; }
-.rx-main b { font-size: 13.5px; color: #303133; }
-.rx-main span { font-size: 12px; color: #606266; }
-.rx-main em { font-style: normal; font-size: 11.5px; color: #9aa8a0; line-height: 1.5; }
-.no-plan { font-size: 12px; color: #a8abb2; background: #fafbfc; border-radius: 10px; padding: 10px 12px; }
+.rx-main { display: flex; flex-direction: column; gap: 3px; }
+.rx-main b { font-size: 14px; color: var(--ink); font-weight: 800; }
+.rx-main span { font-size: 12px; color: var(--muted); }
+.rx-main em { font-style: normal; font-size: 11.5px; color: var(--muted); line-height: 1.6; }
 
+.no-plan {
+  font-size: 12px; color: var(--muted);
+  background: var(--mint); border-radius: var(--r-md); padding: 12px 14px;
+}
+
+/* 按处方完成按钮 */
+.m-page .card :deep(.el-button--success) {
+  background: var(--teal); border-color: transparent; color: var(--ink);
+  font-weight: 800; border-radius: 14px; height: 42px;
+  box-shadow: 0 8px 18px rgba(122, 152, 40, 0.16);
+}
+.m-page .card :deep(.el-button--success:hover),
+.m-page .card :deep(.el-button--success:focus) {
+  background: var(--teal-dk); border-color: transparent; color: var(--ink);
+}
+.m-page .card :deep(.el-button--success.is-disabled),
+.m-page .card :deep(.el-button--success.is-disabled:hover) {
+  background: var(--mint); border-color: transparent; color: var(--muted);
+  box-shadow: none;
+}
+
+/* ---------- 开始运动 ---------- */
 .starters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .starter {
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  background: #fff; border: 1px solid #eef0f2; border-radius: 12px;
-  padding: 12px 6px; cursor: pointer; transition: all 0.15s;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: #fff; border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 14px 6px; cursor: pointer; transition: all 0.16s;
 }
-.starter.on { border-color: #8ec96a; background: #f6fbf2; box-shadow: 0 2px 8px rgba(103, 194, 58, 0.12); }
+.starter.on {
+  border-color: var(--mint-2); background: var(--mint);
+  box-shadow: 0 6px 16px rgba(122, 152, 40, 0.14);
+}
 .starter .ico { font-size: 24px; line-height: 1; }
-.starter b { font-size: 13px; color: #303133; }
-.starter em { font-style: normal; font-size: 10.5px; color: #a8abb2; }
-.run-btn { width: 100%; height: 46px; margin-top: 10px; border-radius: 12px; font-size: 15px; font-weight: 600; }
-.quick-manual { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; font-size: 12px; color: #a8abb2; }
-.quick-manual a { color: #4f9d2f; }
+.starter b { font-size: 13px; color: var(--ink); font-weight: 700; }
+.starter em { font-style: normal; font-size: 10.5px; color: var(--muted); }
 
-.group-label { font-size: 12px; color: #909399; margin: 8px 2px 6px; }
+.m-page .run-btn {
+  width: 100%; height: 46px; margin-top: 10px; border-radius: 16px;
+  font-size: 15px; font-weight: 800;
+  background: var(--teal); border-color: transparent; color: var(--ink);
+  box-shadow: var(--shadow-lime);
+}
+.m-page .run-btn:hover,
+.m-page .run-btn:focus {
+  background: var(--teal-dk); border-color: transparent; color: var(--ink);
+}
+.quick-manual {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  margin-top: 10px; font-size: 12px; color: var(--muted);
+}
+.quick-manual a { color: #5f7a1f; font-weight: 700; }
+
+/* ---------- 运动记录 ---------- */
+.group-label {
+  font-size: 11.5px; color: var(--muted); letter-spacing: 0.4px;
+  margin: 10px 4px 6px;
+}
 .rec {
   display: flex; align-items: center; gap: 10px;
-  background: #fff; border-radius: 12px; padding: 12px 14px;
-  margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  background: #fff; border-radius: var(--r-md); padding: 13px 15px;
+  margin-bottom: 8px; box-shadow: var(--shadow);
 }
-.rec.clickable:active { background: #f7f9f5; }
+.rec.clickable:active { background: var(--mint); }
 .rec-ico { font-size: 20px; }
 .rec-main { flex: 1; min-width: 0; }
-.rec-title { font-size: 14px; color: #303133; font-weight: 500; display: flex; align-items: center; gap: 6px; }
-.rec-dist { font-size: 12px; color: #4f9d2f; font-weight: 600; }
-.rec-track { font-size: 10px; color: #8aa87a; background: #f2f8ec; border-radius: 4px; padding: 1px 4px; }
-.rec-sub { font-size: 12px; color: #909399; margin-top: 2px; }
-.rec-arrow { color: #c8c9cc; font-size: 18px; }
-.empty-tip { font-size: 12px; color: #a8abb2; margin: 0; }
-.skeleton { text-align: center; font-size: 13px; color: #909399; padding: 20px 0; }
+.rec-title {
+  font-size: 14px; color: var(--ink); font-weight: 700;
+  display: flex; align-items: center; gap: 6px;
+}
+.rec-dist { font-size: 12px; color: #5f7a1f; font-weight: 800; }
+.rec-track {
+  font-size: 10px; color: var(--ink-2); background: var(--mint);
+  border-radius: 6px; padding: 1px 6px;
+}
+.rec-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.rec-arrow { color: var(--muted); font-size: 18px; }
+.empty-tip { font-size: 12px; color: var(--muted); margin: 0; }
+.skeleton { text-align: center; font-size: 13px; color: var(--muted); padding: 20px 0; }
 
-/* 底部抽屉 */
-.sheet { padding: 4px 2px 10px; }
+/* 空状态 / 标签：跟随本页配色 */
+.m-page :deep(.el-empty) { padding: 18px 0; }
+.m-page :deep(.el-empty__description p) { font-size: 12.5px; color: var(--muted); }
+.m-page :deep(.el-tag) {
+  --el-tag-bg-color: var(--mint);
+  --el-tag-border-color: var(--mint-2);
+  --el-tag-text-color: var(--ink-2);
+  border-radius: 8px;
+}
+
+/* ---------- 补录抽屉（内容会被 teleport，但作用域属性还在，可正常换肤） ---------- */
+/* 抽屉内容被 teleport 到 body，拿不到 .m-page 上的变量，这里重新声明一份 */
+.sheet {
+  --paper: #f0f7de;
+  --teal: #c2e07c;
+  --teal-dk: #b4d46a;
+  --mint: #e9f3cc;
+  --mint-2: #d3e79f;
+  --ink: #171a14;
+  --ink-2: #3f4639;
+  --muted: #6d7565;
+  --line: #e6edd6;
+  --r-md: 16px;
+  --shadow-lime: 0 18px 38px rgba(122, 152, 40, 0.2);
+  padding: 4px 2px 10px;
+  color: var(--ink);
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'HarmonyOS Sans SC',
+    'Microsoft YaHei', sans-serif;
+}
 .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-.sheet-head b { font-size: 16px; color: #303133; }
-.sheet-head span { color: #a8abb2; font-size: 16px; padding: 4px 8px; }
+.sheet-head b { font-size: 16px; color: var(--ink); font-weight: 800; }
+.sheet-head span { color: var(--muted); font-size: 16px; padding: 4px 8px; }
 .field { margin-bottom: 16px; }
-.field > label { display: flex; justify-content: space-between; font-size: 13px; color: #606266; margin-bottom: 8px; }
-.field > label b { color: #4f9d2f; }
+.field > label { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-2); margin-bottom: 8px; }
+.field > label b { color: #5f7a1f; font-weight: 800; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {
-  font-size: 13px; padding: 6px 12px; border-radius: 16px;
-  background: #f4f4f5; color: #606266; cursor: pointer;
+  font-size: 13px; padding: 7px 13px; border-radius: 14px;
+  background: #f2f5ea; color: var(--ink-2); cursor: pointer;
+  transition: all 0.15s;
 }
-.chip.on { background: #f2f8ec; color: #4f9d2f; font-weight: 600; box-shadow: inset 0 0 0 1px #b7dd9a; }
-.preview { background: #f7faf4; border-radius: 10px; padding: 10px 12px; }
-.preview-main { display: flex; justify-content: space-between; font-size: 13px; color: #606266; }
-.preview-main b { color: #4f9d2f; font-size: 16px; }
-.preview-sub { font-size: 12px; color: #909399; margin-top: 2px; }
-.save-btn { width: 100%; height: 44px; border-radius: 12px; margin-top: 14px; }
+.chip.on {
+  background: var(--teal); color: var(--ink); font-weight: 800;
+  box-shadow: 0 6px 14px rgba(122, 152, 40, 0.18);
+}
+.preview { background: var(--mint); border-radius: var(--r-md); padding: 12px 14px; }
+.preview-main { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-2); }
+.preview-main b { color: var(--ink); font-size: 17px; font-weight: 800; }
+.preview-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+/* 保存按钮在补录抽屉里（被 teleport 出 .m-page），所以不能挂在 .m-page 后代上 */
+.save-btn {
+  width: 100%; height: 46px; border-radius: 16px; margin-top: 14px;
+  background: var(--teal); border-color: transparent; color: var(--ink);
+  font-weight: 800; box-shadow: var(--shadow-lime);
+}
+.save-btn:hover,
+.save-btn:focus {
+  background: var(--teal-dk); border-color: transparent; color: var(--ink);
+}
 </style>

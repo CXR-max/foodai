@@ -62,3 +62,20 @@ export interface WeeklyReport {
   }
 }
 export const getWeeklyReport = () => get<WeeklyReport>('/stats/weekly-report')
+
+/** 能量天平（融合）：摄入 vs 总消耗；消耗 = 基础代谢 + 手动运动打卡 + 手环活动 */
+export interface EnergyResult {
+  date: string
+  intake: { value: number; target: number | null; unit: string }
+  burn: {
+    total: number; bmr: number; checkin: number; band: number
+    activity: number; unit: string
+  }
+  gap: number
+  verdict: string
+  has_intake: boolean
+  has_checkin: boolean
+  has_device: boolean
+  band: { source: string | null; steps: number; sleep_h: number | null }
+}
+export const getEnergy = () => get<EnergyResult>('/stats/energy')

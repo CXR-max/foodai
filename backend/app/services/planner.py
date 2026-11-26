@@ -92,7 +92,12 @@ MAX_DISHES_PER_MEAL = 3
 # 加餐是小食组合（水果 + 酸奶 + 几颗坚果很正常），上限放宽到 4 道——
 # 指南要求每天 12 种以上，正餐 3×3=9 种不够，缺额靠加餐补
 MAX_DISHES_SNACK = 4
-SOLVER_TIME_LIMIT = 3.0        # 单次求解限时（秒）。扩池+宝塔约束后 0.8 s 解不完，                               # 会误报「无解」直接拒绝出方案；7 天方案约 20 s，可接受
+SOLVER_TIME_LIMIT = 3.0        # 常规单次求解限时（秒）：先快速试，超时不等于无解
+# 融合主分支全量营养库（1850 条）后，CP-SAT 模型明显变大，3~8 s 内常返回
+# UNKNOWN（没在时限内找到解）而不是 INFEASIBLE（数学上无解）。旧逻辑把两者
+# 都当「无解」直接拒出方案，导致手机端 3 天 / 7 天方案都生成失败。
+# 实测同一模型给到 20~30 s 即可求出 12 道菜的合规方案，故超时时加时重试。
+SOLVER_TIMEOUT_RETRY_LIMIT = 20.0
 
 # CP-SAT 只能处理整数：统一放大 10 倍（热量 0.1 kcal，蛋白 0.1 g）
 SCALE = 10
@@ -643,8 +648,10 @@ def _solve_day(
     pagoda_hard: tuple[str, ...] | None = None,
     species_min: int | None = None,
     time_limit: float | None = None,
-) -> dict[str, list[tuple[dict, int]]] | None:
-    """构造并求解单日模型；无可行解/超时返回 None，由调用方降级后重试。
+) -> tuple[dict[str, list[tuple[dict, int]]] | None, int]:
+    """构造并求解单日模型；返回 (选菜结果, CP-SAT status)。
+
+    无可行解/超时时结果为 None，由调用方按 status 区分「真无解」与「超时」后处理。
 
     七项营养约束全部读 targets：
     - 能量 / 蛋白 / 脂肪 / 碳水：上下限都硬（吃完不许超）
@@ -924,7 +931,7 @@ def _solve_day(
     if status == cp_model.MODEL_INVALID:
         raise PlannerError("CP-SAT 模型无效，请检查约束")
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-        return None
+        return None, status
 
     selected: dict[str, list[tuple[dict, int]]] = {}
     for meal_type, _ratio in MEALS:
@@ -934,7 +941,7 @@ def _solve_day(
             if servings > 0:
                 chosen.append((food, servings))
         selected[meal_type] = chosen
-    return selected
+    return selected, status
 
 
 # ==================== 输出组装 ====================
@@ -953,7 +960,10 @@ def _to_plan_day(
         for food, servings in selected.get(meal_type, []):
             portion_g = float(food["common_portion_g"]) * servings
             nut = foods_data.calc_nutrition(food, portion_g)
-            items.append(PlanMealItem(name=food["name"], portion_g=portion_g))
+            items.append(PlanMealItem(
+                name=food["name"], portion_g=portion_g,
+                ingredients=food.get("ingredients") or [],
+            ))
             calories += float(nut["calories"])
         if not items:
             raise PlannerError(f"第 {day_index} 天 {meal_type} 没有选出菜品")
@@ -1046,6 +1056,7 @@ def build_day(
     # 最后一级放宽除蛋/豆外的宝塔硬层（蛋和豆份量小、最容易被挤没，保持硬卡），
     # 种类下限降到 10：宁可「差一点全达标」留痕降级，也不直接拒出方案
     last_error = ""
+    timeout_retries_left = 2     # 跨天约束累积后前几级可能连着超时，留两次加时机会
     for soft_keys in DEGRADE_LEVELS:
         last_resort = soft_keys == DEGRADE_LEVELS[-1]
         pagoda_hard = None
@@ -1055,10 +1066,11 @@ def build_day(
             pagoda_hard = tuple(layer for layer in PAGODA_HARD_LAYERS
                                 if layer not in (food_layers.EGG, food_layers.BEAN))
             species_min = 10
-            # 兜底一级放宽时限：宁可多花几秒也别拒出方案
-            time_limit = max(SOLVER_TIME_LIMIT, 8.0)
+            # 兜底一级直接用长时限：跨天不重复约束叠加后，第 3 天起 8s 也解不完，
+            # 而这一级往往是唯一能出解的一级，不能让它再被短时限误判。
+            time_limit = max(SOLVER_TIME_LIMIT, SOLVER_TIMEOUT_RETRY_LIMIT)
         for variety_relaxed in (False, True):
-            selected = _solve_day(
+            solve_kwargs = dict(
                 pools=pools,
                 taste_preferences=taste_preferences,
                 target=target,
@@ -1073,8 +1085,21 @@ def build_day(
                 species_min=species_min,
                 time_limit=time_limit,
             )
+            selected, status = _solve_day(**solve_kwargs)
+            if (selected is None and status == cp_model.UNKNOWN
+                    and timeout_retries_left > 0):
+                # 超时 ≠ 无解：全量营养库模型较大，给当前约束一次更长的求解窗口，
+                # 免得降级链全跑完仍被短时限误判成「菜品不足」而拒出方案。
+                timeout_retries_left -= 1
+                logger.warning(
+                    "第 %d 天 %.1fs 求解超时（UNKNOWN），加时 %.1fs 重试",
+                    day_index, time_limit, SOLVER_TIMEOUT_RETRY_LIMIT)
+                solve_kwargs["time_limit"] = SOLVER_TIMEOUT_RETRY_LIMIT
+                selected, status = _solve_day(**solve_kwargs)
             if selected is None:
-                last_error = f"七项营养约束在 {time_limit}s 内无解（降级 {soft_keys or '无'}）"
+                reason = "求解超时" if status == cp_model.UNKNOWN else "无可行解"
+                last_error = (f"七项营养约束在 {solve_kwargs['time_limit']}s 内"
+                              f"未找到可行解（{reason}，降级 {soft_keys or '无'}）")
                 continue
 
             nutrients = _day_nutrients(selected)
@@ -1116,12 +1141,14 @@ def build_day(
         if not soft_keys:
             logger.warning("第 %d 天七项全硬无解，尝试降级结构项", day_index)
 
+    hint = ("这是求解超时，稍后重试即可" if "求解超时" in last_error
+            else "请放宽偏好或忌口后再试")
     raise PlannerError(
         f"第 {day_index} 天排不出七项都达标的餐食（{last_error}）。"
-        f"当前忌口 {restrictions or '无'} 下菜品不足以同时满足热量 "
+        f"当前忌口 {restrictions or '无'} 下需同时满足热量 "
         f"{targets.get('calorie_min')}~{targets.get('calorie_max')} kcal、"
         f"蛋白 {targets.get('protein_min_g')}~{targets.get('protein_max_g')} g 等区间；"
-        f"宁可不出方案，也不给一份吃完就超标的方案。"
+        f"{hint}。"
     )
 
 

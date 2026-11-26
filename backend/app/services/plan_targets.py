@@ -112,7 +112,10 @@ def build_prescription(profile_ctx: dict) -> dict:
 
     bmi = nutrition.calc_bmi(weight or None, height or None) or 0.0
     body_fat = _num(profile_ctx.get("body_fat_pct"))
-    bmr = nutrition.calc_bmr(weight or None, height or None, age, gender) or 0.0
+    # 体检实测的基础代谢优先（只有体成分报告有这一项），没有才回落到公式估算。
+    # 实测值由 services/checkup_constraints.apply_to_ctx 写进 profile_ctx。
+    bmr_measured = _num(profile_ctx.get("bmr_measured"))
+    bmr = bmr_measured or (nutrition.calc_bmr(weight or None, height or None, age, gender) or 0.0)
     tdee = bmr * nutrition.ACTIVITY_FACTORS.get(activity, 1.55) if bmr else 0.0
 
     # 蛋白基准体重：超重/肥胖按理想体重，避免「越胖蛋白给越多」
@@ -205,6 +208,8 @@ def build_prescription(profile_ctx: dict) -> dict:
         "bmi_level": nutrition.bmi_level(bmi or None),
         "body_fat_pct": body_fat or None,
         "bmr": int(round(bmr)) if bmr else None,
+        # measured = 体检测的基础代谢；formula = Mifflin-St Jeor 估算
+        "bmr_source": "measured" if bmr_measured else ("formula" if bmr else None),
         "tdee": int(round(tdee)) if tdee else None,
         "target": target,
         "rate_kg_week": rate,

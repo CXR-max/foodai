@@ -13,9 +13,12 @@ from pydantic import ValidationError
 from app.core.config import settings
 from app.services.llm.base import LLMProvider, LLMError, extract_json
 from app.services.llm.prompts import (
-    build_day_messages, build_food_recognition_prompt, build_plan_messages,
+    build_checkup_prompt, build_day_messages, build_food_recognition_prompt,
+    build_plan_messages,
 )
-from app.services.llm.schemas import PlanDay, PlanResult, VisionRecognitionResult
+from app.services.llm.schemas import (
+    CheckupScanResult, PlanDay, PlanResult, VisionRecognitionResult,
+)
 
 logger = logging.getLogger("llm")
 
@@ -150,6 +153,39 @@ class OpenAICompatProvider(LLMProvider):
         return self._call_with_retry(
             self._vision, build, VisionRecognitionResult,
             max_retries=settings.LLM_VISION_MAX_RETRIES,
+        )
+
+    def recognize_checkup(self, image_bytes: bytes | None = None,
+                          content_type: str = "image/jpeg",
+                          report_text: str = ""):
+        """体检报告识别：有图走视觉模型，有文字层（电子版 PDF）走文字模型。
+
+        两条路共用一份 prompt 和一份 schema，后处理只有一套。
+        电子版 PDF 抽出的文字比图片清楚得多，所以能用文字就不用视觉。
+        """
+        if image_bytes:
+            prompt = build_checkup_prompt()
+            b64 = base64.b64encode(image_bytes).decode("ascii")
+            data_url = f"data:{content_type or 'image/jpeg'};base64,{b64}"
+
+            def build():
+                return [{
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": data_url}},
+                    ],
+                }]
+
+            return self._call_with_retry(
+                self._vision, build, CheckupScanResult,
+                max_retries=settings.LLM_VISION_MAX_RETRIES,
+            )
+
+        messages = [{"role": "user", "content": build_checkup_prompt(report_text)}]
+        return self._call_with_retry(
+            lambda m: self._chat(m, json_mode=True, max_tokens=1600),
+            lambda: messages, CheckupScanResult,
         )
 
     def generate_plan(self, profile_ctx: dict, days: int, note: str = ""):
