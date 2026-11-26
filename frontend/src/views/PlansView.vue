@@ -107,6 +107,60 @@ async function sendChat() {
 
 const days = computed<PlanDay[]>(() => current.value?.days ?? [])
 
+// ---- 购物清单：聚合方案里所有菜的食材（调味料过滤，老方案回退菜名）----
+const SEASONING = new Set([
+  '生抽', '老抽', '酱油', '蒸鱼豉油', '蚝油', '豆瓣酱', '醋', '料酒',
+  '盐', '糖', '白糖', '冰糖', '红糖', '蜂蜜', '食用油', '可乐', '碳酸水',
+  '茶叶', '红茶', '蘸料', '昆布', '葱丝', '葱花', '葱段', '葱姜', '蒜末', '干辣椒', '花椒',
+])
+const shoppingList = computed(() => {
+  const map = new Map<string, number>()
+  for (const day of days.value) {
+    for (const meal of day.meals || []) {
+      for (const item of meal.items || []) {
+        const ings = (item.ingredients || []).map((s) => (s || '').trim()).filter(Boolean)
+        if (ings.length) {
+          for (const name of ings) {
+            if (SEASONING.has(name)) continue
+            map.set(name, (map.get(name) || 0) + (item.portion_g || 0))
+          }
+        } else {
+          // 老方案没有 ingredients：回退成菜名，至少清单不是空的
+          const name = (item.name || '').trim()
+          if (!name) continue
+          map.set(name, (map.get(name) || 0) + (item.portion_g || 0))
+        }
+      }
+    }
+  }
+  return [...map.entries()]
+    .map(([name, amount]) => ({ name, amount: Math.round(amount) }))
+    .sort((a, b) => b.amount - a.amount)
+})
+
+function formatAmount(g: number): string {
+  if (g >= 1000) return `${(g / 1000).toFixed(1).replace(/\.0$/, '')} kg`
+  return `${g} g`
+}
+
+function exportShoppingList() {
+  if (!shoppingList.value.length) {
+    ElMessage.warning('当前方案还没有食材清单')
+    return
+  }
+  const header = ['识膳智行 · 购物清单', '==================', '']
+  const lines = shoppingList.value.map((s) => `· ${s.name}　${formatAmount(s.amount)}`)
+  const text = header.concat(lines).join('\n')
+  const blob = new Blob(['\ufeff' + text], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `购物清单-${new Date().toISOString().slice(0, 10)}.txt`
+  a.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('购物清单已导出')
+}
+
 async function loadPlans() {
   plans.value = await planApi.getPlans()
   if (plans.value.length && !current.value) await openPlan(plans.value[0].id)
@@ -443,6 +497,21 @@ onMounted(async () => {
           </div>
         </el-tab-pane>
       </el-tabs>
+
+      <!-- 购物清单：自动聚合方案里的食材（UI 待重做，先保功能可用） -->
+      <div v-if="shoppingList.length" class="shopping-block">
+        <div class="shopping-head">
+          <b>🛒 本周采购</b>
+          <span class="shopping-sub">{{ shoppingList.length }} 项食材 · 从方案自动聚合</span>
+          <el-button size="small" type="success" plain @click="exportShoppingList">⬇ 导出购物清单</el-button>
+        </div>
+        <div class="shopping-grid">
+          <div v-for="s in shoppingList" :key="s.name" class="shopping-item">
+            <span class="shopping-name">{{ s.name }}</span>
+            <span class="shopping-amount">{{ formatAmount(s.amount) }}</span>
+          </div>
+        </div>
+      </div>
     </div>
     <el-empty v-else-if="!generating && !props.generationOnly" description="还没有方案，勾选偏好或直接和 AI 聊几句，然后生成" />
 
@@ -559,6 +628,16 @@ onMounted(async () => {
 .mc-item-name { color: #303133; overflow: hidden; text-overflow: ellipsis; }
 .mc-item-portion { color: #909399; font-size: 12px; white-space: nowrap; }
 .mc-empty { font-size: 12px; color: #c0c4cc; }
+
+/* 购物清单（临时样式，等新 UI 重做时再统一） */
+.shopping-block { margin-top: 18px; padding-top: 16px; border-top: 1px dashed #e4e7ed; }
+.shopping-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.shopping-head b { font-size: 15px; color: #303133; }
+.shopping-sub { font-size: 12px; color: #909399; flex: 1; min-width: 140px; }
+.shopping-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.shopping-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #fafafa; border: 1px solid #ebeef5; border-radius: 8px; font-size: 13px; }
+.shopping-name { color: #303133; }
+.shopping-amount { color: #909399; font-variant-numeric: tabular-nums; }
 
 @media (max-width: 768px) {
   .plan-toolbar { flex-wrap: wrap; }

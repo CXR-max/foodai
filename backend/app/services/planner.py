@@ -960,7 +960,10 @@ def _to_plan_day(
         for food, servings in selected.get(meal_type, []):
             portion_g = float(food["common_portion_g"]) * servings
             nut = foods_data.calc_nutrition(food, portion_g)
-            items.append(PlanMealItem(name=food["name"], portion_g=portion_g))
+            items.append(PlanMealItem(
+                name=food["name"], portion_g=portion_g,
+                ingredients=food.get("ingredients") or [],
+            ))
             calories += float(nut["calories"])
         if not items:
             raise PlannerError(f"第 {day_index} 天 {meal_type} 没有选出菜品")

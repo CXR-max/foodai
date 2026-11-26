@@ -28,6 +28,9 @@ def _food_values(item: dict) -> dict:
     """兼容两种种子格式：
     - 新版：name_zh / category_l1 / nutrition
     - 旧版（foods_seed.json 现状）：name / category / per_100g
+
+    只认老字段会让「导入种子」直接 KeyError，开发机食物表停在几百条，
+    排餐器拿不到足够菜品就判无解、整份拒收方案。
     """
     nutrition = item.get("nutrition") or item.get("per_100g") or {}
     name_zh = item.get("name_zh") or item.get("name")

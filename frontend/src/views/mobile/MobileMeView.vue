@@ -203,55 +203,124 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.m-page { display: flex; flex-direction: column; gap: 12px; }
+/* ============ 设计 token（仅本页作用域，不动全局样式） ============ */
+.m-page {
+  --paper: #f0f7de;
+  --teal: #c2e07c;
+  --teal-dk: #b4d46a;
+  --mint: #e9f3cc;
+  --mint-2: #d3e79f;
+  --ink: #171a14;
+  --ink-2: #3f4639;
+  --muted: #6d7565;
+  --line: #e6edd6;
+  --amber: #b8791a;
+  --r-xl: 26px;
+  --r-lg: 22px;
+  --r-md: 16px;
+  --shadow: 0 10px 28px rgba(28, 36, 22, 0.07);
+  --shadow-lime: 0 18px 38px rgba(122, 152, 40, 0.2);
+
+  display: flex; flex-direction: column; gap: 12px;
+  margin: -10px 0 calc(-70px - env(safe-area-inset-bottom, 0px));
+  padding: 10px 0 calc(72px + env(safe-area-inset-bottom, 0px));
+  min-height: calc(100vh - 52px);
+  background: var(--paper);
+  box-shadow: 0 0 0 10px var(--paper);
+  color: var(--ink);
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'HarmonyOS Sans SC',
+    'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 身份卡 ---------- */
 .profile {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: linear-gradient(135deg, #4f9d2f, #82c45a);
-  border-radius: 14px;
-  padding: 16px;
-  color: #fff;
+  background: var(--teal);
+  border-radius: var(--r-xl);
+  padding: 18px 20px;
+  color: var(--ink);
+  box-shadow: var(--shadow-lime);
 }
 .avatar {
-  width: 46px;
-  height: 46px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 20px;
-  font-weight: 600;
+  font-weight: 800;
+  color: var(--ink);
 }
-.nickname { font-size: 16px; font-weight: 600; }
-.meta { font-size: 12px; opacity: 0.92; margin-top: 2px; }
-.block-title { font-size: 14px; font-weight: 600; color: #303133; margin: 4px 2px 8px; display: flex; align-items: center; gap: 6px; }
-.card { background: #fff; border-radius: 12px; padding: 14px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
-.card.muted { background: #fafafa; }
+.nickname { font-size: 17px; font-weight: 800; letter-spacing: -0.2px; }
+.meta { font-size: 12px; color: var(--ink-2); margin-top: 3px; }
+
+/* ---------- 区块标题 / 卡片 ---------- */
+.block-title {
+  font-size: 14.5px; font-weight: 800; color: var(--ink);
+  margin: 8px 4px 8px; display: flex; align-items: center; gap: 6px;
+}
+.card {
+  background: #fff;
+  border-radius: var(--r-lg);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+.card.muted { background: var(--mint); }
+
+/* ---------- 今日数据 ---------- */
 .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 8px; }
 .stat { text-align: center; }
-.stat-value { font-size: 20px; font-weight: 600; color: #303133; }
-.stat-label { font-size: 12px; color: #909399; margin-top: 2px; }
-.stat-sub { font-size: 11px; color: #b6bbc4; margin-top: 2px; }
-.stat-foot { display: flex; justify-content: space-between; font-size: 12px; color: #909399; margin-top: 6px; }
+.stat-value {
+  font-size: 20px; font-weight: 800; color: var(--ink);
+  font-variant-numeric: tabular-nums; letter-spacing: -0.3px;
+}
+.stat-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.stat-sub { font-size: 11px; color: #8b937f; margin-top: 2px; }
+.stat-foot {
+  display: flex; justify-content: space-between;
+  font-size: 12px; color: var(--muted); margin-top: 8px;
+  padding-top: 10px; border-top: 1px dashed var(--line);
+}
+.m-page :deep(.el-progress-bar__outer) { background: var(--mint); }
+.m-page :deep(.el-progress-bar__inner) { background: #97c459; }
+
+/* ---------- 功能入口 ---------- */
 .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .grid-item {
   background: #fff;
-  border-radius: 12px;
-  padding: 14px 8px;
+  border-radius: var(--r-md);
+  padding: 15px 8px;
   text-align: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow);
+  transition: transform 0.15s;
 }
+.grid-item:active { transform: scale(0.97); background: var(--mint); }
 .grid-icon { font-size: 20px; display: block; }
-.grid-title { font-size: 12px; color: #606266; display: block; margin-top: 6px; }
-.hint { font-size: 12px; color: #a8abb2; margin: 10px 0 0; line-height: 1.7; }
+.grid-title { font-size: 12px; color: var(--ink-2); display: block; margin-top: 6px; font-weight: 600; }
+.hint { font-size: 12px; color: var(--muted); margin: 12px 0 0; line-height: 1.75; }
+
+/* ---------- 今日三环 ---------- */
 .rings { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .ring { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.ring-num { font-size: 12px; font-weight: 600; color: #303133; }
-.ring-label { font-size: 12px; color: #606266; }
-.ring em { font-style: normal; font-size: 10px; color: #b6bbc4; text-align: center; line-height: 1.3; }
-.ring .ring-range { font-size: 9.5px; color: #a8abb2; }
-.block-title em { font-style: normal; font-size: 11.5px; font-weight: 400; color: #909399; margin-left: auto; }
-.skeleton { font-size: 13px; color: #909399; text-align: center; padding: 16px; }
+.ring-num { font-size: 12px; font-weight: 800; color: var(--ink); }
+.ring-label { font-size: 12px; color: var(--ink-2); font-weight: 700; }
+.ring em { font-style: normal; font-size: 10px; color: #8b937f; text-align: center; line-height: 1.3; }
+.ring .ring-range { font-size: 9.5px; color: var(--muted); }
+.block-title em {
+  font-style: normal; font-size: 11.5px; font-weight: 500;
+  color: var(--muted); margin-left: auto;
+}
+.skeleton { font-size: 13px; color: var(--muted); text-align: center; padding: 16px; }
+
+/* 环形进度：统一成浅绿族，替换 Element 默认的蓝/橙混色（CSS stroke 覆盖 SVG 属性） */
+.m-page :deep(.el-progress-circle__track) { stroke: #eef4e3; }
+.m-page :deep(.el-progress-circle__path) { stroke: #97c459; }
+.m-page :deep(.el-progress__text) { color: var(--ink); }
 </style>

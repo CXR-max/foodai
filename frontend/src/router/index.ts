@@ -27,6 +27,7 @@ const router = createRouter({
         { path: 'm/sport', name: 'm-sport', component: () => import('@/views/mobile/MobileSportView.vue'), meta: { title: '运动', mobile: true } },
         { path: 'm/community', name: 'm-community', component: () => import('@/views/mobile/MobileCommunityView.vue'), meta: { title: '社区', mobile: true } },
         { path: 'm/me', name: 'm-me', component: () => import('@/views/mobile/MobileMeView.vue'), meta: { title: '我的', mobile: true } },
+        { path: 'm/analysis', name: 'm-analysis', component: () => import('@/views/mobile/MobileAnalysisView.vue'), meta: { title: '个人分析', mobile: true } },
         // 融合：手环数据（设备页），手机端从「我的」进入
         { path: 'm/band', name: 'm-band', component: () => import('@/views/DeviceView.vue'), meta: { title: '手环数据', mobile: true } },
 
@@ -55,6 +56,13 @@ export function homePath(): string {
 // - 未登录访问根路径 → 启动页
 // - 已登录访问启动页 → 按端跳对应首页
 // - 移动端专属路由在桌面宽度下 → 回仪表盘（避免桌面看到手机版布局）
+
+/**
+ * 开发期预览开关：只在 dev 生效（大屏直接打开 /m/* 看移动端页面）。
+ * 生产构建 import.meta.env.DEV 为 false，自动恢复「桌面宽度跳仪表盘」的拦截。
+ */
+const PREVIEW_MOBILE_ON_DESKTOP = import.meta.env.DEV
+
 router.beforeEach((to) => {
   const auth = useAuthStore()
 
@@ -67,7 +75,7 @@ router.beforeEach((to) => {
   if (!auth.isLoggedIn) {
     return { name: 'login' }
   }
-  if (to.meta.mobile && !isMobile.value) {
+  if (to.meta.mobile && !isMobile.value && !PREVIEW_MOBILE_ON_DESKTOP) {
     return { name: 'dashboard' }
   }
 })
