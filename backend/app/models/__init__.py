@@ -28,6 +28,8 @@ from app.models.achievement import Achievement, UserAchievement
 from app.models.weekly_report import WeeklyReportCache
 from app.models.sleep_log import SleepLog
 from app.models.water_log import WaterLog
+from app.models.territory import (TerritoryCell, TerritoryChallenge, TerritoryEvent,
+                                  TerritoryPref, TerritoryRun, UserFriend)
 from app.models.food import (
     Food,
     FoodAlias,
@@ -46,6 +48,7 @@ __all__ = [
     "Achievement", "UserAchievement", "UserFace",
     "WeeklyReportCache",
     "SleepLog", "WaterLog",
+    "TerritoryCell", "TerritoryRun", "TerritoryPref", "TerritoryEvent", "UserFriend",
     "Food", "FoodAlias", "FoodRelation", "FoodIngredient",
     "FoodRecipe", "FoodRecipeItem", "ImportBatch",
 ]

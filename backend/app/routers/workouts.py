@@ -266,9 +266,19 @@ def create_workout(
     db.commit()
     db.refresh(w)
 
+    # 领地结算：独立事务、失败不影响运动记录（跑步保存永远优先）
+    territory_summary = None
+    try:
+        from app.services import territory as territory_service
+        territory_summary = territory_service.claim_workout(db, w, user)
+    except Exception:  # noqa: BLE001
+        db.rollback()
+        logger.exception("领地结算失败（运动记录已保存）workout=%s", w.id)
+
     return {
         **_workout_dict(w, with_track=True),
         "points_awarded": pts,
+        "territory": territory_summary,
         "message": ("运动已保存" + (f"，+{pts} 分" if pts else "（今日运动积分已领过）")),
     }
 

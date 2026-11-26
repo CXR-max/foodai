@@ -11,6 +11,7 @@
 | ✨ 养生方案 | 偏好勾选 + 持久化对话 → 本地 Qwen 抽取约束 → 约束求解器逐天流式生成 → 可视化编辑 → 导入日历 |
 | ✅ 健康打卡 | 日历任务（餐食 / 运动）+ 完成度积分 + 当日全清奖励 |
 | 📊 数据追踪 | 热量趋势 / 体重轨迹 / 营养结构（ECharts） |
+| 🏃 领地跑 | 闭环跑步自动上传：平滑领地轮廓、活力衰减、好友切地（MVP） |
 | 🏆 排行榜 | 积分实时排名（Redis ZSet，降级 SQLite）+ 头衔徽章 |
 | 🛍 积分商城 | 权益 / 实物券，核销码，库存扣减 |
 | 👤 健康档案 | 身高体重 / BMI / 热量目标 / 口味偏好 / 饮食禁忌 / 体重记录 |
@@ -181,6 +182,8 @@ npm run build                                       # 类型检查 + 产物构�
 | [frontend/README.md](frontend/README.md) | 前端结构、页面与组件约定 |
 | [backend/app/data/SOURCES.md](backend/app/data/SOURCES.md) | 营养数据来源、许可、导入与扩容流程 |
 | [docs/deployment.md](docs/deployment.md) | 本机部署、端口、常见问题 |
+| [docs/运动板块-领地跑玩法与实现方案.md](docs/运动板块-领地跑玩法与实现方案.md) | 领地跑规则评审、规则 v1.0、网格/闭环/衰减算法与分期 |
+| [docs/运动板块-KYRO对标与改进建议.md](docs/运动板块-KYRO对标与改进建议.md) | 对标韩国 KYRO：规则差异、P0/P1/P2 改进与数值建议 |
 | [docs/recipes-preview-200.md](docs/recipes-preview-200.md) | 200 道菜谱营养预览 |
 
 ## 已知限制

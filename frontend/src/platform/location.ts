@@ -425,18 +425,28 @@ export function useRunTracker() {
 
   /* ---------------- 演示轨迹 ---------------- */
 
+  /** 演示参数（可选 query）：demo_step 角步长、demo_speed 播放倍速、demo_seek 起始虚拟秒 */
+  function demoParam(name: string, dflt: number): number {
+    if (typeof window === 'undefined') return dflt
+    const v = Number(new URLSearchParams(window.location.search).get(name))
+    return Number.isFinite(v) && v > 0 ? v : dflt
+  }
+
+  /** 家附近（长沙）画一个约 1.5km 的环，带轻微抖动，模拟真实 GPS */
+  function demoPointAt(tick: number, step: number) {
+    const a = tick * step
+    return {
+      lat: 28.197896 + 0.0012 * Math.sin(a) + (Math.random() - 0.5) * 0.00002,
+      lng: 112.870827 + 0.00165 * Math.cos(a) + (Math.random() - 0.5) * 0.00002,
+    }
+  }
+
   function demoStep() {
-    // 人民广场附近画一个约 1.5km 的环，带轻微抖动，模拟真实 GPS
-    const a = demoTick * 0.02
+    // 演示是快进播放：每次推进代表 1 秒有效运动时间，画面倍速由 demo_speed 决定
+    elapsedSec.value += 1
+    const p = demoPointAt(demoTick, demoParam('demo_step', 0.02))
     demoTick += 1
-    const lat = 31.230416 + 0.0016 * Math.sin(a) + (Math.random() - 0.5) * 0.00002
-    const lng = 121.473701 + 0.0022 * Math.cos(a) + (Math.random() - 0.5) * 0.00002
-    acceptPoint({
-      lat,
-      lng,
-      t: elapsedSec.value,
-      acc: 5 + Math.random() * 6,
-    })
+    acceptPoint({ ...p, t: elapsedSec.value, acc: 5 + Math.random() * 6 })
   }
 
   function startDemo() {
@@ -456,9 +466,19 @@ export function useRunTracker() {
         anchor = null
         lastSmooth = null
         skipNext = false
-        startTimer()
-        demoTimer = window.setInterval(demoStep, 1000)
         demoTick = 0
+        // 录制演示时可以从某一进度直接起跑（demo_seek 单位：秒），不用干等
+        const step = demoParam('demo_step', 0.02)
+        const seek = Math.floor(demoParam('demo_seek', 0))
+        for (let i = 0; i < seek; i++) {
+          elapsedSec.value += 1
+          const p = demoPointAt(demoTick, step)
+          demoTick += 1
+          acceptPoint({ ...p, t: elapsedSec.value, acc: 5 })
+        }
+        if (seek) startedAt.value = new Date(Date.now() - seek * 1000)
+        // 演示模式自己推进虚拟时间，不跑真实计时器（否则时长与距离对不上）
+        demoTimer = window.setInterval(demoStep, Math.max(16, Math.round(1000 / demoParam('demo_speed', 1))))
         demoStep()
       }
     }, 800)
