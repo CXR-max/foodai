@@ -217,7 +217,8 @@ const portionText = computed(() => {
     bits.push(`脂肪多 ${fmtNum(over)} g`)
   }
   const p = d.portion
-  if (p?.significant && p.delta_kcal > 0) bits.push(`多吃 ${Math.round(p.delta_kcal)} kcal`)
+  const delta = p?.delta_kcal ?? 0
+  if (p?.significant && delta > 0) bits.push(`多吃 ${Math.round(delta)} kcal`)
   if (!bits.length) return ''
   const tail = p?.significant ? '下餐主食减半碗就拉平' : '明天照常吃，不用补偿'
   return `${bits.join('、')}——${tail}`
