@@ -106,3 +106,24 @@ _remote_main/
 backend/tools/.tmp_*
 backend/_backend_merge.log
 .npm-cache/
+
+# 仓库根目录的一次性调试脚本与其输出（历史遗留，已清理，不再入库）
+/_*.py
+/_*.txt
+/_*.log
+/_*.json
+/*.log
+/*.out
+
+# 数据库快照（体积大且可随时重新生成，不进仓库）
+backend/foodai.db.bak
+backend/foodai.db.before_sync_*
+backend/test_sqlite.db*
+backend/test_write.db*
+
+# 本地工作目录（PPT/截图等临时产物）
+.tmp_ppt/
+.tmp_shots/
+
+# 架构图的位图副本：由 build_architecture*.py 从同名 SVG 渲染得到，不入库
+docs/architecture/architecture-slide.png

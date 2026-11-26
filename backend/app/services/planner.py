@@ -426,10 +426,37 @@ def _trim_pool(pool: list[dict]) -> list[dict]:
     return picked
 
 
+def _sodium_density(food: dict) -> float:
+    per100 = food.get("per_100g") or {}
+    try:
+        return float(per100.get("sodium_mg") or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _apply_flavor_bias(pool: list[dict], bias: dict | None) -> list[dict]:
+    """清淡偏好：剔掉本池钠密度最高的 30%（不改营养上限，只改选菜范围）
+
+    为什么不直接压 sodium_max_mg：钠上限一收紧就和膳食宝塔的奶/豆硬下限
+    打架（奶 300 g + 豆 25 g 本身就带掉一大截钠预算），大概率整份判无解。
+    改候选范围温和得多：同类里仍有低钠可选，实在不够就不剔。
+    """
+    if not bias or not pool:
+        return pool
+    if bias.get("sodium") == "low":
+        ranked = sorted(_sodium_density(food) for food in pool)
+        cutoff = ranked[int(len(ranked) * 0.7)] if ranked else 0
+        kept = [food for food in pool if _sodium_density(food) <= cutoff]
+        if len(kept) >= max(12, len(pool) // 3):
+            pool = kept
+    return pool
+
+
 def _meal_pool(
     meal_type: str,
     restrictions: list[str],
     exclude_foods: list[str] | None = None,
+    bias: dict | None = None,
 ) -> list[dict]:
     """按餐次 + 禁忌 + 对话里明确不吃的关键词过滤候选菜。
 
@@ -453,7 +480,7 @@ def _meal_pool(
         pool.append(food)
     if not pool:
         raise PlannerError(f"{meal_type} 在禁忌过滤后没有可选菜品")
-    return _trim_pool(pool)
+    return _trim_pool(_apply_flavor_bias(pool, bias))
 
 
 # 降级链里用的短名
@@ -1044,8 +1071,9 @@ def build_day(
         str(item).strip() for item in (profile_ctx.get("include_foods") or [])
         if str(item).strip()
     }
+    flavor_bias = targets.get("flavor_bias") or None
     pools = {
-        meal_type: _meal_pool(meal_type, restrictions, exclude_foods)
+        meal_type: _meal_pool(meal_type, restrictions, exclude_foods, bias=flavor_bias)
         for meal_type, _ in MEALS
     }
     taste_preferences = set(profile_ctx.get("taste_preferences") or [])

@@ -341,3 +341,140 @@ def test_disposition_loosen_next_days(db):
     assert day2.targets["calorie_min"] == 1400
     assert day2.targets["calorie_max"] == 1700
     assert dev.status == "handled"
+
+
+# ==================== 单日快通道 / 运动补偿 / 漏练重摊 / 清淡偏好 ====================
+
+def _state(**over) -> dict:
+    """构造一份「执行都正常」的状态，再按用例覆盖个别字段（不依赖真实时钟）"""
+    base = {
+        "day": str(TODAY),
+        "sleep": {"insufficient": False, "short_nights": [], "late_nights": 0,
+                  "target_h": 7.0, "avg_h": 7.5, "logged_days": 3},
+        "water": {"low": False, "avg_ml": 2200, "ratio": 1.1, "target_ml": 2000},
+        "exercise": {"missed": 0, "overreached": False, "planned_days": 3,
+                     "done_days": 3, "burned": 600},
+        "intake": {"calorie_avg": 1800, "calorie_min": 1600, "calorie_max": 1900,
+                   "over": False, "under": False, "protein_avg_g": 80,
+                   "fiber_avg_g": 28, "sodium_avg_mg": 1800, "sugar_avg_g": 15,
+                   "sodium_high": False, "sugar_high": False, "logged_days": 3},
+        "today": {"calories": 1800, "over_extreme": False, "under_hard": False,
+                  "settled": True},
+        "profile": {"weight_kg": 55.0},
+    }
+    for key, value in over.items():
+        if isinstance(value, dict) and isinstance(base.get(key), dict):
+            base[key] = {**base[key], **value}
+        else:
+            base[key] = value
+    return base
+
+
+def _transient_day(**over) -> PlanDay:
+    """不入库的方案天：plan_day 只读不写，用它测纯逻辑"""
+    data = {
+        "plan_id": 1, "day_index": 1, "date": TODAY,
+        "meals": [], "exercise": None, "exercises": [_exercise()],
+        "sleep": {"bedtime": "23:30", "planned_h": 7.5},
+        "water_ml": 2000,
+        "targets": {"sleep_min_h": 7.0, "water_min_ml": 2000,
+                    "protein_min_g": 66, "fiber_min_g": 25,
+                    "exercise_burn_min": 180, "exercise_burn_max": 320,
+                    "calorie_min": 1600, "calorie_max": 1900,
+                    "calorie_target": 1750, "bmr": 1200, "tdee": 1600,
+                    "sodium_max_mg": 2000, "sugar_max_g": 25},
+    }
+    data.update(over)
+    return PlanDay(**data)
+
+
+def test_single_day_binge_shifts_band_without_three_day_average(db):
+    """今天一顿吃到 2900（超上限 1000）→ 不等 3 天均值，直接摊到明后两天"""
+    _plan_with_days(db, 3)
+    db.add(FoodRecord(user_id=1, dish_name="聚餐", calories=2900, protein_g=110,
+                      fiber_g=25, sodium_mg=3800, sugar_g=40,
+                      eaten_date=TODAY, voided_at=None))
+    db.commit()
+
+    # 前三天没有任何记录：均值线不可能触发，只有单日快通道能生效
+    adapt.apply(db, 1, TODAY, days=2, kick=False)
+    day = (db.query(PlanDay).filter(PlanDay.day_index == 1).one())
+
+    assert day.targets["calorie_min"] == 1425, "1000/2=500，但单次最多动 10%（175）"
+    assert day.targets["calorie_max"] == 1725
+    reason = next(r for r in day.day_flags["adapted"]["reasons"] if r["field"] == "diet")
+    assert "今天已经吃到" in reason["reason"], "理由要说清是「今天」而不是「最近日均」"
+
+
+def test_single_day_under_eating_keeps_band(db):
+    """今天吃太少（已结算仍不到下限 60%）→ 方案不往下压，只留提示"""
+    result = adapt.plan_day(db, 1, _transient_day(), _state(
+        today={"calories": 700, "under_hard": True, "over_extreme": False}))
+
+    assert result["targets"]["calorie_min"] == 1600, "方案没问题，是今天没吃"
+    assert result["notes"], "要有话说明白为什么不改"
+    assert "不往下压" in result["notes"][0]
+
+
+def test_over_eating_adds_exercise_compensation(db):
+    """吃超了用运动抵一部分：加一段快走，判定区间同步上调"""
+    result = adapt.plan_day(db, 1, _transient_day(), _state(
+        intake={"calorie_avg": 2600}))
+    compensation = [e for e in result["exercises"] if e.get("compensation")]
+    assert compensation, "默认要加一段补偿运动"
+    add = compensation[0]
+    assert add["type"] == "快走" and add["calories_burned"] > 0
+    assert result["targets"]["exercise_burn_min"] > 180, "判定区间不能还是旧的"
+    assert any(r["field"] == "exercise" and "分钟" in r["action"] for r in result["reasons"])
+
+
+def test_no_exercise_compensation_when_sleep_short(db):
+    """熬夜/睡不够时只降不升：不允许「没睡够还加练」"""
+    result = adapt.plan_day(db, 1, _transient_day(), _state(
+        sleep={"insufficient": True, "short_nights": [5.0]},
+        intake={"calorie_avg": 2600}))
+
+    assert not [e for e in result["exercises"] if e.get("compensation")]
+    assert any(r["field"] == "exercise" and "恢复" in r["action"] for r in result["reasons"])
+
+
+def test_missed_exercise_softens_prescription_not_compensates(db):
+    """连续漏练 → 处方缩短，不补练、不加量"""
+    result = adapt.plan_day(db, 1, _transient_day(), _state(
+        exercise={"missed": 2}))
+
+    assert result["exercises"][0]["duration_min"] == 30, "40 分钟 × 0.8 缩到 30"
+    assert result["exercises"][0]["calories_burned"] < 220
+    reason = next(r for r in result["reasons"] if r["field"] == "exercise")
+    assert "不补" in reason["reason"]
+    assert not [e for e in result["exercises"] if e.get("compensation")]
+
+
+def test_sodium_high_sets_flavor_bias_and_replans(db):
+    """钠连续偏高 → 后面几天换清淡的菜（改选菜偏好，不压营养上限）"""
+    result = adapt.plan_day(db, 1, _transient_day(), _state(
+        intake={"sodium_avg_mg": 2800, "sodium_high": True}))
+
+    assert result["targets"]["flavor_bias"] == {"sodium": "low"}
+    assert result["targets"]["sodium_max_mg"] == 2000, "上限不许动，动了会和宝塔硬下限打架"
+    assert result["needs_replan"] is True, "不重排的话偏好只是写了个字段，菜一点没变"
+
+
+def test_preview_does_not_write_and_reads_back_after_apply(db):
+    """预告只算不落库；落地之后再问，回读留痕而不是在新区间上继续下压"""
+    _plan_with_days(db, 3)
+    _over_eat(db)
+
+    preview = adapt.preview(db, 1, TODAY)
+    assert preview["changed"] and preview["applied"] is False
+    day = (db.query(PlanDay).filter(PlanDay.day_index == 1).one())
+    assert "adapted" not in (day.day_flags or {}), "预告绝不能写库"
+
+    adapt.apply(db, 1, TODAY, days=2, kick=False)
+    after = adapt.preview(db, 1, TODAY)
+    assert after["applied"] is True
+    assert after["actions"], "已经调过的要把「改了什么」讲出来"
+
+    # 再 preview 一次也不能算出第二轮下压
+    again = adapt.preview(db, 1, TODAY)
+    assert [a["action"] for a in again["actions"]] == [a["action"] for a in after["actions"]]

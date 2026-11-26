@@ -185,6 +185,60 @@ export interface DaySummary {
     applied: { day: string; reasons: { field: string; action: string; reason: string }[] }[]
     state?: Record<string, any>
   }
+  /** 今日体检：哪几项没达标 + 现在能做什么 + 后续会怎么调 */
+  audit?: DayAudit | null
+  /** 后续调整预告：未生效是「将要」，已生效是「已生效」，可撤销 */
+  next_plan?: NextPlan
+}
+
+export type AuditStatus =
+  | 'in_range' | 'under' | 'over' | 'low' | 'high' | 'in_progress' | 'unknown'
+
+export interface AuditItem {
+  key: string
+  label: string
+  unit: string
+  actual: number | null
+  min: number | null
+  max: number | null
+  status: AuditStatus
+  severity: 'high' | 'medium' | 'low'
+  gap_text: string
+  /** 现在还能做什么 */
+  now: string
+  /** 系统后续会怎么调 */
+  later: string
+  source: string
+}
+
+export interface DayAudit {
+  date: string
+  ok: boolean
+  checked: number
+  items: AuditItem[]
+  failed: AuditItem[]
+  warnings: AuditItem[]
+  pending: AuditItem[]
+  passed_keys: string[]
+  headline: string
+  later_headline: string
+}
+
+export interface NextPlanAction {
+  day: string
+  field: string
+  action: string
+  reason: string
+}
+
+export interface NextPlan {
+  day: string
+  applied: boolean
+  changed: boolean
+  actions: NextPlanAction[]
+  notes: string[]
+  headline: string
+  state?: Record<string, any>
 }
 
 /** 撤销某天的动态调整（恢复调整前快照） */

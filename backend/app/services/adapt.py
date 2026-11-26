@@ -21,6 +21,12 @@
 - 摄入热量持续低于下限（吃少了）→ **不逼用户补吃**。连续吃不完说明方案
   排多了，把下沿校准到实际可执行的水平（同样不低于代谢地板）并按新食量
   重排——方案排多了就改方案，而不是让用户硬塞。
+- 单日极端（今天一顿超上限 15% 且 ≥250 kcal）→ 不等 3 天均值，直接摊到
+  明后两天。均值会被前几天拉平，只靠均值线等于对「今天吃爆」无感。
+- 连续漏练 → 不补练、不把欠的量堆到下一次（那是依从性崩掉的头号原因），
+  只把后续处方缩短到做得到的量。
+- 钠 / 添加糖连续偏高 → 后面几天的菜换清淡口味（改选菜偏好，不改上限；
+  上限一压就和膳食宝塔的奶/豆硬下限打架，直接判无解）。
 """
 from __future__ import annotations
 
@@ -58,6 +64,31 @@ BAND_SHIFT_CAP = 0.10
 MIN_BAND_STEP = 50
 OVER_SPREAD_DAYS = 2         # 超额摊到后面 2 天
 UNDER_SPREAD_DAYS = 2
+
+# ---- 单日快通道 ----
+# 3 天均值会被前两天拉平：「前天 1600、昨天 1650、今天 2900」均值 2050 看着还行，
+# 但今天实打实超了 900。所以单日单独判一档，双门槛防抖（比例 + 绝对量都要过）。
+TODAY_OVER_RATIO = 1.15
+TODAY_OVER_ABS = 250
+TODAY_UNDER_RATIO = 0.60      # 低于下限 60%：已结算才算，没吃完不判
+
+# ---- 运动补偿（吃多了用运动抵一部分）----
+# 不是惩罚性加练：只在没熬夜、近 3 天没超额时启用，单日封顶 80 kcal / 15%
+COMP_EXERCISE_CAP_RATIO = 0.15
+COMP_EXERCISE_CAP_KCAL = 80
+COMP_EXERCISE_MIN_KCAL = 20
+
+# ---- 连续漏练 ----
+# 不补练（漏掉的量绝不堆到下一练），只把后续处方的量摊回可完成水平
+MISSED_MIN_DAYS = 2
+MISSED_SOFTEN_RATIO = 0.8
+
+# ---- 钠 / 添加糖：连续偏高就换清淡的菜 ----
+# 不硬改上限：钠上限一压就与膳食宝塔的奶/豆硬下限冲突，直接判无解
+SODIUM_HIGH_RATIO = 1.2
+SUGAR_HIGH_RATIO = 1.3
+BIAS_MIN_LOGGED_DAYS = 2
+BIAS_MAX_OFFSET = 1           # 只对明后两天启用，避免整周都变清淡
 
 
 def _num(value, default: float = 0.0) -> float:
@@ -155,8 +186,59 @@ def _profile_ctx(db: Session, user_id: int) -> dict:
 
 # ---------- 体检 ----------
 
-def diagnose(db: Session, user_id: int, day: date, lookback: int = LOOKBACK_DAYS) -> dict:
-    """读最近 lookback 天的实际执行（不含 day 当天），返回可判定的状态。"""
+def _today_state(db: Session, user_id: int, day: date, targets: dict,
+                 intake: dict | None = None) -> dict:
+    """今天的实时摄入与结算状态（单日快通道用）
+
+    为什么单独一段：diagnose 的回看窗口是 [day-lookback, day)，故意不含今天
+    ——今天的饭还没吃完，放进去会把均值拉偏。但「今天一顿吃掉 3000 大卡」
+    这种单日极端必须当天就响应，否则要等 3 天均值追上来，用户觉得系统瞎了。
+    """
+    if intake is None:
+        try:
+            from app.services import diet_intake
+            intake = diet_intake.day_intake(db, user_id, day)
+        except Exception:  # noqa: BLE001 —— 算不出来就当今天没数据，不影响主流程
+            logger.exception("读取今日摄入失败 user=%s day=%s", user_id, day)
+            intake = {}
+    intake = intake or {}
+
+    calories = _num(intake.get("calories"))
+    cal_min = _num(targets.get("calorie_min"))
+    cal_max = _num(targets.get("calorie_max"))
+
+    settled = False
+    try:
+        from app.services import settlement
+        settled = bool(settlement.settlement_of(day).get("settled"))
+    except Exception:  # noqa: BLE001
+        settled = False
+
+    return {
+        "calories": int(round(calories)),
+        "protein_g": round(_num(intake.get("protein_g")), 1),
+        "fiber_g": round(_num(intake.get("fiber_g")), 1),
+        "sodium_mg": round(_num(intake.get("sodium_mg")), 0),
+        "sugar_g": round(_num(intake.get("sugar_g")), 1),
+        "calorie_min": int(cal_min) if cal_min else None,
+        "calorie_max": int(cal_max) if cal_max else None,
+        "settled": settled,
+        "records": int(intake.get("records") or 0),
+        # 双门槛：比例 + 绝对量都要过，防「多喝一杯奶就改三天方案」
+        "over_extreme": bool(cal_max and calories > cal_max * TODAY_OVER_RATIO
+                             and calories - cal_max >= TODAY_OVER_ABS),
+        # 已结算且吃得太少：不动方案（方案没问题，是今天没吃），只提示
+        "under_hard": bool(cal_min and settled and 0 < calories < cal_min * TODAY_UNDER_RATIO),
+    }
+
+
+def diagnose(db: Session, user_id: int, day: date, lookback: int = LOOKBACK_DAYS,
+             today_intake: dict | None = None) -> dict:
+    """读最近 lookback 天的实际执行（不含 day 当天），返回可判定的状态。
+
+    today_intake：今天的实时摄入。day_summary 已经算过一遍，传进来避免重复查库；
+    不传就自己算（预览接口等场景）。
+    """
     start = day - timedelta(days=lookback)
     profile = _profile_ctx(db, user_id)
     latest_targets = {}
@@ -192,7 +274,10 @@ def diagnose(db: Session, user_id: int, day: date, lookback: int = LOOKBACK_DAYS
         .all()
     )
     total_water = sum(_num(row.ml) for row in waters)
-    water_days = len({row.log_date for row in waters}) or lookback
+    # 没记录 ≠ 没喝：历史全空时不能按 0 ml 判「喝太少」，否则会给新用户编出
+    # 「日均只喝 0 ml，不到目标的 0%」这种自相矛盾的理由，还顺手抬高目标
+    water_logged = len({row.log_date for row in waters})
+    water_days = water_logged or lookback
     water_avg = total_water / max(water_days, 1)
     water_target = _num(latest_targets.get("water_min_ml"), 2000) or 2000
 
@@ -220,10 +305,17 @@ def diagnose(db: Session, user_id: int, day: date, lookback: int = LOOKBACK_DAYS
     protein_avg = sum(_num(row.protein_g) for row in records) / eaten_days
     fiber_avg = sum(_num(row.fiber_g) for row in records) / eaten_days
     sodium_avg = sum(_num(row.sodium_mg) for row in records) / eaten_days
+    sugar_avg = sum(_num(row.sugar_g) for row in records) / eaten_days
     cal_min = _num(latest_targets.get("calorie_min"))
     cal_max = _num(latest_targets.get("calorie_max"))
+    sodium_max = _num(latest_targets.get("sodium_max_mg"))
+    sugar_max = _num(latest_targets.get("sugar_max_g"))
+
+    # 今日实时：3 天回看窗口不含今天，单日吃超了必须单独判，否则永远不响应
+    today = _today_state(db, user_id, day, latest_targets, today_intake)
 
     return {
+        "day": str(day),
         "window": {"from": str(start), "to": str(day - timedelta(days=1)), "days": lookback},
         "sleep": {
             "target_h": sleep_target,
@@ -235,8 +327,10 @@ def diagnose(db: Session, user_id: int, day: date, lookback: int = LOOKBACK_DAYS
         },
         "water": {
             "target_ml": int(water_target), "avg_ml": int(water_avg),
+            "logged_days": water_logged,
             "ratio": round(water_avg / water_target, 2) if water_target else 1.0,
-            "low": water_target > 0 and water_avg < water_target * WATER_LOW_RATIO,
+            "low": (water_logged > 0 and water_target > 0
+                    and water_avg < water_target * WATER_LOW_RATIO),
         },
         "exercise": {
             "planned_days": planned_days, "done_days": done_days,
@@ -254,8 +348,16 @@ def diagnose(db: Session, user_id: int, day: date, lookback: int = LOOKBACK_DAYS
             "protein_avg_g": round(protein_avg, 1),
             "fiber_avg_g": round(fiber_avg, 1),
             "sodium_avg_mg": round(sodium_avg, 0),
+            "sugar_avg_g": round(sugar_avg, 1),
+            # 连续 2 天偏高才换口味，单天重口味不折腾
+            "sodium_high": bool(sodium_max and eaten_days >= BIAS_MIN_LOGGED_DAYS
+                                and sodium_avg > sodium_max * SODIUM_HIGH_RATIO),
+            "sugar_high": bool(sugar_max and eaten_days >= BIAS_MIN_LOGGED_DAYS
+                               and sugar_avg > sugar_max * SUGAR_HIGH_RATIO),
             "logged_days": eaten_days,
         },
+        # 今日实时（单日快通道）：包含今天已记录的摄入与结算状态
+        "today": today,
         "profile": profile,
         "targets": latest_targets,
     }
@@ -298,6 +400,40 @@ def _recovery_exercise(main: dict, weight: float, ratio: float = 0.6) -> dict:
         "calories_burned": int(round(met * minutes * weight / 60.0)) if weight else 0,
         "intensity": "light",
         "tips": "按恢复强度做，能正常说话；困就别硬撑，散步也算完成",
+    }
+
+
+def _soften_exercise(main: dict, weight: float, ratio: float) -> dict:
+    """连续漏练后把处方量摊薄：强度不变，只缩时长
+
+    为什么不直接下调消耗目标：目标降了但处方没变，等于「计划里写跑 40 分钟、
+    判定按 25 分钟算」，两边对不上。先把处方缩短，判定区间由 apply 跟着 burn 走。
+    """
+    kind = str(main.get("type") or "快走")
+    intensity = str(main.get("intensity") or "moderate")
+    minutes = max(10, int(round(_num(main.get("duration_min"), 30) * ratio / 5.0) * 5))
+    met = plan_targets._met_for(kind, intensity)
+    return {
+        **main,
+        "duration_min": minutes,
+        "calories_burned": int(round(met * minutes * weight / 60.0)) if weight else 0,
+        "tips": "按这个量做就行，漏掉的不补；能连续做到比一次练狠更重要",
+    }
+
+
+def _compensation_exercise(weight: float, kcal: int) -> dict:
+    """吃多了的补偿项：单独加一段快走，明确克数/分钟数，不是加练口号"""
+    met = plan_targets._met_for("快走", "moderate")
+    per_min = met * weight / 60.0 if weight else 0
+    minutes = max(10, int(round((kcal / per_min if per_min else 0) / 5.0) * 5))
+    burned = int(round(per_min * minutes)) if per_min else 0
+    return {
+        "type": "快走",
+        "duration_min": minutes,
+        "calories_burned": burned,
+        "intensity": "moderate",
+        "tips": "因为前面多吃了一部分，用这段快走抵一些；不想加练就在卡片里关掉",
+        "compensation": True,
     }
 
 
@@ -406,13 +542,16 @@ def plan_day(db: Session, user_id: int, day_obj: PlanDay, state: dict) -> dict:
     # 区间先写进 targets（快路径，页面立即生效）；整餐重排由 replan_pending
     # 在后台按 needs_replan 标记补做——求解器一天 3~8s，不能挂在页面请求里。
     band_before = None
+    calorie_over = False
+    notes: list[str] = []
+    floor = _band_floor(base_targets)
+    target = _band_target(base_targets)
+    shift_cap = target * BAND_SHIFT_CAP if target else None
     cal_min = _num(base_targets.get("calorie_min"))
     cal_max = _num(base_targets.get("calorie_max"))
+
     if state["intake"]["logged_days"] >= 2 and cal_min and cal_max:
         avg = state["intake"]["calorie_avg"]
-        floor = _band_floor(base_targets)
-        target = _band_target(base_targets)
-        shift_cap = target * BAND_SHIFT_CAP if target else None
         if avg > cal_max + CALORIE_OVER_TRIGGER:
             excess = avg - cal_max
             per_day = min(excess / OVER_SPREAD_DAYS, shift_cap) if shift_cap else excess / OVER_SPREAD_DAYS
@@ -425,6 +564,7 @@ def plan_day(db: Session, user_id: int, day_obj: PlanDay, state: dict) -> dict:
                 targets["calorie_min"] = int(round(new_min))
                 targets["calorie_max"] = int(round(new_max))
                 band_before = {"calorie_min": int(cal_min), "calorie_max": int(cal_max)}
+                calorie_over = True
                 reasons.append({
                     "field": "diet", "action": (
                         f"后 {OVER_SPREAD_DAYS} 天热量区间下调到 "
@@ -455,6 +595,104 @@ def plan_day(db: Session, user_id: int, day_obj: PlanDay, state: dict) -> dict:
                                "方案按你实际吃得下的量重排，营养七项下限不动，也不逼你补吃"),
                 })
 
+    # ---- 单日快通道：今天一顿吃爆了，不等 3 天均值追上来 ----
+    if not calorie_over and cal_min and cal_max:
+        today = state.get("today") or {}
+        if today.get("over_extreme"):
+            excess = _num(today.get("calories")) - cal_max
+            per_day = min(excess / OVER_SPREAD_DAYS, shift_cap) if shift_cap else excess / OVER_SPREAD_DAYS
+            per_day = max(MIN_BAND_STEP, per_day)
+            new_min = max(cal_min - per_day, floor) if floor else cal_min - per_day
+            new_max = max(cal_max - per_day, new_min + 100)
+            if new_min < cal_min - 1:
+                targets["calorie_min"] = int(round(new_min))
+                targets["calorie_max"] = int(round(new_max))
+                band_before = {"calorie_min": int(cal_min), "calorie_max": int(cal_max)}
+                calorie_over = True
+                reasons.append({
+                    "field": "diet", "action": (
+                        f"明后两天热量区间下调到 {int(round(new_min))}~{int(round(new_max))} kcal"),
+                    "reason": (f"今天已经吃到 {today.get('calories')} kcal，超上限 "
+                               f"{int(round(excess))}——不等 3 天均值，直接摊到后面两天，"
+                               f"每天最多动 {int(round(per_day))} kcal"),
+                })
+        elif today.get("under_hard"):
+            # 吃太少不改方案：方案没问题，是今天没吃。改了反而把方案越调越低
+            notes.append("今天摄入不到下限的 60%，方案不往下压——问题是没吃，不是方案排多了")
+
+    # ---- 连续漏练：不补练，把后续处方摊薄到做得到 ----
+    # 依据：漏练后把欠的量堆到下一次，是运动依从性崩掉的头号原因。
+    # 所以只缩处方量，不动强度，也不额外加「补练」任务。
+    if (state["exercise"]["missed"] >= MISSED_MIN_DAYS and exercises
+            and not state["sleep"]["insufficient"]):
+        exercises = [_soften_exercise(item, weight, MISSED_SOFTEN_RATIO) for item in exercises]
+        reasons.append({
+            "field": "exercise", "action": "运动量摊薄 20%（先做到）",
+            "reason": (f"最近 {state['exercise']['missed']} 天没练——漏掉的量不补，"
+                       "把后面几天的处方缩短，先做到再谈加量"),
+        })
+
+    # ---- 吃多了：明后两天用运动抵一部分（可选、小步、有护栏）----
+    compensate = bool(profile.get("compensate_by_exercise", True))
+    if (calorie_over and exercises and compensate
+            and not state["sleep"]["insufficient"]
+            and not state["exercise"]["overreached"]
+            and state["exercise"]["missed"] < MISSED_MIN_DAYS):
+        cap_ratio = (target * COMP_EXERCISE_CAP_RATIO) if target else 0
+        extra = int(min(COMP_EXERCISE_CAP_KCAL, cap_ratio))
+        existing = sum(_num(item.get("calories_burned")) for item in exercises)
+        if extra >= COMP_EXERCISE_MIN_KCAL:
+            add = _compensation_exercise(weight, extra)
+            if add["calories_burned"]:
+                exercises.append(add)
+                burn_min = _num(base_targets.get("exercise_burn_min"))
+                burn_max = _num(base_targets.get("exercise_burn_max"))
+                if burn_min:
+                    targets["exercise_burn_min"] = int(burn_min + add["calories_burned"])
+                if burn_max:
+                    targets["exercise_burn_max"] = int(burn_max + add["calories_burned"])
+                targets["exercise_compensation"] = add["calories_burned"]
+                reasons.append({
+                    "field": "exercise",
+                    "action": f"明后两天各加走 {add['duration_min']} 分钟（约 {add['calories_burned']} kcal）",
+                    "reason": ("多吃的那部分用运动抵一些，不用靠硬饿；"
+                               "熬夜或已经练过量时不会给你加，幅度也封顶"),
+                })
+        elif existing:
+            pass
+
+    # ---- 钠 / 添加糖：连续偏高就让后面几天的菜清淡一点 ----
+    # 不改上限：钠上限一压就和宝塔的奶/豆硬下限打架，直接判无解（踩过）。
+    # 改的是选菜偏好——同类里优先低钠/低糖的条目。
+    bias_changed = False
+    try:
+        from_day = date.fromisoformat(state.get("day") or str(day_obj.date))
+    except ValueError:
+        from_day = day_obj.date
+    if (day_obj.date - from_day).days <= BIAS_MAX_OFFSET:
+        bias: dict[str, str] = {}
+        if state["intake"].get("sodium_high"):
+            bias["sodium"] = "low"
+        if state["intake"].get("sugar_high"):
+            bias["sugar"] = "low"
+        if bias:
+            targets["flavor_bias"] = bias
+            bias_changed = True
+            parts = []
+            if bias.get("sodium"):
+                parts.append(f"日均钠 {int(state['intake']['sodium_avg_mg'])} mg 偏高")
+            if bias.get("sugar"):
+                parts.append(f"日均添加糖 {state['intake']['sugar_avg_g']} g 偏高")
+            reasons.append({
+                "field": "diet", "action": "后面几天的菜换成清淡口味",
+                "reason": f"{'、'.join(parts)}——重排时同类里优先低钠低糖的菜，标准不降",
+            })
+
+    if exercises:
+        targets["exercise_burn_target"] = int(sum(
+            _num(item.get("calories_burned")) for item in exercises))
+
+    needs_replan = band_before is not None or bias_changed
     return {
         "day": str(day_obj.date),
         "day_index": day_obj.day_index,
@@ -465,15 +703,18 @@ def plan_day(db: Session, user_id: int, day_obj: PlanDay, state: dict) -> dict:
         "targets": targets,
         "targets_override": {
             key: targets[key]
-            for key in ("protein_min_g", "fiber_min_g", "calorie_min", "calorie_max")
+            for key in ("protein_min_g", "fiber_min_g", "calorie_min", "calorie_max",
+                        "exercise_burn_min", "exercise_burn_max", "flavor_bias")
             if key in targets and targets.get(key) != base_targets.get(key)
         },
         # 热量区间变了就必须连带重排整餐，否则「数字变了菜还是原量」，
-        # 用户按方案吃完又会被判超——这正是旧版只改数字被看穿是空壳的原因
-        "needs_replan": band_before is not None,
+        # 用户按方案吃完又会被判超——这正是旧版只改数字被看穿是空壳的原因。
+        # 清淡偏好同理：不重排的话偏好只写进 targets，菜一点没变。
+        "needs_replan": needs_replan,
         "band_before": band_before,
         "changed": bool(reasons),
         "reasons": reasons,
+        "notes": notes,
     }
 
 
@@ -497,8 +738,81 @@ def plan(db: Session, user_id: int, from_day: date, days: int = 3,
     }
 
 
+def preview(db: Session, user_id: int, day: date, days: int = 3,
+            today_intake: dict | None = None) -> dict:
+    """预告：跑一遍和 apply 完全相同的判定，但**不写库**。
+
+    存在的意义：改之前得能告诉用户「因为什么、后面几天会变成什么样」。
+    旧链路只有改完才说，用户看到菜变了也不知道为什么，干脆不看了。
+
+    今天已经调过的直接回读留痕，不重新算：目标已经被改小一轮，再算一次会
+    在新区间上继续下压（看上去像系统一天改两次），而且撤销之后会立刻反弹。
+    """
+    today_str = str(date.today())
+    applied_actions: list[dict] = []
+    applied = False
+    reverted_today = False
+
+    for offset in range(max(1, days)):
+        obj = _plan_day(db, user_id, day + timedelta(days=offset))
+        if obj is None:
+            continue
+        adapted = (obj.day_flags or {}).get("adapted") or {}
+        if adapted.get("applied_at") != today_str:
+            continue
+        if adapted.get("reverted"):
+            reverted_today = True
+            continue
+        applied = True
+        for reason in adapted.get("reasons") or []:
+            applied_actions.append({
+                "day": str(obj.date),
+                "field": reason["field"],
+                "action": reason["action"],
+                "reason": reason["reason"],
+            })
+
+    if applied or reverted_today:
+        return {
+            "day": str(day),
+            "applied": applied,
+            "changed": bool(applied_actions),
+            "actions": applied_actions,
+            "notes": (["今天这轮自动调整你已经撤销，今天不再自动重调；明天再按新的执行数据判"]
+                      if reverted_today else []),
+            "headline": "；".join(a["action"] for a in applied_actions[:2]),
+            "state": {},
+        }
+
+    state = diagnose(db, user_id, day, today_intake=today_intake)
+    result = plan(db, user_id, day, days=days, state=state)
+
+    actions: list[dict] = []
+    notes: list[str] = []
+    for adj in result["adjustments"]:
+        for reason in adj["reasons"]:
+            actions.append({
+                "day": adj["day"],
+                "field": reason["field"],
+                "action": reason["action"],
+                "reason": reason["reason"],
+            })
+        notes.extend(adj.get("notes") or [])
+
+    return {
+        "day": str(day),
+        "applied": False,
+        "changed": bool(actions),
+        "actions": actions,
+        "notes": notes,
+        "headline": "；".join(a["action"] for a in actions[:2]),
+        "state": {key: value for key, value in state.items()
+                  if key not in ("profile", "targets")},
+    }
+
+
 def apply(db: Session, user_id: int, from_day: date, days: int = 3,
-          kick: bool = True) -> dict:
+          kick: bool = True, today_intake: dict | None = None) -> dict:
     """把动态调整落库到方案天（幂等，当天已应用过就跳过）。
 
     调整范围：运动处方（熬夜/超额 → 恢复日）、睡眠建议（入睡提前 30 分钟）、
@@ -507,7 +821,7 @@ def apply(db: Session, user_id: int, from_day: date, days: int = 3,
     目标数字是快路径，同步落库；整餐重排慢（求解器 3~8s/天），落 needs_replan
     标记后交给 kick_replan 的后台线程，页面请求不等。
     """
-    state = diagnose(db, user_id, from_day)
+    state = diagnose(db, user_id, from_day, today_intake=today_intake)
     result = plan(db, user_id, from_day, days=days, state=state)
     today_str = str(date.today())
     applied: list[dict] = []
@@ -521,8 +835,9 @@ def apply(db: Session, user_id: int, from_day: date, days: int = 3,
             continue
         flags = dict(obj.day_flags or {})
         prev = flags.get("adapted") or {}
-        if prev.get("applied_at") == today_str and not prev.get("reverted"):
-            continue  # 今天已经按同一份执行数据调过，不再覆盖（用户手改也保护住）
+        # 今天已经按同一份执行数据调过就不再覆盖（含用户主动撤销：撤销了就别再偷偷调回去）
+        if prev.get("applied_at") == today_str:
+            continue
 
         # 撤销凭据：改动前的完整快照，回滚时原样写回
         before = {

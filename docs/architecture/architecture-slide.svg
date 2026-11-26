@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="945" viewBox="0 0 1680 945">
+<rect width="1680" height="945" fill="#FAF6F1"/>
+<text x="48.0" y="52.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="27" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">识膳智行 · 系统架构图</text>
+<text x="48.0" y="78.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="12.5" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">五层结构：客户端 → 接口层 → 领域服务 → 支撑能力 → 数据与外部；框内小写英文为源码模块名</text>
+<rect x="1526" y="43" width="24" height="12" rx="3" fill="#FBEDE7" stroke="#D2694C" stroke-width="1.8"/>
+<text x="1632.0" y="53.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="11.5" fill="#6B615A" font-weight="400" text-anchor="end" letter-spacing="0">本周迭代重点</text>
+<rect x="48" y="88" width="1584" height="106" rx="10" fill="#F5EEE6" stroke="#EDE2D5"/>
+<text x="66.0" y="109.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="12" fill="#8C837A" font-weight="600" text-anchor="start" letter-spacing="1.2">客户端  CLIENT</text>
+<text x="298.0" y="109.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="11.5" fill="#A79C92" font-weight="400" text-anchor="start" letter-spacing="0">Vue 3.5 · TypeScript · Pinia · Vite</text>
+<rect x="48" y="118" width="517" height="68" rx="8" fill="#FFFFFF" stroke="#EADFD2" stroke-width="1"/>
+<text x="64.0" y="142.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="14.5" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">移动端 · 五大模块</text>
+<text x="64.0" y="161.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">/m/plan · /m/schedule · /m/sport</text>
+<text x="64.0" y="177.5" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">/m/community · /m/me，底部 TabBar 切换</text>
+<rect x="581" y="118" width="517" height="68" rx="8" fill="#FFFFFF" stroke="#EADFD2" stroke-width="1"/>
+<text x="597.0" y="142.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="14.5" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">桌面端 · 完整业务视图</text>
+<text x="597.0" y="161.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">仪表盘 · 健康档案 · 食物识别 · 养生方案</text>
+<text x="597.0" y="177.5" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">打卡 · 数据追踪 · 运动 · 积分商城 · 成就</text>
+<rect x="1114" y="118" width="518" height="68" rx="8" fill="#FFFFFF" stroke="#EADFD2" stroke-width="1"/>
+<text x="1130.0" y="142.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="14.5" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">端侧能力</text>
+<text x="1130.0" y="161.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">MediaPipe 人脸 · Leaflet 轨迹 · ECharts</text>
+<text x="1130.0" y="177.5" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">Web Bluetooth 手环 · axios 统一鉴权</text>
+<rect x="48" y="209" width="1584" height="104" rx="10" fill="#F5EEE6" stroke="#EDE2D5"/>
+<text x="66.0" y="230.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="12" fill="#8C837A" font-weight="600" text-anchor="start" letter-spacing="1.2">接口层  API</text>
+<text x="298.0" y="230.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="11.5" fill="#A79C92" font-weight="400" text-anchor="start" letter-spacing="0">FastAPI · Pydantic v2 · JWT｜客户端经 HTTPS / JSON 调用</text>
+<rect x="48" y="239" width="1024" height="68" rx="8" fill="#FFFFFF" stroke="#EADFD2" stroke-width="1"/>
+<text x="64.0" y="263.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="14.5" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">业务路由  /api/*（17 个模块）</text>
+<text x="64.0" y="282.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">auth · profile · recognitions · food_records · foods · plans · daily · checkins</text>
+<text x="64.0" y="298.5" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">wellness · workouts · devices · face · stats · points · rewards · achievements · coach</text>
+<rect x="1088" y="239" width="544" height="68" rx="8" fill="#FFFFFF" stroke="#EADFD2" stroke-width="1"/>
+<text x="1104.0" y="263.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="14.5" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">横切治理</text>
+<text x="1104.0" y="282.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">JWT Bearer · CORS 白名单 · 写入限流 · /uploads 静态目录</text>
+<text x="1104.0" y="298.5" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">lifespan：建表 / 种子数据 / 手环采样循环</text>
+<rect x="48" y="328" width="1584" height="244" rx="10" fill="#F5EEE6" stroke="#EDE2D5"/>
+<text x="66.0" y="349.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="12" fill="#8C837A" font-weight="600" text-anchor="start" letter-spacing="1.2">领域服务  DOMAIN SERVICES</text>
+<text x="298.0" y="349.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="11.5" fill="#A79C92" font-weight="400" text-anchor="start" letter-spacing="0">全部位于 backend/app/services/，由路由进程内调用（非跨服务）</text>
+<rect x="48" y="358" width="517" height="98" rx="8" fill="#FFFFFF" stroke="#EADFD2" stroke-width="1"/>
+<text x="64.0" y="382.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="14.5" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">方案生成 · 约束求解</text>
+<text x="64.0" y="401.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">plan_intent 意图 → plan_targets 目标与处方</text>
+<text x="64.0" y="417.5" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">planner：OR-Tools CP-SAT 逐日求解</text>
+<text x="64.0" y="434.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">nutrition_check 复核 · plan_lifecycle 顺延</text>
+<rect x="581" y="358" width="517" height="98" rx="8" fill="#FFFFFF" stroke="#EADFD2" stroke-width="1"/>
+<text x="597.0" y="382.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="14.5" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">摄入识别 · 视觉与文本</text>
+<text x="597.0" y="401.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">photo_intake 拍照记餐 · recognition 候选评估</text>
+<text x="597.0" y="417.5" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">food_text / food_synonyms 归一 · food_layers 层级</text>
+<text x="597.0" y="434.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">结果写 food_records，供当日口径使用</text>
+<rect x="1114" y="358" width="518" height="98" rx="8" fill="#FFFFFF" stroke="#D2694C" stroke-width="1.8"/>
+<text x="1130.0" y="382.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="14.5" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">当日闭环 · 判定与调整</text>
+<text x="1130.0" y="401.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">settlement 结算 → metric_bands 区间</text>
+<text x="1130.0" y="417.5" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">daily_audit 九项 → disposition 处置</text>
+<text x="1130.0" y="434.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">adapt：诊断 / 预告 / 撤销 · recalc 重排</text>
+<rect x="48" y="464" width="517" height="98" rx="8" fill="#FFFFFF" stroke="#EADFD2" stroke-width="1"/>
+<text x="64.0" y="488.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="14.5" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">设备与身份</text>
+<text x="64.0" y="507.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">device_import 导出包 · band_live 分钟级采样</text>
+<text x="64.0" y="523.5" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">met · workout_calc 运动消耗测算</text>
+<text x="64.0" y="540.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">face 人脸底库比对（face/provider）</text>
+<rect x="581" y="464" width="517" height="98" rx="8" fill="#FFFFFF" stroke="#EADFD2" stroke-width="1"/>
+<text x="597.0" y="488.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="14.5" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">激励与成长</text>
+<text x="597.0" y="507.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">checkins 打卡 · points 积分账本</text>
+<text x="597.0" y="523.5" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">rewards 兑换 · achievements 成就解锁</text>
+<text x="597.0" y="540.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">redis_leaderboard 榜单（Redis 可选）</text>
+<rect x="1114" y="464" width="518" height="98" rx="8" fill="#FFFFFF" stroke="#EADFD2" stroke-width="1"/>
+<text x="1130.0" y="488.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="14.5" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">教练与报告</text>
+<text x="1130.0" y="507.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">coach 问答 · plan_chat 方案对话（LLM）</text>
+<text x="1130.0" y="523.5" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">weekly_report 周报（落库缓存）</text>
+<text x="1130.0" y="540.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">stats 聚合统计（趋势 / 达标率）</text>
+<rect x="48" y="587" width="1584" height="86" rx="10" fill="#F5EEE6" stroke="#EDE2D5"/>
+<text x="66.0" y="608.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="12" fill="#8C837A" font-weight="600" text-anchor="start" letter-spacing="1.2">支撑能力  PLATFORM</text>
+<text x="298.0" y="608.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="11.5" fill="#A79C92" font-weight="400" text-anchor="start" letter-spacing="0">可替换适配器；外部依赖失败时降级而非中断</text>
+<rect x="48" y="617" width="385" height="52" rx="8" fill="#FFFFFF" stroke="#EADFD2" stroke-width="1"/>
+<text x="64.0" y="641.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="14.5" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">大模型适配</text>
+<text x="64.0" y="660.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="12" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">provider 路由 · glm / qwen / Ollama / mock</text>
+<rect x="447" y="617" width="385" height="52" rx="8" fill="#FFFFFF" stroke="#EADFD2" stroke-width="1"/>
+<text x="463.0" y="641.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="14.5" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">营养数据</text>
+<text x="463.0" y="660.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="12" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">food_seed 种子 · app/data/*.json</text>
+<rect x="846" y="617" width="385" height="52" rx="8" fill="#FFFFFF" stroke="#EADFD2" stroke-width="1"/>
+<text x="862.0" y="641.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="14.5" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">人脸与图像</text>
+<text x="862.0" y="660.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="12" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">face/provider 底库 · images → /uploads</text>
+<rect x="1245" y="617" width="387" height="52" rx="8" fill="#FFFFFF" stroke="#EADFD2" stroke-width="1"/>
+<text x="1261.0" y="641.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="14.5" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">缓存与降级</text>
+<text x="1261.0" y="660.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="12" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">Redis ZSet 可选 · 缺失回落 SQLite</text>
+<rect x="48" y="688" width="1584" height="104" rx="10" fill="#F5EEE6" stroke="#EDE2D5"/>
+<text x="66.0" y="709.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="12" fill="#8C837A" font-weight="600" text-anchor="start" letter-spacing="1.2">数据与外部  DATA / EXTERNAL</text>
+<text x="298.0" y="709.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="11.5" fill="#A79C92" font-weight="400" text-anchor="start" letter-spacing="0">SQLAlchemy 映射 · SQLite 单文件 · 大模型由 .env 切换</text>
+<rect x="48" y="718" width="1024" height="68" rx="8" fill="#FFFFFF" stroke="#EADFD2" stroke-width="1"/>
+<text x="64.0" y="742.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="14.5" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">关系库 · SQLite（backend/foodai.db，21 张表）</text>
+<text x="64.0" y="761.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="12" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">users · health_profiles · diet_plans · plan_days · food_records · recognitions · check_ins · water_logs</text>
+<text x="64.0" y="777.5" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="12" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">sleep_logs · diet_deviations · plan_constraint_state · workouts · devices · user_face · points_log · redemptions</text>
+<rect x="1088" y="718" width="264" height="68" rx="8" fill="#FFFFFF" stroke="#EADFD2" stroke-width="1"/>
+<text x="1104.0" y="742.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="14.5" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">文件与静态</text>
+<text x="1104.0" y="761.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="12" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">uploads/ 图片</text>
+<text x="1104.0" y="777.5" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="12" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">app/data/*.json</text>
+<rect x="1368" y="718" width="264" height="68" rx="8" fill="#FFFFFF" stroke="#EADFD2" stroke-width="1"/>
+<text x="1384.0" y="742.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="14.5" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">外部服务</text>
+<text x="1384.0" y="761.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="12" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">智谱 GLM-4 / 4v</text>
+<text x="1384.0" y="777.5" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="12" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">Qwen · 本地 Ollama</text>
+<rect x="48" y="807" width="1584" height="96" rx="10" fill="#F5EEE6" stroke="#EDE2D5"/>
+<text x="66.0" y="828.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="12" fill="#8C837A" font-weight="600" text-anchor="start" letter-spacing="1.2">关键链路  KEY FLOWS</text>
+<text x="298.0" y="828.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="11.5" fill="#A79C92" font-weight="400" text-anchor="start" letter-spacing="0">箭头方向即调用方向</text>
+<rect x="48" y="837" width="385" height="58" rx="6" fill="#FFFFFF" stroke="#EADFD2"/>
+<text x="62.0" y="858.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">① 记一餐</text>
+<text x="62.0" y="875.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="11.5" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">拍照 / 文字 → 视觉识别</text>
+<text x="62.0" y="889.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="11.5" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">→ 营养库匹配 → 当日重算</text>
+<rect x="447" y="837" width="385" height="58" rx="6" fill="#FFFFFF" stroke="#EADFD2"/>
+<text x="461.0" y="858.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">② 出方案</text>
+<text x="461.0" y="875.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="11.5" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">需求对话 → 意图与目标</text>
+<text x="461.0" y="889.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="11.5" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">→ CP-SAT 求解 7 天 plan_days</text>
+<rect x="846" y="837" width="385" height="58" rx="6" fill="#FFFFFF" stroke="#EADFD2"/>
+<text x="860.0" y="858.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">③ 当天收口</text>
+<text x="860.0" y="875.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="11.5" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">结算 → 九项体检 → 处置</text>
+<text x="860.0" y="889.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="11.5" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">→ 明后天目标改写 · 可撤销</text>
+<rect x="1245" y="837" width="385" height="58" rx="6" fill="#FFFFFF" stroke="#EADFD2"/>
+<text x="1259.0" y="858.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="13" fill="#262220" font-weight="600" text-anchor="start" letter-spacing="0">④ 手环</text>
+<text x="1259.0" y="875.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="11.5" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">实时采样 / 导出包</text>
+<text x="1259.0" y="889.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="11.5" fill="#6B615A" font-weight="400" text-anchor="start" letter-spacing="0">→ 步数睡眠 → 区间与消耗</text>
+<text x="48.0" y="930.0" font-family="'Microsoft YaHei','Source Han Sans SC','PingFang SC',sans-serif" font-size="11" fill="#A79C92" font-weight="400" text-anchor="start" letter-spacing="0">运行时：uvicorn 单进程（含 band_live 后台采样线程）· 前端 Vite 构建为静态资源 · SQLite 单文件 · Redis 可选（缺失即降级）</text>
+</svg>

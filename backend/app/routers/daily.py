@@ -16,8 +16,9 @@ from app.models.check_in import CheckIn
 from app.models.diet_deviation import DietDeviation
 from app.models.diet_plan import DietPlan
 from app.models.user import User
-from app.services import (adapt, day_context, day_mode, diet_intake, disposition,
-                          loop_closure, metric_bands, recalc, settlement, wellness)
+from app.services import (adapt, daily_audit, day_context, day_mode, diet_intake,
+                          disposition, loop_closure, metric_bands, recalc,
+                          settlement, wellness)
 from app.services.meal_recalc import MEAL_LABELS
 
 router = APIRouter(prefix="/day", tags=["每日汇总"])
@@ -42,22 +43,36 @@ def day_summary(
     plan_day = day_context.active_plan_day(db, user.id, day)
     plan = db.get(DietPlan, plan_day.plan_id) if plan_day else None
 
-    # 动态调整（幂等）：昨天熬夜/这几天没动/水喝少了/吃多吃少/蛋白吃不够，把今天起的
-    # 运动强度、睡眠建议、饮水与热量蛋白纤维目标跟着改——计划跟着人走，不是人跟着单子走。
-    # 目标数字同步落库；整餐重排（求解器 3~8s/天）由 adapt.apply 自己踢到后台线程。
-    adapt_result = {"applied": []}
+    # 摄入口径：实际记录优先；已打卡但没记的餐次按方案菜品折算（见 services/diet_intake.py）
+    # 提前算：动态调整的「单日快通道」和体检清单都要用今天的实时值
+    intake = diet_intake.day_intake(db, user.id, day)
+
+    # 动态调整（幂等）：昨天熬夜/这几天没动/水喝少了/吃多吃少/蛋白吃不够/钠糖偏高，
+    # 把今天起的运动强度、睡眠建议、饮水与热量蛋白纤维目标跟着改——计划跟着人走。
+    # 先出预告（不写库）再落地，预告里展示的就是这轮真正改了什么。
+    next_plan = {"changed": False, "actions": [], "notes": [], "headline": "", "applied": False}
+    adapt_result = {"applied": [], "state": {}}
     if plan_day is not None:
         try:
-            adapt_result = adapt.apply(db, user.id, day)
+            next_plan = adapt.preview(db, user.id, day, today_intake=intake)
+        except Exception:  # noqa: BLE001 —— 预告失败不影响主流程
+            logger.exception("动态调整预告失败 user=%s day=%s", user.id, day)
+            db.rollback()
+        try:
+            adapt_result = adapt.apply(db, user.id, day, today_intake=intake)
             db.flush()
+            # 只升不降：预告回读到的「已生效」不能被这轮的空改动覆盖成「未生效」
+            if adapt_result.get("applied"):
+                next_plan["applied"] = True
         except Exception:  # noqa: BLE001 —— 调整失败不阻塞日程页
             logger.exception("动态调整失败 user=%s day=%s", user.id, day)
             db.rollback()
             plan_day = day_context.active_plan_day(db, user.id, day)
+        # 落地后目标已经变了，后面所有区间判定一律用新目标
+        if plan_day is not None and plan_day.targets:
+            targets = dict(plan_day.targets)
 
     # 摄入口径：实际记录优先；已打卡但没记的餐次按方案菜品折算（见 services/diet_intake.py）
-    intake = diet_intake.day_intake(db, user.id, day)
-
     tasks = (db.query(CheckIn)
              .filter(CheckIn.user_id == user.id, CheckIn.check_date == day).all())
     done_tasks = [c for c in tasks if c.status == "done"]
@@ -72,6 +87,9 @@ def day_summary(
     water_target = int(targets.get("water_min_ml") or 2000)
     sleep = wellness.sleep_dict(wellness.day_sleep(db, user.id, day))
 
+    # 结算时点先算：下面的区间判定要用它决定「还没到练的时候」算进行中还是没做到
+    point = settlement.settlement_of(day)
+
     # 指标区间：热量按当日运动量浮动（训练日上限回补），其余按目标区间 + 浮动容忍判定
     # 例外场景（聚餐/生病/出差…）在这一层放宽口径，不放宽的项照旧判
     mode_effect = day_mode.effects(db, user.id, day)
@@ -79,6 +97,9 @@ def day_summary(
         metric_bands.effective_calorie_band(targets), mode_effect,
         tdee=(targets.get("prescription") or {}).get("tdee"),
     )
+    # 有运动任务就按 0 判：区间显示「—/待记录」而体检清单说「差 60 kcal」，
+    # 同一件事两处说法不一样，用户只会觉得系统在乱说
+    has_exercise_task = any((c.check_type or "") == "exercise" for c in tasks)
     bands = metric_bands.build_bands(
         band_targets,
         {
@@ -86,10 +107,17 @@ def day_summary(
             "protein": intake["protein_g"] or None,
             "water": total_water or None,
             "sleep": (sleep or {}).get("duration_h"),
-            "exercise": burn["exercise_kcal"] or None,
+            "exercise": burn["exercise_kcal"] if has_exercise_task else None,
         },
         keys=["calorie", "protein", "water", "sleep", "exercise"],
     )
+    # 还没到练的时候（白天）：和体检清单同口径算「进行中」，别一上来就标红
+    if has_exercise_task and not point["settled"]:
+        for band in bands:
+            if band["key"] == "exercise" and band["status"] == "under":
+                band["status"] = "in_progress"
+                band["status_text"] = "进行中"
+                band["hint"] = "还没到练的时候，按计划来就行"
 
     calorie_min = targets.get("calorie_min")
     calorie_max = band_targets.get("calorie_max")   # 训练日上限已按消耗回补
@@ -117,7 +145,6 @@ def day_summary(
     # 偏离落库（幂等 upsert）：结算时点之后才写，上午不写。
     # GET 里写库看着不干净，但这是「一个事实只有一条记录」的必要代价——
     # 让每个页面各自去写才会出现同一天三条矛盾记录。
-    point = settlement.settlement_of(day)
     if point["settled"] and diet and diet.get("items"):
         disposition.record_deviations(db, user.id, day, intake, band_targets, diet)
         db.commit()
@@ -129,6 +156,24 @@ def day_summary(
                 band["status"] = "in_progress"
                 band["status_text"] = "进行中"
                 band["hint"] = hint
+
+    # 今日体检清单：九项逐条判，每项带「现在能做什么」与「后续会怎么调」。
+    # 只读不写库，判定口径与上面的 bands 完全同源，避免两处结论打架。
+    try:
+        audit = daily_audit.audit(db, user.id, day, {
+            "targets": targets,
+            "band_targets": band_targets,
+            "intake": intake,
+            "burn": burn,
+            "water_ml": total_water or None,
+            "sleep_h": (sleep or {}).get("duration_h"),
+            "tasks": tasks,
+            "plan_day": plan_day,
+            "settled": bool(point.get("settled")),
+        }, next_plan=next_plan)
+    except Exception:  # noqa: BLE001 —— 清单算不出来不影响页面主体
+        logger.exception("今日体检失败 user=%s day=%s", user.id, day)
+        audit = None
 
     return {
         "date": str(day),
@@ -155,6 +200,10 @@ def day_summary(
             "applied": adapt_result.get("applied") or [],
             "state": adapt_result.get("state") or {},
         },
+        # 今日体检：哪几项没达标 + 现在能做什么 + 后续会怎么调
+        "audit": audit,
+        # 后续调整预告：未生效时是「将要」，已执行时是「已生效」，可直接撤销
+        "next_plan": next_plan,
         # 一行汇总：「热量 1860/1800~1950 · 蛋白 96/90~115 · 达标」
         "diet": diet,
         "intake": {**intake, "calorie_status": calorie_status},

@@ -92,7 +92,23 @@ export interface PlanDay {
     adjusted?: DayAdjustment | null
     /** 处置下调区间后整天的重排留痕 */
     replanned?: DayAdjustment | null
+    /** 动态调整留痕（按实际执行改过这天的目标/餐食，撤销后 reverted=true） */
+    adapted?: DayAdaptation | null
   } | null
+}
+
+/** 动态调整留痕。before 是撤销用的整天快照，接口下发前已剥掉，这里不声明 */
+export interface DayAdaptation {
+  /** 这份调整是哪天生效的；同一天不重复调整 */
+  applied_at?: string
+  /** 判定用的历史窗口（看哪几天） */
+  window?: { from?: string; to?: string; days?: number } | null
+  /** 改了什么、为什么改，逐条对应到体检项 */
+  reasons?: { field: string; action: string; reason: string }[]
+  /** 改完之后还需要按新区间重排这天 */
+  needs_replan?: boolean
+  /** 用户已撤销，别再自动调回来 */
+  reverted?: boolean
 }
 
 export interface DayAdjustment {

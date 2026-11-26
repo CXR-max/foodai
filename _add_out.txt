@@ -1,7 +1,0 @@
-﻿OK: health_profiles.body_fat_pct
-OK: check_ins.intensity
-OK: check_ins.met_used
-OK: check_ins.burn_detail
-
-health_profiles 有 body_fat_pct: False
-check_ins 有 intensity: False

@@ -1,4 +1,0 @@
-﻿=== 测试查询 today_cal ===
-OK: 0.0
-=== 测试查询 today_burn ===
-OK: None

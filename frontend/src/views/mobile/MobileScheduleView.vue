@@ -135,6 +135,208 @@ function rangeText(b: any) {
   return `${numText(b.min, b.unit)}~${numText(b.max, b.unit)}`
 }
 
+// ---- 今日体检：整块可收起，跟日历一条栏就能收掉 ----
+// 默认展开：这是这一页的正文；收起留给「今天只想过日子、不想看诊断」的时候
+const checkOpen = ref(true)
+const audit = computed(() => summary.value?.audit || null)
+const auditFailed = computed(() => audit.value?.failed || [])
+const auditWarnings = computed(() => audit.value?.warnings || [])
+const auditPending = computed(() => audit.value?.pending || [])
+/** 栏上的结论只给数量，名单就在下面一行一项，不用再复述一遍 */
+const auditBrief = computed(() => {
+  if (!audit.value) return ''
+  if (auditFailed.value.length) return `${auditFailed.value.length} 项没达标`
+  return audit.value.headline
+})
+
+// ---- 全部指标：数字与区间收在一个折叠区里，默认不展开 ----
+const metricsOpen = ref(false)
+const METRIC_ORDER = ['calorie', 'protein', 'fat', 'carb', 'fiber', 'sodium', 'sugar',
+  'water', 'sleep', 'exercise', 'species']
+const STATUS_TEXT: Record<string, string> = {
+  in_range: '达标', under: '不足', over: '超标', in_progress: '进行中',
+  no_data: '待记录', low: '略低', high: '略高',
+}
+const metricCls = (status?: string) =>
+  status === 'in_range' ? 'ok'
+    : status === 'low' || status === 'high' ? 'warn'
+      : status === 'under' || status === 'over' ? 'bad' : ''
+/** 三位数以上取整，两位数留一位小数：热量 1203 比 1202.8 好读，蛋白 66.4 又不能丢 */
+function fmtNum(v: any) {
+  if (v == null || v === '') return '—'
+  const n = Number(v)
+  if (!Number.isFinite(n)) return String(v)
+  return Math.abs(n) >= 100 ? `${Math.round(n)}` : `${Math.round(n * 10) / 10}`
+}
+/** 体检表里的区间文案：min~max 带单位，只有单边就分号写 */
+function metricRange(min?: number | null, max?: number | null, unit = '') {
+  const u = unit ? ` ${unit}` : ''
+  if (min != null && max != null) return `${fmtNum(min)}~${fmtNum(max)}${u}`
+  if (max != null) return `≤${fmtNum(max)}${u}`
+  if (min != null) return `≥${fmtNum(min)}${u}`
+  return '—'
+}
+const allMetrics = computed(() => {
+  const rows = new Map<string, any>()
+  // 体检项是权威口径（in_progress 等状态只有它有），先放进来
+  for (const it of audit.value?.items || []) {
+    rows.set(it.key, {
+      key: it.key, label: it.label, value: fmtNum(it.actual), unit: it.actual == null ? '' : it.unit,
+      range: metricRange(it.min, it.max, it.unit), text: STATUS_TEXT[it.status] || '', cls: metricCls(it.status),
+    })
+  }
+  // 脂肪/碳水只在结构项里（不进九项），补在这张表里，别让「脂肪超标」无处可查
+  for (const st of summary.value?.diet?.structure || []) {
+    if (rows.has(st.key)) continue
+    rows.set(st.key, {
+      key: st.key, label: st.label, value: fmtNum(st.value), unit: st.unit,
+      range: st.range_text || '', text: STATUS_TEXT[st.status] || st.status_text || '',
+      cls: metricCls(st.status),
+    })
+  }
+  // 睡眠/运动这类「还没记录」的项在体检清单里没有条目，从区间补进来，做到九项齐全
+  for (const b of bands.value) {
+    if (rows.has(b.key)) continue
+    rows.set(b.key, {
+      key: b.key, label: b.label, value: fmtNum(b.actual), unit: b.actual == null ? '' : b.unit,
+      range: b.range_text || '', text: b.status_text || STATUS_TEXT[b.status] || '',
+      cls: metricCls(b.status),
+    })
+  }
+  return METRIC_ORDER.filter((k) => rows.has(k)).map((k) => rows.get(k))
+})
+
+/** 不在九项里的超限（脂肪/碳水）：一行说清，不再单开一张卡 */
+const portionText = computed(() => {
+  const d = summary.value?.diet
+  if (!d) return ''
+  const bits: string[] = []
+  const fat = (d.structure || []).find((i) => i.key === 'fat' && i.status === 'over')
+  if (fat) {
+    const over = fat.max != null ? (fat.value || 0) - fat.max : 0
+    bits.push(`脂肪多 ${fmtNum(over)} g`)
+  }
+  const p = d.portion
+  const delta = p?.delta_kcal ?? 0
+  if (p?.significant && delta > 0) bits.push(`多吃 ${Math.round(delta)} kcal`)
+  if (!bits.length) return ''
+  const tail = p?.significant ? '下餐主食减半碗就拉平' : '明天照常吃，不用补偿'
+  return `${bits.join('、')}——${tail}`
+})
+
+// ---- 后续调整：系统这轮把后面几天改成了什么样（已生效就能撤销）----
+const nextPlan = computed(() => summary.value?.next_plan || null)
+const nextActions = computed(() => nextPlan.value?.actions || [])
+const nextDays = computed(() => Array.from(new Set(nextActions.value.map((a) => a.day))))
+const revertingAll = ref(false)
+
+/** 同一条动作会落在好几天上（「明后两天各下调」），按动作合并成一行，别重复三遍 */
+const groupedActions = computed(() => {
+  const merged = new Map<string, { days: string[]; action: string; reason: string }>()
+  for (const a of nextActions.value) {
+    const hit = merged.get(a.action)
+    if (hit) {
+      if (!hit.days.includes(a.day)) hit.days.push(a.day)
+    } else {
+      merged.set(a.action, { days: [a.day], action: a.action, reason: a.reason })
+    }
+  }
+  return Array.from(merged.values())
+})
+
+function dayShort(d: string) {
+  return (d || '').slice(5).replace('-', '/')
+}
+
+function dayRange(days: string[]) {
+  if (!days.length) return ''
+  if (days.length === 1) return dayShort(days[0])
+  return `${dayShort(days[0])}–${dayShort(days[days.length - 1])}`
+}
+
+const nextOpen = ref(false)
+const nextSummary = computed(() => groupedActions.value.map((a) => a.action).join(' · '))
+/** 调整有时从今天就开始（饮水/运动当天生效），说「后 3 天」会让人以为今天没改 */
+const nextDayLabel = computed(() => {
+  const days = nextDays.value
+  if (!days.length) return ''
+  return days[0] === selected.value ? `今起 ${days.length} 天` : `后 ${days.length} 天`
+})
+
+// ---- 待处置偏离：只有「系统真能替你做点什么」才占位置 ----
+// 九项体检已经说了缺多少、现在做什么；这里只补可点的动作，和「关掉提醒」的出口。
+type DevGroup = dayApi.DayState['deviations'][number]
+const NON_ACTION_KINDS = new Set(['no_action', 'fix_plan', 'ask_reason'])
+const actionGroups = computed(() =>
+  openDeviations.value.filter((g) => g.options.some((o) => !NON_ACTION_KINDS.has(o.kind))))
+/** 已经在体检清单 / 结构行里讲过的指标，不许再冒一句「这次不用处理」——同一件事说两遍还互相打脸 */
+const coveredKeys = computed(() => {
+  const rows = new Set<string>()
+  for (const it of audit.value?.items || []) rows.add(it.key)
+  for (const st of summary.value?.diet?.structure || []) rows.add(st.key)
+  if (portionText.value) {
+    rows.add('fat')
+    rows.add('calorie')
+  }
+  return rows
+})
+const minorGroups = computed(() =>
+  openDeviations.value.filter(
+    (g) =>
+      !g.options.some((o) => !NON_ACTION_KINDS.has(o.kind)) &&
+      !coveredKeys.value.has(g.deviation.nutrient || ''),
+  ),
+)
+const minorNames = computed(() =>
+  minorGroups.value.map((g) => g.deviation.label).filter(Boolean).join('、'))
+/** 一行最多三个动作，推荐项排前面；其余收进「其他做法」 */
+function pickOptions(g: DevGroup) {
+  return [...g.options]
+    .sort((a, b) => Number(b.recommended) - Number(a.recommended))
+    .slice(0, 3)
+}
+const detailDev = ref<number | null>(null)
+const dismissing = ref(false)
+/** 低优先偏离一次关掉：留着一整排「这次不处置」，比不提醒还吵 */
+async function dismissMinor() {
+  dismissing.value = true
+  try {
+    for (const g of minorGroups.value) {
+      const opt = g.options.find((o) => o.kind === 'no_action') || g.options[0]
+      if (opt) await dayApi.applyDisposition(g.deviation.id, opt.kind, opt.payload || {})
+    }
+    ElMessage.success('已记下，不再提醒')
+    await Promise.all([load(), loadDayState()])
+  } catch {
+    /* 拦截器已提示 */
+  } finally {
+    dismissing.value = false
+  }
+}
+
+/** 偏离量的单位：钠是 mg，别写成 g（734 g 钠看着像能要人命） */
+function nutrientUnit(nutrient?: string) {
+  if (nutrient === 'calorie') return ' kcal'
+  if (nutrient === 'sodium') return ' mg'
+  return ' g'
+}
+
+/** 一次撤销这轮调整涉及的所有天：只撤一天会让后面几天的目标对不上 */
+async function doRevertAll() {
+  revertingAll.value = true
+  try {
+    for (const d of nextDays.value) {
+      await wellnessApi.revertAdapt(d)
+    }
+    ElMessage.success('已撤销这次自动调整，方案恢复原样')
+    await load()
+  } catch {
+    /* 拦截器已提示 */
+  } finally {
+    revertingAll.value = false
+  }
+}
+
 // ---- 偏离处置 / 当日模式 ----
 // 结论跟时间走：上午不判（还没吃完）、21:30 后只调明天，所以选项必须由后端按当前时刻算
 const dayState = ref<dayApi.DayState | null>(null)
@@ -722,6 +924,142 @@ onMounted(() => {
           </div>
         </div>
       </section>
+
+      <!-- ===== 今日体检：一条栏即可收起；收起时仍留着「几项没达标」的结论 ===== -->
+      <div v-if="audit || bands.length" class="fold" :class="{ on: checkOpen }">
+        <button class="fold-bar" :aria-expanded="checkOpen" @click="checkOpen = !checkOpen">
+          <span class="fold-l">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3.8a8.2 8.2 0 1 0 0 16.4 8.2 8.2 0 0 0 0-16.4z" />
+              <path d="M12 7.7v4.8l3.2 1.9" />
+            </svg>
+            今日体检
+            <i class="fold-num" :class="{ bad: auditFailed.length }">{{ auditBrief }}</i>
+          </span>
+          <span class="fold-r">
+            {{ checkOpen ? '收起' : '展开' }}
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6" /></svg>
+          </span>
+        </button>
+        <div v-show="checkOpen" class="panel on">
+          <div class="card check-card">
+            <!-- 当日模式：聚餐/生病/出差…只改今天的判定口径，第二天自动恢复 -->
+            <div class="ck-top">
+              <span v-if="currentMode" class="ck-mode-note">
+                今天按「{{ currentMode.label }}」判<em v-if="currentMode.note_text">：{{ currentMode.note_text }}</em>
+              </span>
+              <span v-else class="ck-mode-idle">今天按常规口径判</span>
+              <button class="ck-mode-btn" @click="modePickerOpen = true">
+                {{ currentMode ? '换一个' : '有特殊情况？' }}
+              </button>
+            </div>
+
+            <!-- 没达标：一项两行——差多少、现在做什么 -->
+            <div v-for="item in auditFailed" :key="item.key" class="ck-item" :class="item.severity">
+              <div class="ck-row">
+                <i class="ck-dot"></i>
+                <b class="ck-name">{{ item.label }}</b>
+                <span class="ck-gap">{{ item.gap_text }}</span>
+              </div>
+              <p v-if="item.now" class="ck-tip">{{ item.now }}</p>
+            </div>
+
+            <!-- 还没吃完的项：只解释为什么不判，不给建议 -->
+            <p v-if="auditPending.length" class="ck-note">
+              待吃完：{{ auditPending.map((i) => i.label).join('、') }}，打卡后再判，现在不算没达标
+            </p>
+            <p v-else-if="audit?.ok" class="ck-note ok">{{ audit?.headline }}</p>
+            <p v-if="!audit" class="ck-note">今天还没有可判定的记录</p>
+
+            <!-- 系统能替你做的那几个动作，点一下才落地；不做也是合法选项 -->
+            <div v-for="g in actionGroups" :key="g.deviation.id" class="ck-item ck-item-act">
+              <div class="ck-row">
+                <i class="ck-dot"></i>
+                <b class="ck-name">{{ g.deviation.label }}</b>
+                <span class="ck-gap">
+                  {{ g.deviation.kind === 'over' ? '超' : '少' }}
+                  {{ Math.abs(g.deviation.delta || 0) }}{{ nutrientUnit(g.deviation.nutrient) }}
+                </span>
+              </div>
+              <div class="ck-dev">
+                <div class="ck-chips">
+                  <button
+                    v-for="opt in pickOptions(g)"
+                    :key="opt.kind"
+                    class="ck-chip"
+                    :class="{ rec: opt.recommended, unsafe: !opt.safe }"
+                    :disabled="applyingKind === `${g.deviation.id}:${opt.kind}`"
+                    @click="runOption(g.deviation.id, opt)"
+                  >{{ opt.label }}</button>
+                  <button
+                    class="ck-chip more"
+                    @click="detailDev = detailDev === g.deviation.id ? null : g.deviation.id"
+                  >{{ detailDev === g.deviation.id ? '收起' : '其他做法' }}</button>
+                </div>
+                <div v-if="detailDev === g.deviation.id" class="ck-dev-detail">
+                  <div v-for="opt in g.options" :key="opt.kind" class="ck-dd">
+                    <b>{{ opt.label }}</b>
+                    <p>{{ opt.detail }}</p>
+                    <em v-for="(sf, i) in opt.safety" :key="i">{{ sf }}</em>
+                    <button @click="runOption(g.deviation.id, opt)">用这个</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 脂肪/碳水这类不进九项的偏差：一行说完 -->
+            <p v-if="portionText" class="ck-note">{{ portionText }}</p>
+            <p v-if="auditWarnings.length" class="ck-note">
+              略偏：{{ auditWarnings.map((i) => i.label).join('、') }}，问题不大
+            </p>
+
+            <!-- 低优先偏离：留一整排「这次不处置」比不提醒还吵，收成一行 -->
+            <p v-if="minorGroups.length" class="ck-note">
+              {{ minorNames }}这次不用处理
+              <button class="ck-link" :disabled="dismissing" @click="dismissMinor">知道了</button>
+            </p>
+
+            <!-- 后续调整：一句话摘要就够，原因点开再看；已生效才给撤销 -->
+            <div v-if="nextActions.length" class="ck-next">
+              <div class="ck-next-head" @click="nextOpen = !nextOpen">
+                <span class="ck-check">✓</span>
+                <b class="ck-next-label">{{ nextPlan?.applied ? `${nextDayLabel}已调整` : `准备调整${nextDayLabel}` }}</b>
+                <span class="ck-next-tools">
+                  <span class="ck-caret">{{ nextOpen ? '收起' : '为什么' }}</span>
+                  <span v-if="nextPlan?.applied" class="ck-caret danger" @click.stop="doRevertAll">撤销</span>
+                </span>
+              </div>
+              <p class="ck-next-text">{{ nextSummary }}</p>
+              <div v-if="nextOpen" class="ck-next-why">
+                <p v-for="(a, i) in groupedActions" :key="i">
+                  <b>{{ dayRange(a.days) }} · {{ a.action }}</b>——{{ a.reason }}
+                </p>
+                <p v-for="(n, i) in nextPlan?.notes || []" :key="'n' + i">{{ n }}</p>
+              </div>
+            </div>
+
+            <!-- 全部指标：数字和区间都在这里，默认收起，不跟上面的结论抢版面 -->
+            <div class="mx-toggle" @click="metricsOpen = !metricsOpen">
+              <span>全部指标明细</span>
+              <span class="ck-caret">{{ metricsOpen ? '收起' : '展开' }}</span>
+            </div>
+            <div v-if="metricsOpen" class="mx-list">
+              <div v-for="m in allMetrics" :key="m.key" class="mx-row" :class="m.cls">
+                <span class="mx-name">{{ m.label }}</span>
+                <span class="mx-val">{{ m.value }}<em>{{ m.unit }}</em></span>
+                <span class="mx-range">{{ m.range }}</span>
+                <span class="mx-st">{{ m.text }}</span>
+              </div>
+              <p v-if="summary?.intake?.estimated" class="mx-foot">
+                {{ summary.intake.note }}，记下实际吃了什么会更准。
+              </p>
+              <p class="mx-foot">
+                区间为推荐值；黄色=在浮动容忍内也算达标，红色=明显偏离。口径见「计划 → 每日目标」。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- ===== 打卡日历（紧贴主卡，可折叠） ===== -->
       <div class="fold cal-fold" :class="{ on: calendarOpen }">
@@ -2073,4 +2411,91 @@ onMounted(() => {
 .mode-item b { font-size: 13.5px; color: var(--ink); }
 .mode-item span { font-size: 11.5px; color: var(--muted); line-height: 1.5; }
 .mode-item.normal { border-style: dashed; background: transparent; }
+
+/* ============ 今日体检（沿用本页 token） ============ */
+.check-card { padding: 14px 16px; }
+.ck-top {
+  display: flex; align-items: center; gap: 8px;
+  padding-bottom: 9px; margin-bottom: 2px; border-bottom: 1px solid var(--line);
+}
+.ck-mode-idle { font-size: 11.5px; color: var(--muted); }
+.ck-mode-note { font-size: 11.5px; color: var(--ink-2); }
+.ck-mode-note em { font-style: normal; color: var(--muted); }
+.ck-mode-btn {
+  margin-left: auto; border: none; background: none; padding: 0;
+  font-size: 11.5px; color: var(--muted); cursor: pointer; text-decoration: underline;
+}
+.fold-num.bad { color: var(--red); }
+
+.ck-item { padding: 9px 0 8px; border-bottom: 1px dashed var(--line); }
+.ck-item:last-of-type { border-bottom: none; }
+.ck-row { display: flex; align-items: baseline; gap: 6px; }
+.ck-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--amber); flex: none; align-self: center; }
+.ck-item.high .ck-dot { background: var(--red); }
+.ck-item.low .ck-dot { background: var(--muted); opacity: 0.5; }
+.ck-name { font-size: 13px; font-weight: 600; color: var(--ink); }
+.ck-gap { margin-left: auto; font-size: 11.5px; color: var(--amber); font-variant-numeric: tabular-nums; }
+.ck-item.low .ck-gap { color: var(--muted); }
+.ck-tip { margin: 3px 0 0 11px; font-size: 12px; line-height: 1.5; color: var(--ink-2); }
+.ck-note { margin: 7px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--muted); }
+.ck-note.ok { color: #4f8a2b; }
+.ck-link {
+  border: none; background: none; padding: 0 0 0 4px;
+  font-size: 11.5px; color: var(--ink-2); cursor: pointer; text-decoration: underline;
+}
+.ck-caret { font-size: 11px; color: var(--muted); flex: none; cursor: pointer; }
+.ck-caret.danger { color: var(--red); }
+
+/* 可点的处置：一排小按钮，点了才落地 */
+.ck-item-act { padding-top: 8px; }
+.ck-dev { margin: 6px 0 0 11px; }
+.ck-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ck-chip {
+  border: 1px solid var(--line); background: var(--mint); color: var(--ink);
+  border-radius: 999px; padding: 3px 10px; font-size: 11.5px; cursor: pointer;
+}
+.ck-chip.rec { border-color: var(--mint-2); background: var(--mint-2); font-weight: 500; }
+.ck-chip.unsafe { opacity: 0.62; }
+.ck-chip.more { border-style: dashed; background: transparent; color: var(--muted); }
+.ck-chip:disabled { opacity: 0.5; }
+.ck-dev-detail {
+  margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line);
+  display: flex; flex-direction: column; gap: 7px;
+}
+.ck-dd b { font-size: 11.5px; color: var(--ink); }
+.ck-dd p { margin: 2px 0 0; font-size: 11px; line-height: 1.55; color: var(--muted); }
+.ck-dd em { display: block; font-style: normal; font-size: 10.5px; color: var(--amber); line-height: 1.5; }
+.ck-dd button {
+  margin-top: 4px; border: 1px solid var(--line); background: var(--surface);
+  border-radius: 999px; padding: 1px 10px; font-size: 11px; color: var(--ink-2); cursor: pointer;
+}
+
+/* 后续调整：一行摘要，原因点开再看 */
+.ck-next { margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--line); }
+.ck-next-head { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.ck-check { flex: none; font-size: 11.5px; color: #4f8a2b; }
+.ck-next-label { font-size: 11.5px; font-weight: 500; color: var(--ink-2); }
+.ck-next-tools { margin-left: auto; display: flex; gap: 8px; }
+.ck-next-text { margin: 3px 0 0 12px; font-size: 11.5px; line-height: 1.5; color: var(--muted); }
+.ck-next-why { margin: 5px 0 0 12px; }
+.ck-next-why p { margin: 3px 0 0; font-size: 11px; line-height: 1.55; color: var(--muted); }
+.ck-next-why b { font-weight: 500; color: var(--ink-2); }
+
+/* 全部指标：折叠的明细表 */
+.mx-toggle {
+  margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 11.5px; color: var(--muted); cursor: pointer;
+}
+.mx-row { display: flex; align-items: baseline; gap: 6px; padding: 3px 0; font-size: 11.5px; }
+.mx-name { width: 58px; flex: none; color: var(--ink-2); }
+.mx-val { width: 72px; flex: none; color: var(--ink); font-variant-numeric: tabular-nums; }
+.mx-val em { font-style: normal; font-size: 9.5px; color: var(--muted); margin-left: 3px; }
+.mx-range { flex: 1; font-size: 10.5px; color: var(--muted); }
+.mx-st { flex: none; font-size: 10.5px; color: var(--muted); }
+.mx-row.ok .mx-st { color: #4f8a2b; }
+.mx-row.warn .mx-st { color: var(--amber); }
+.mx-row.bad .mx-st { color: var(--red); }
+.mx-foot { margin: 5px 0 0; font-size: 10.5px; line-height: 1.55; color: var(--muted); }
+
 </style>
