@@ -79,6 +79,42 @@ ACTIVITY_LABEL = {
 }
 
 
+def _targets_text(profile_ctx: dict) -> str:
+    """当日七项硬区间
+
+    只给总热量时，模型会按自己的口味配「高蛋白高脂低碳」，复核按区间一卡就整份
+    拒收（蛋白 148 g / 脂肪 116 g 这种）。把区间原样写进提示词，一次就能排进去。
+    """
+    t = profile_ctx.get("targets") or {}
+    if not t:
+        return ""
+    parts: list[str] = []
+
+    def _span(lo_key: str, hi_key: str, label: str, unit: str) -> None:
+        lo, hi = t.get(lo_key), t.get(hi_key)
+        if lo is None or hi is None:
+            return
+        parts.append(f"{label} {float(lo):g}~{float(hi):g} {unit}")
+
+    _span("calorie_min", "calorie_max", "热量", "kcal")
+    _span("protein_min_g", "protein_max_g", "蛋白质", "g")
+    _span("fat_min_g", "fat_max_g", "脂肪", "g")
+    _span("carb_min_g", "carb_max_g", "碳水", "g")
+    if t.get("fiber_min_g") is not None:
+        parts.append(f"膳食纤维 ≥{float(t['fiber_min_g']):g} g")
+    if t.get("sodium_max_mg") is not None:
+        parts.append(f"钠 ≤{float(t['sodium_max_mg']):g} mg")
+    if not parts:
+        return ""
+    return (
+        "- 当日七项硬区间（四餐累加后必须同时落在区间内，超一点都不行）："
+        + "、".join(parts)
+        + "\n"
+        + "- 搭配要求：每餐「主食 + 优质蛋白 + 蔬菜」组合，全天菜品 ≥10 种；"
+        + "不要堆大份肉菜或油炸菜凑热量，蛋白别超过每公斤体重 1.6 g\n"
+    )
+
+
 def build_plan_messages(profile_ctx: dict, days: int, note: str = "") -> list[dict]:
     """
     构造方案生成的消息列表
@@ -101,17 +137,17 @@ def build_plan_messages(profile_ctx: dict, days: int, note: str = "") -> list[di
       "day_index": 1,
       "theme": "当天主题",
       "meals": [
-        {{"meal_type": "breakfast", "items": [{{"name": "菜名", "portion_g": 克数}}], "calories": 本餐热量}},
-        {{"meal_type": "lunch", "items": [{{"name": "菜名", "portion_g": 克数}}], "calories": 本餐热量}},
-        {{"meal_type": "dinner", "items": [{{"name": "菜名", "portion_g": 克数}}], "calories": 本餐热量}},
-        {{"meal_type": "snack", "items": [{{"name": "菜名", "portion_g": 克数}}], "calories": 本餐热量}}
+        {{"meal_type": "breakfast", "items": [{{"name": "菜名", "portion_g": 克数, "ingredients": ["食材1", "食材2"]}}], "calories": 本餐热量}},
+        {{"meal_type": "lunch", "items": [{{"name": "菜名", "portion_g": 克数, "ingredients": ["食材1", "食材2"]}}], "calories": 本餐热量}},
+        {{"meal_type": "dinner", "items": [{{"name": "菜名", "portion_g": 克数, "ingredients": ["食材1", "食材2"]}}], "calories": 本餐热量}},
+        {{"meal_type": "snack", "items": [{{"name": "菜名", "portion_g": 克数, "ingredients": ["食材1", "食材2"]}}], "calories": 本餐热量}}
       ],
       "exercise": {{"type": "运动名", "duration_min": 分钟, "calories_burned": 消耗千卡, "tips": "一句话要领"}}
     }}
   ]
 }}
 
-要求：每天 4 餐、每餐 1 道主菜；tips 不超过 15 字；只输出 JSON。"""
+要求：每天 4 餐、每餐 1 道主菜；每道菜的 ingredients 列 2~6 种主要食材（不含油盐酱醋等调味料）；tips 不超过 15 字；只输出 JSON。"""
 
     user = f"""【用户档案】
 - 身高：{profile_ctx.get('height_cm', '未填')} cm，体重：{profile_ctx.get('weight_kg', '未填')} kg，BMI：{profile_ctx.get('bmi', '未填')}
@@ -119,7 +155,7 @@ def build_plan_messages(profile_ctx: dict, days: int, note: str = "") -> list[di
 - 活动水平：{ACTIVITY_LABEL.get(profile_ctx.get('activity_level', ''), profile_ctx.get('activity_level', '未填'))}
 - 目标：{GOAL_LABEL.get(profile_ctx.get('goal', ''), profile_ctx.get('goal', '未填'))}
 - 每日热量目标：约 {profile_ctx.get('daily_target_calories', 2000)} 千卡（已按科学公式算好，允许 ±10% 微调）
-- 口味偏好（优先满足）：{('、'.join(profile_ctx.get('taste_preferences', [])) or '无')}
+{_targets_text(profile_ctx)}- 口味偏好（优先满足）：{('、'.join(profile_ctx.get('taste_preferences', [])) or '无')}
 - 饮食禁忌（必须绝对排除）：{('、'.join(profile_ctx.get('dietary_restrictions', [])) or '无')}
 - 运动偏好（优先安排）：{('、'.join(profile_ctx.get('exercise_preferences', [])) or '无')}
 - 用户补充要求：{note or '无'}
@@ -138,7 +174,7 @@ def _profile_text(profile_ctx: dict, note: str = "") -> str:
 - 活动水平：{ACTIVITY_LABEL.get(profile_ctx.get('activity_level', ''), profile_ctx.get('activity_level', '未填'))}
 - 目标：{GOAL_LABEL.get(profile_ctx.get('goal', ''), profile_ctx.get('goal', '未填'))}
 - 每日热量目标：约 {profile_ctx.get('daily_target_calories', 2000)} 千卡（允许 ±10% 微调）
-- 口味偏好（优先满足）：{('、'.join(profile_ctx.get('taste_preferences', [])) or '无')}
+{_targets_text(profile_ctx)}- 口味偏好（优先满足）：{('、'.join(profile_ctx.get('taste_preferences', [])) or '无')}
 - 饮食禁忌（必须绝对排除）：{('、'.join(profile_ctx.get('dietary_restrictions', [])) or '无')}
 - 运动偏好（优先安排）：{('、'.join(profile_ctx.get('exercise_preferences', [])) or '无')}
 - 用户补充要求：{note or '无'}"""
@@ -160,16 +196,17 @@ def build_day_messages(profile_ctx: dict, day_index: int, days: int,
 3.【渐进式】第 1 天热量接近当前水平，逐日向目标靠近；运动强度逐日递增
 4.【精简】每餐只 1 道主菜，不要"套餐名"
 5.【不重复】尽量避开前面已用过的菜：{used_txt}
+6.【食材】每道菜的 ingredients 列 2~6 种主要食材，不含油盐酱醋等调味料
 
 输出格式（严格照抄字段名）：
 {{
   "day_index": {day_index},
   "theme": "当天主题",
   "meals": [
-    {{"meal_type": "breakfast", "items": [{{"name": "菜名", "portion_g": 克数}}], "calories": 本餐热量}},
-    {{"meal_type": "lunch", "items": [{{"name": "菜名", "portion_g": 克数}}], "calories": 本餐热量}},
-    {{"meal_type": "dinner", "items": [{{"name": "菜名", "portion_g": 克数}}], "calories": 本餐热量}},
-    {{"meal_type": "snack", "items": [{{"name": "菜名", "portion_g": 克数}}], "calories": 本餐热量}}
+    {{"meal_type": "breakfast", "items": [{{"name": "菜名", "portion_g": 克数, "ingredients": ["食材1", "食材2"]}}], "calories": 本餐热量}},
+    {{"meal_type": "lunch", "items": [{{"name": "菜名", "portion_g": 克数, "ingredients": ["食材1", "食材2"]}}], "calories": 本餐热量}},
+    {{"meal_type": "dinner", "items": [{{"name": "菜名", "portion_g": 克数, "ingredients": ["食材1", "食材2"]}}], "calories": 本餐热量}},
+    {{"meal_type": "snack", "items": [{{"name": "菜名", "portion_g": 克数, "ingredients": ["食材1", "食材2"]}}], "calories": 本餐热量}}
   ],
   "exercise": {{"type": "运动名", "duration_min": 分钟, "calories_burned": 消耗千卡, "tips": "一句话"}}
 }}
@@ -299,3 +336,50 @@ def build_checkin_praise_messages(ctx: dict) -> list[dict]:
     lines.append("请输出点评（1~2 句，25~60 字）。")
     return [{"role": "system", "content": system},
             {"role": "user", "content": "\n".join(lines)}]
+
+
+# ---------- 体检报告识别 ----------
+
+# 目录里的 18 项，写进 prompt 让模型知道该找什么（但 name 仍要求照抄报告原文，
+# 映射交回后端别名表做，避免模型把「丙氨酸氨基转移酶」硬猜成某个 key）
+CHECKUP_ITEM_HINTS = (
+    "身高、体重、BMI、体脂率、基础代谢、腰围；空腹血糖、糖化血红蛋白、尿酸、"
+    "总胆固醇、甘油三酯、低密度脂蛋白、高密度脂蛋白；谷丙转氨酶、谷草转氨酶、"
+    "肌酐、尿素氮；血红蛋白、促甲状腺激素"
+)
+
+
+def build_checkup_prompt(report_text: str = "") -> str:
+    """体检报告抽取提示词。
+
+    接的是化验单/体检单，字小、项目名带英文缩写、单位五花八门，所以强调三件事：
+    照抄原文、不补全、看不清就跳过。换算与校验一律在后端做，不让模型算。
+    """
+    source = "下面是从 PDF 里抽出的报告文字：" if report_text else "图片是一份体检/化验报告。"
+    body = f"\n{report_text}\n" if report_text else ""
+    return f"""你是体检报告结构化助手。{source}{body}
+请把报告上能看清的检查项逐项抽出来，严格只输出一个 JSON 对象，不要解释、不要 markdown 代码块。
+
+关注这些项目（报告里常见，但不是每个都有）：
+{CHECKUP_ITEM_HINTS}
+
+规则：
+1. 只抽报告上真实出现的项和你真实看清的数值，绝对不要推算、补全或编造。
+2. name 照抄报告原文，包括括号里的英文缩写（如「谷丙转氨酶(ALT)」「GLU」），不要改写成别的名字。
+3. value 只保留数字：不带单位、箭头、星号、正负号；写成「<0.5」时填 0.5；写成「5.2 ↑」时填 5.2。
+4. unit 照抄报告上的单位（mmol/L、μmol/L、U/L、g/L、g/dL、%、mg/dL 等）。
+5. 只有项目名没有数值、或被遮挡看不清的，直接跳过这一项，不要猜。
+6. report_date 用 YYYY-MM-DD；hospital 是体检机构或医院名称。看不出来就留空字符串。
+7. 如果这张图明显不是体检报告（自拍、食物、风景等），is_report 填 false、items 给空数组。
+8. 最多输出 20 项，优先上面列举的项目（输出过长会被截断，反而丢数据）。
+
+输出格式：
+{{
+  "is_report": true,
+  "report_date": "2026-09-08",
+  "hospital": "XX 市第一人民医院",
+  "items": [
+    {{"name": "谷丙转氨酶(ALT)", "value": 32, "unit": "U/L"}},
+    {{"name": "空腹血糖", "value": 5.4, "unit": "mmol/L"}}
+  ]
+}}"""

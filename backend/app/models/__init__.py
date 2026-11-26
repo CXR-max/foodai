@@ -29,6 +29,10 @@ from app.models.achievement import Achievement, UserAchievement
 from app.models.weekly_report import WeeklyReportCache
 from app.models.sleep_log import SleepLog
 from app.models.water_log import WaterLog
+from app.models.territory import (TerritoryCell, TerritoryChallenge, TerritoryEvent,
+                                  TerritoryPref, TerritoryRun, UserFriend)
+# 体检报告（个人化分析的基线数据）
+from app.models.checkup import Checkup
 # 手环接入（融合自 feat/personalized-burn）：设备登记 / 每日指标 / 分钟级实时样本
 from app.models.device import Device, DeviceMetric, DeviceSample
 from app.models.food import (
@@ -49,6 +53,9 @@ __all__ = [
     "Achievement", "UserAchievement", "UserFace", "PlanConstraintState",
     "WeeklyReportCache",
     "SleepLog", "WaterLog",
+    "TerritoryCell", "TerritoryRun", "TerritoryPref", "TerritoryEvent",
+    "TerritoryChallenge", "UserFriend",
+    "Checkup",
     "Device", "DeviceMetric", "DeviceSample",
     "Food", "FoodAlias", "FoodRelation", "FoodIngredient",
     "FoodRecipe", "FoodRecipeItem", "ImportBatch",

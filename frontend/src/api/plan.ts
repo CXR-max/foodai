@@ -4,6 +4,7 @@ import { del, get, post, put } from './http'
 export interface PlanMealItem {
   name: string
   portion_g: number
+  ingredients?: string[]  // 主要食材，购物清单按它聚合；老数据可能为空
   category?: string | null
   calories?: number      // 后端按营养库重算后回填
   protein_g?: number

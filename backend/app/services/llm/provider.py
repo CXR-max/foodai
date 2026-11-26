@@ -47,6 +47,20 @@ class FallbackProvider(LLMProvider):
             logger.warning("真模型识别失败，降级 mock：%s", e)
             return self.mock.recognize_food(image_bytes, content_type, profile_ctx)
 
+    def recognize_checkup(self, image_bytes: bytes | None = None,
+                          content_type: str = "image/jpeg",
+                          report_text: str = ""):
+        """体检报告识别：**不降级 mock**。
+
+        菜品识别错顶多热量估偏，体检数值错会写进健康档案、影响方案目标，
+        所以这里失败就如实报错，让用户改用手动填写。
+        """
+        try:
+            return self.real.recognize_checkup(image_bytes, content_type, report_text)
+        except FALLBACK_ERRORS as e:
+            logger.error("体检报告识别失败（不降级 mock）：%s", e)
+            raise LLMError(f"体检报告识别失败：{e}") from e
+
     def generate_plan(self, profile_ctx: dict, days: int, note: str = ""):
         try:
             return self.real.generate_plan(profile_ctx, days, note)
@@ -148,6 +162,14 @@ class SolverProvider(MockProvider):
     def recognize_food(self, image_bytes: bytes, content_type: str, profile_ctx: dict | None = None):
         result = self.base.recognize_food(image_bytes, content_type, profile_ctx)
         self._used = self.base.active_name   # 兜底到 mock 时如实标注
+        return result
+
+    def recognize_checkup(self, image_bytes: bytes | None = None,
+                          content_type: str = "image/jpeg",
+                          report_text: str = ""):
+        """体检识别与方案求解器无关，原样转发给底层 Provider（失败照实抛出）"""
+        result = self.base.recognize_checkup(image_bytes, content_type, report_text)
+        self._used = self.base.active_name
         return result
 
     def generate_plan(self, profile_ctx: dict, days: int, note: str = ""):

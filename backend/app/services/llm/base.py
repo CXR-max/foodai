@@ -98,6 +98,18 @@ class LLMProvider(ABC):
     ):
         """识别食物图片，返回 VisionRecognitionResult（不含营养值，营养由营养库算）"""
 
+    def recognize_checkup(self, image_bytes: bytes | None = None,
+                          content_type: str = "image/jpeg",
+                          report_text: str = ""):
+        """识别体检报告，返回 CheckupScanResult。
+
+        默认实现直接报错，**不允许任何实现返回编造的数据**：
+        体检数值会进用户健康档案并影响方案，假数据比没有数据更危险。
+        Mock 模式拿不到这项能力时，前端应退回手动填写。
+        """
+        raise LLMError("当前模型不可用，无法识别体检报告")
+
+
     @abstractmethod
     def generate_plan(self, profile_ctx: dict, days: int, note: str = ""):
         """生成养生方案，返回 PlanResult"""

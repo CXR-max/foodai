@@ -40,17 +40,21 @@ def validate_image(image_bytes: bytes) -> tuple[int, int]:
     return width, height
 
 
-def compress_for_vision(image_bytes: bytes, content_type: str) -> tuple[bytes, str]:
-    """压缩图片；返回 (新字节, 新content_type)。压不小或出错则返回原图。"""
+def compress_for_vision(image_bytes: bytes, content_type: str,
+                        max_edge: int = MAX_EDGE, quality: int = JPEG_QUALITY) -> tuple[bytes, str]:
+    """压缩图片；返回 (新字节, 新content_type)。压不小或出错则返回原图。
+
+    max_edge/quality 可覆盖：菜品用 1024 足够，体检化验单小字要 1600 才认得出。
+    """
     try:
         img = Image.open(io.BytesIO(image_bytes))
         img = ImageOps.exif_transpose(img)          # 手机照片的旋转标记转正
         if img.mode not in ("RGB", "L"):
             img = img.convert("RGB")
-        if max(img.size) > MAX_EDGE:
-            img.thumbnail((MAX_EDGE, MAX_EDGE))
+        if max(img.size) > max_edge:
+            img.thumbnail((max_edge, max_edge))
         buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=JPEG_QUALITY, optimize=True)
+        img.save(buf, format="JPEG", quality=quality, optimize=True)
         out = buf.getvalue()
         if len(out) >= len(image_bytes):
             return image_bytes, content_type        # 压不动就保留原图

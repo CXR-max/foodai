@@ -86,27 +86,100 @@ onMounted(load)
 </template>
 
 <style scoped>
-.m-page { display: flex; flex-direction: column; gap: 12px; }
-.block-title { font-size: 14px; font-weight: 600; color: #303133; margin: 4px 2px 8px; display: flex; align-items: center; gap: 6px; }
-.card { background: #fff; border-radius: 12px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
-.card.muted { background: #fafafa; }
-.rank { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px dashed #f0f0f0; font-size: 13px; }
+/* ============ 设计 token（仅本页作用域，不动全局样式） ============ */
+.m-page {
+  --paper: #f0f7de;
+  --teal: #c2e07c;
+  --mint: #e9f3cc;
+  --mint-2: #d3e79f;
+  --ink: #171a14;
+  --ink-2: #3f4639;
+  --muted: #6d7565;
+  --line: #e6edd6;
+  --amber: #b8791a;
+  --r-lg: 22px;
+  --r-md: 16px;
+  --shadow: 0 10px 28px rgba(28, 36, 22, 0.07);
+
+  display: flex; flex-direction: column; gap: 12px;
+  margin: -10px 0 calc(-70px - env(safe-area-inset-bottom, 0px));
+  padding: 10px 0 calc(72px + env(safe-area-inset-bottom, 0px));
+  min-height: calc(100vh - 52px);
+  background: var(--paper);
+  box-shadow: 0 0 0 10px var(--paper);
+  color: var(--ink);
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'HarmonyOS Sans SC',
+    'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.block-title {
+  font-size: 14.5px; font-weight: 800; color: var(--ink);
+  margin: 8px 4px 8px; display: flex; align-items: center; gap: 6px;
+}
+.card {
+  background: #fff;
+  border-radius: var(--r-lg);
+  padding: 10px 14px;
+  box-shadow: var(--shadow);
+}
+.card.muted { background: var(--mint); }
+
+/* ---------- 排行榜 ---------- */
+.rank {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0; border-bottom: 1px dashed var(--line); font-size: 13px;
+}
 .rank:last-child { border-bottom: none; }
-.rank.me { background: #f7faf4; margin: 0 -14px; padding: 8px 14px; }
-.medal { width: 22px; text-align: center; color: #909399; font-size: 13px; }
-.name { flex: 1; color: #303133; display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pts { color: #4f9d2f; }
+.rank.me {
+  background: var(--mint);
+  margin: 0 -14px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  border-bottom: none;
+}
+.medal { width: 22px; text-align: center; color: var(--muted); font-size: 13px; }
+.name {
+  flex: 1; color: var(--ink); display: flex; align-items: center; gap: 6px;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pts { color: #5f7a1f; font-variant-numeric: tabular-nums; font-weight: 800; }
+
+/* ---------- 奖励 ---------- */
 .reward-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .reward {
   background: #fff;
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-radius: var(--r-md);
+  padding: 14px 12px;
+  box-shadow: var(--shadow);
   text-align: center;
+  transition: transform 0.15s;
 }
+.reward:active { transform: scale(0.97); }
 .reward-icon { font-size: 22px; }
-.reward-name { font-size: 13px; color: #303133; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.reward-cost { font-size: 12px; color: #e6a23c; margin-top: 2px; }
-.hint { font-size: 12px; color: #a8abb2; margin: 0; line-height: 1.7; }
-.skeleton { font-size: 13px; color: #909399; padding: 16px; text-align: center; }
+.reward-name {
+  font-size: 13px; color: var(--ink); margin-top: 4px;
+  font-weight: 700;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.reward-cost { font-size: 12px; color: var(--amber); margin-top: 2px; font-weight: 700; }
+.hint { font-size: 12px; color: var(--muted); margin: 0; line-height: 1.75; }
+.skeleton { font-size: 13px; color: var(--muted); padding: 16px; text-align: center; }
+
+/* 标签 / 文字按钮 / 空状态：跟随本页配色 */
+.m-page :deep(.el-tag) {
+  --el-tag-bg-color: var(--mint);
+  --el-tag-border-color: var(--mint-2);
+  --el-tag-text-color: var(--ink-2);
+  border-radius: 8px;
+}
+.m-page :deep(.el-button.is-link) {
+  --el-button-text-color: #5f7a1f;
+  --el-button-hover-link-text-color: var(--ink);
+  font-weight: 700;
+}
+.m-page :deep(.el-empty) { padding: 14px 0; }
+.m-page :deep(.el-empty__description p) { font-size: 12.5px; color: var(--muted); }
 </style>

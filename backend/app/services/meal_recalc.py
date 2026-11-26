@@ -35,6 +35,8 @@ def item_nutrition(item: dict) -> dict:
     return {
         "name": name,
         "portion_g": portion,
+        # 购物清单靠它聚合：这里重建字典，别把上游 LLM/求解器给的食材抹掉
+        "ingredients": item.get("ingredients") or [],
         "calories": round(calc["calories"], 1),
         "protein_g": round(calc["protein_g"], 1),
         "fat_g": round(calc["fat_g"], 1),
