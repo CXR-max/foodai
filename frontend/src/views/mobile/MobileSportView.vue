@@ -8,6 +8,8 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as workoutApi from '@/api/workout'
 import type { WorkoutItem, WorkoutStats } from '@/api/workout'
+import * as territoryApi from '@/api/territory'
+import type { TerritoryMe } from '@/api/territory'
 import * as planApi from '@/api/plan'
 import type { PlanDay, PlanTargets } from '@/api/plan'
 import * as checkinApi from '@/api/checkin'
@@ -37,6 +39,7 @@ const stats = ref<WorkoutStats | null>(null)
 const items = ref<WorkoutItem[]>([])
 const total = ref(0)
 const loading = ref(true)
+const territory = ref<TerritoryMe | null>(null)
 /** 今天的方案运动任务是否已完成（避免“按处方完成”重复落记录） */
 const rxDone = ref(false)
 
@@ -89,16 +92,18 @@ function intensityLabel(v?: string | null) {
 async function loadAll() {
   loading.value = true
   try {
-    const [s, list, plan, dayTasks] = await Promise.all([
+    const [s, list, plan, dayTasks, terr] = await Promise.all([
       workoutApi.getWorkoutStats().catch(() => null),
       workoutApi.listWorkouts({ range: 'all', limit: 30 }).catch(() => ({ total: 0, items: [] })),
       planApi.getActivePlan().catch(() => null),
       checkinApi.getDay().catch(() => null),
+      territoryApi.getTerritoryMe().catch(() => null),
     ])
     stats.value = s
     items.value = list.items
     total.value = list.total
     active.value = plan as any
+    territory.value = terr as any
     const taskItems = (dayTasks as any)?.items || []
     rxDone.value = taskItems.some((it: any) => it.task_key === 'exercise' && it.status === 'done')
   } finally {
@@ -109,6 +114,21 @@ async function loadAll() {
 function goRun() {
   router.push({ path: '/workout/run', query: { sport: sport.value } })
 }
+
+function openTerritory() {
+  router.push('/territory')
+}
+
+const territoryAreaNumber = computed(() => {
+  const m2 = territory.value?.area_m2 || 0
+  return m2 >= 10000 ? (m2 / 10000).toFixed(2) : `${Math.round(m2)}`
+})
+const territoryAreaUnit = computed(() => ((territory.value?.area_m2 || 0) >= 10000 ? '万㎡' : '㎡'))
+const territoryBlockArea = computed(() => {
+  const m2 = territory.value?.largest_block_area_m2 || 0
+  if (m2 >= 10000) return `${(m2 / 10000).toFixed(2)} 万㎡`
+  return `${Math.round(m2)} ㎡`
+})
 
 function openDetail(it: WorkoutItem) {
   // 手动补录没有轨迹，但详情页支持无轨迹展示和删除，不能只让轨迹记录可点
@@ -214,6 +234,35 @@ onMounted(loadAll)
 
 <template>
   <div class="m-page">
+    <!-- 领地地图：运动页第一屏，不再是单独入口 -->
+    <div class="territory-hero" @click="openTerritory">
+      <iframe
+        class="territory-frame"
+        src="/territory?embed=1"
+        title="我的领地"
+        scrolling="no"
+        tabindex="-1"
+      />
+      <div class="territory-shade" />
+      <div class="territory-hero-info">
+        <div class="hero-top">
+          <span class="hero-kicker">我的领地</span>
+          <span class="hero-live" :class="{ off: !territory?.enabled }">
+            {{ territory?.enabled ? 'LIVE' : '未开启' }}
+          </span>
+        </div>
+        <div class="hero-num">
+          {{ territoryAreaNumber }}<small>{{ territoryAreaUnit }}</small>
+          <span v-if="territory?.enabled" class="hero-area">第 {{ territory.rank }} 名</span>
+        </div>
+        <div class="hero-meta">
+          {{ territory?.enabled
+            ? `连片 ${territoryBlockArea} · 每次跑步自动上传`
+            : '跑过的路会变成你的地盘，点一下开启' }}
+        </div>
+        <span class="hero-cta">{{ territory?.enabled ? '查看地图' : '开启领地跑' }} ›</span>
+      </div>
+    </div>
     <!-- 今日消耗 -->
     <div class="hero">
       <div class="hero-label">今日运动消耗</div>
@@ -453,6 +502,43 @@ onMounted(loadAll)
   font-size: 14px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 领地跑英雄卡（本地功能，保留） ---------- */
+.territory-hero {
+  position: relative; height: 196px; border-radius: 18px; overflow: hidden;
+  background: linear-gradient(135deg, #dfe9f5, #eef4e8);
+  box-shadow: 0 8px 24px rgba(31, 45, 61, 0.12);
+}
+.territory-frame {
+  position: absolute; inset: -2px; width: calc(100% + 4px); height: calc(100% + 4px);
+  border: 0; pointer-events: none;
+}
+.territory-shade {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.02) 20%, rgba(15, 23, 42, 0.68) 100%);
+}
+.territory-hero-info {
+  position: absolute; left: 16px; right: 16px; bottom: 13px; color: #fff;
+}
+.hero-top { display: flex; align-items: center; justify-content: space-between; }
+.hero-kicker { font-size: 9px; letter-spacing: 2px; opacity: 0.8; }
+.hero-live {
+  font-size: 9px; letter-spacing: 1px; font-weight: 700;
+  background: rgba(34, 197, 94, 0.9); color: #fff;
+  border-radius: 4px; padding: 2px 6px;
+}
+.hero-live.off { background: rgba(255, 255, 255, 0.28); }
+.hero-num { font-size: 32px; font-weight: 700; line-height: 1.05; margin-top: 2px; }
+.hero-num small { font-size: 12px; font-weight: 400; margin-left: 2px; opacity: 0.9; }
+.hero-area { font-size: 12px; font-weight: 500; margin-left: 8px; opacity: 0.9; }
+.hero-meta { font-size: 11px; opacity: 0.88; margin-top: 2px; }
+.hero-cta {
+  display: inline-flex; align-items: center; gap: 2px;
+  margin-top: 7px;
+  font-size: 11px; font-weight: 600; color: #fff;
+  background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 14px; padding: 4px 9px; backdrop-filter: blur(4px);
 }
 
 /* ---------- 今日消耗：柠檬绿主卡 ---------- */

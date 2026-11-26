@@ -15,7 +15,7 @@ from app.db.session import SessionLocal
 from app.models.reward import Reward
 from app.routers import (
     achievements, auth, checkins, checkups, coach, daily, devices, face, food_records, foods,
-    plans, points, profile, recognitions, rewards, stats, wellness, workouts,
+    friends, plans, points, profile, recognitions, rewards, stats, territory, wellness, workouts,
 )
 from app.services.achievement_seed import seed_achievements
 from app.services.food_seed import seed_foods_if_empty
@@ -54,12 +54,28 @@ def seed_rewards():
 def ensure_face_workout_tables():
     """启动时自建人脸底库表与运动记录表（结构直接取自模型定义，避免手写 SQL 对不上）"""
     from app.db.session import Base, engine
+    from app.models.territory import (TerritoryCell, TerritoryChallenge, TerritoryEvent,
+                                      TerritoryPref, TerritoryRun, UserFriend)
     from app.models.user_face import UserFace  # noqa: F401
     from app.models.workout import Workout  # noqa: F401
     try:
-        Base.metadata.create_all(bind=engine, tables=[UserFace.__table__, Workout.__table__])
+        Base.metadata.create_all(bind=engine, tables=[
+            UserFace.__table__, Workout.__table__,
+            TerritoryCell.__table__, TerritoryRun.__table__,
+            TerritoryPref.__table__, TerritoryEvent.__table__, UserFriend.__table__,
+            TerritoryChallenge.__table__,
+        ])
+        # 老库补列：create_all 不会给已存在的表加字段
+        from sqlalchemy import text
+        with engine.begin() as conn:
+            cols = [r[1] for r in conn.execute(text("PRAGMA table_info(territory_prefs)"))]
+            if cols and "color" not in cols:
+                conn.execute(text("ALTER TABLE territory_prefs ADD COLUMN color VARCHAR(16)"))
+            run_cols = [r[1] for r in conn.execute(text("PRAGMA table_info(territory_runs)"))]
+            if run_cols and "cells_cut" not in run_cols:
+                conn.execute(text("ALTER TABLE territory_runs ADD COLUMN cells_cut INTEGER DEFAULT 0"))
     except Exception as e:  # noqa: BLE001
-        logger.warning("人脸/运动表初始化跳过：%s", e)
+        logger.warning("人脸/运动/领地表初始化跳过：%s", e)
 
 
 @asynccontextmanager
@@ -116,8 +132,8 @@ app.mount("/uploads", StaticFiles(directory=str(settings.UPLOAD_DIR)), name="upl
 
 # 业务路由，统一挂 /api 前缀
 for r in (auth, profile, recognitions, food_records, foods, plans, checkins, daily,
-          wellness, face, workouts, stats, points, rewards, achievements, devices, coach,
-          checkups):
+          wellness, face, workouts, territory, friends, stats, points, rewards, achievements,
+          devices, coach, checkups):
     app.include_router(r.router, prefix="/api")
 
 

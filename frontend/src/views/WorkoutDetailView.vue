@@ -5,6 +5,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as workoutApi from '@/api/workout'
 import type { WorkoutDetail } from '@/api/workout'
+import * as territoryApi from '@/api/territory'
+import type { TerritoryRun } from '@/api/territory'
 import TrackMap from '@/components/TrackMap.vue'
 import {
   fmtDistance, fmtDuration, fmtPace, fmtSpeed, fmtWhen, isRide, paceColor, paceToSpeed, sportIcon,
@@ -24,6 +26,7 @@ function backToList() {
 const w = ref<WorkoutDetail | null>(null)
 const loading = ref(true)
 const showBurn = ref(false)
+const territoryRun = ref<TerritoryRun | null>(null)
 
 const dist = computed(() => fmtDistance(w.value?.distance_m || 0))
 const ride = computed(() => isRide(w.value?.sport_type || ''))
@@ -77,6 +80,7 @@ async function load() {
   loading.value = true
   try {
     w.value = await workoutApi.getWorkout(id)
+    territoryRun.value = await territoryApi.getTerritoryRun(id).catch(() => null)
   } catch {
     ElMessage.error('运动记录不存在')
     backToList()
@@ -117,6 +121,16 @@ async function share() {
   }
 }
 
+function openTerritory() {
+  if (!w.value?.has_track) return
+  router.push({ path: '/territory', query: { run: String(w.value.id) } })
+}
+
+function fmtArea(m2: number) {
+  if (m2 >= 10000) return `${(m2 / 10000).toFixed(2)} 万㎡`
+  return `${Math.round(m2)} ㎡`
+}
+
 onMounted(load)
 </script>
 
@@ -126,6 +140,7 @@ onMounted(load)
       <button class="head-back" @click="router.back()">‹</button>
       <span class="head-title">运动报告</span>
       <button class="head-act" @click="share">分享</button>
+      <button v-if="w?.has_track" class="head-act" @click="openTerritory">领地</button>
       <button class="head-del" @click="remove">删除</button>
     </header>
 
@@ -142,6 +157,24 @@ onMounted(load)
       <div v-else class="no-track">
         <span>{{ sportIcon(w.sport_type) }}</span>
         <p>本次运动没有轨迹（{{ w.source === 'manual' ? '手动补录' : w.source === 'band' ? '手环导入' : '未采集到定位' }}）</p>
+      </div>
+
+      <!-- 这次跑步对领地的影响：把运动报告和地图接起来 -->
+      <div v-if="territoryRun?.valid" class="territory-result" @click="openTerritory">
+        <div class="tr-left">
+          <span class="tr-kicker">TERRITORY UPDATED</span>
+          <b v-if="territoryRun.area_new_m2 > 0">+{{ fmtArea(territoryRun.area_new_m2) }}</b>
+          <b v-else>领地已更新</b>
+          <span v-if="territoryRun.area_cut_m2" class="tr-sub">切走 {{ fmtArea(territoryRun.area_cut_m2) }}</span>
+        </div>
+        <span class="tr-cta">看地图 ›</span>
+      </div>
+      <div v-else-if="territoryRun && !territoryRun.valid" class="territory-result muted">
+        <div class="tr-left">
+          <span class="tr-kicker">NO TERRITORY</span>
+          <b>{{ territoryRun.reason?.includes('太大') ? '圈太大' : '本次不计领地' }}</b>
+          <span class="tr-sub">{{ territoryRun.reason || '跑一个闭环再来' }}</span>
+        </div>
       </div>
 
       <!-- 核心四格 -->
@@ -281,6 +314,26 @@ onMounted(load)
 }
 .no-track span { font-size: 34px; }
 .no-track p { margin: 8px 0 0; font-size: 13px; }
+
+.territory-result {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 10px; padding: 12px 14px;
+  background: linear-gradient(135deg, #101828, #23324a);
+  border-radius: 14px; color: #fff;
+  box-shadow: 0 6px 18px rgba(16, 24, 40, 0.18);
+}
+.tr-left { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.tr-kicker {
+  width: 100%; font-size: 8px; letter-spacing: 1.6px;
+  color: rgba(255, 255, 255, 0.55); margin-bottom: 2px;
+}
+.tr-left b { font-size: 22px; line-height: 1; }
+.tr-sub { font-size: 10px; color: rgba(255, 255, 255, 0.7); }
+.tr-cta { font-size: 11px; color: #fff; background: rgba(255, 255, 255, 0.14); border-radius: 12px; padding: 5px 9px; }
+.territory-result.muted { background: #f5f6f8; color: #606266; box-shadow: none; }
+.territory-result.muted .tr-kicker { color: #a8abb2; }
+.territory-result.muted .tr-left b { font-size: 15px; }
+.territory-result.muted .tr-sub { color: #909399; }
 
 .cards {
   display: grid;

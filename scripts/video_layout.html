@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: 'YaHei'; src: local('Microsoft YaHei'); }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: #0a1210; }
+  body { font-family: 'Microsoft YaHei', 'PingFang SC', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+
+  /* 背景 */
+  .bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(1100px 760px at 74% 12%, #1a3a26 0%, rgba(12,24,18,0) 62%),
+      radial-gradient(900px 700px at 12% 92%, #12301f 0%, rgba(12,20,16,0) 60%),
+      linear-gradient(140deg, #0d1813 0%, #0a1210 55%, #0c1712 100%);
+  }
+  .grid {
+    position: absolute; inset: 0; opacity: .5;
+    background-image:
+      linear-gradient(rgba(140, 200, 150, .045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(140, 200, 150, .045) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: radial-gradient(1200px 900px at 60% 40%, #000 20%, transparent 78%);
+  }
+  .glow {
+    position: absolute; width: 900px; height: 900px; border-radius: 50%;
+    left: -180px; top: -260px; filter: blur(90px);
+    background: radial-gradient(circle, rgba(111, 191, 71, .16) 0%, transparent 66%);
+  }
+
+  /* 手机 */
+  #phone {
+    position: absolute; left: 148px; top: 90px; width: 431px; height: 900px;
+    border-radius: 50px; background: #101a14;
+    border: 1px solid rgba(160, 210, 170, .16);
+    box-shadow:
+      0 50px 110px rgba(0, 0, 0, .62),
+      0 0 0 10px #0c1410,
+      0 0 0 11px rgba(150, 200, 160, .12),
+      inset 0 0 0 1px rgba(0, 0, 0, .5);
+    padding: 14px; overflow: hidden;
+  }
+  .screen {
+    position: relative; width: 403px; height: 872px;
+    border-radius: 37px; overflow: hidden; background: #f2f5f8;
+  }
+  .screen img {
+    position: absolute; left: 0; top: 0; width: 403px; height: auto;
+    will-change: transform, opacity;
+  }
+  /* 聚光灯：不是裁切放大，而是把注意力圈出来，画面仍然完整 */
+  .spot {
+    position: absolute; z-index: 30; border-radius: 13px;
+    border: 2px solid #8fd964;
+    box-shadow: 0 0 0 9999px rgba(6, 14, 10, .58), 0 0 26px rgba(143, 217, 100, .4);
+    pointer-events: none; opacity: 0;
+    transition: none;
+  }
+
+  /* 屏幕反光，让手机看起来有玻璃 */
+  .screen::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(118deg, rgba(255,255,255,.14) 0%, rgba(255,255,255,0) 26%, rgba(255,255,255,0) 74%, rgba(255,255,255,.05) 100%);
+  }
+
+  /* 文字层 */
+  .copy {
+    position: absolute; left: 668px; top: 0; width: 1120px; height: 1080px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .copy .kicker {
+    font-size: 21px; letter-spacing: 6px; color: #6fbf47;
+    font-weight: 600; margin-bottom: 30px;
+  }
+  .copy h1 {
+    font-size: 70px; line-height: 1.26; color: #f3f8ef;
+    font-weight: 700; letter-spacing: -1px;
+  }
+  .copy .sub {
+    margin-top: 22px; font-size: 25px; line-height: 1.6; color: #9db6a3;
+  }
+  .copy ul { margin-top: 52px; list-style: none; }
+  .copy li {
+    display: flex; align-items: flex-start; gap: 16px;
+    font-size: 26px; line-height: 1.6; color: #b3c7b8;
+    margin-bottom: 34px;
+  }
+  .copy li i {
+    flex: none; width: 7px; height: 7px; border-radius: 50%;
+    background: #6fbf47; margin-top: 17px; box-shadow: 0 0 14px rgba(111,191,71,.75);
+  }
+
+  /* 封面 */
+  .cover {
+    position: absolute; left: 668px; top: 0; width: 1140px; height: 1080px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .cover .tag {
+    align-self: flex-start; font-size: 19px; letter-spacing: 7px; color: #8fd964;
+    border: 1px solid rgba(143, 217, 100, .35); border-radius: 999px;
+    padding: 10px 24px; margin-bottom: 44px;
+  }
+  .cover h1 {
+    font-size: 138px; line-height: 1.06; font-weight: 800; letter-spacing: -4px;
+    color: #ffffff;
+  }
+  .cover h1 em { font-style: normal; color: #7ecb50; }
+  .cover p { margin-top: 32px; font-size: 34px; color: #9db6a3; letter-spacing: 1px; line-height: 1.5; }
+  .cover .rule { margin-top: 46px; width: 108px; height: 3px; background: linear-gradient(90deg, #6fbf47, rgba(111,191,71,0)); }
+
+  /* 页脚 */
+  .foot {
+    position: absolute; left: 148px; right: 148px; bottom: 52px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 17px; color: #5d7566; letter-spacing: 1px;
+  }
+  .foot .brand b { color: #8fd964; font-weight: 600; }
+  .dots { display: flex; align-items: center; gap: 9px; }
+  .dots i {
+    display: block; width: 7px; height: 7px; border-radius: 4px;
+    background: rgba(255, 255, 255, .16);
+  }
+  .dots i.on { width: 28px; background: #8fd964; }
+  .bar {
+    position: absolute; left: 0; bottom: 0; height: 3px; width: 1920px;
+    background: rgba(255, 255, 255, .07);
+  }
+  .bar i { display: block; height: 100%; background: linear-gradient(90deg, #4f9d2f, #8fd964); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="bg"></div>
+  <div class="grid"></div>
+  <div class="glow" id="glow"></div>
+
+  <div id="phone">
+    <div class="screen" id="screen"></div>
+  </div>
+
+  <div id="copies"></div>
+
+  <div class="foot">
+    <span class="brand"><b>食光 AI</b> · 运动板块</span>
+    <span class="dots" id="dots"></span>
+  </div>
+  <div class="bar"><i id="pbar" style="width:0"></i></div>
+</div>
+
+<script>
+const SHOTS = {
+  sport: 'shots/sport.png',
+  map: 'shots/map.png',
+  legend: 'shots/legend.png',
+  detail: 'shots/detail_tall.png',
+  settle: 'shots/settle_tall.png',
+}
+
+// 每个场景：起始秒、时长、手机图、文字
+const SCENES = [
+  {
+    start: 0, dur: 4.4, cover: true,
+    tag: '运动板块 · 新玩法',
+    title: '领地<em>跑</em>',
+    sub: '把跑过的路，变成你的地盘',
+    img: 'map',
+  },
+  {
+    start: 4.4, dur: 5.4,
+    kicker: '01  领地地图',
+    title: '一块地，就是一个人的名字',
+    lines: [
+      '颜色越深，活力越足；越淡，越快消退',
+      '自己、好友、附近的人，各自一种颜色',
+      '只显示色块，不显示你的跑步轨迹',
+    ],
+    img: 'map',
+  },
+  {
+    start: 9.8, dur: 4.8,
+    kicker: '02  图例',
+    title: '颜色在说话，不用猜',
+    lines: [
+      '六种状态，一眼分得清',
+      '我的 / 好友 / 附近 / 被抢走 / 无主地',
+    ],
+    img: 'legend',
+  },
+  {
+    start: 14.6, dur: 6.6,
+    kicker: '03  领地详情',
+    title: '点开一块地，看到的是战报',
+    lines: [
+      '领地形状、活力倒计时、已经守了几天',
+      '和这个人的交锋战绩：谁赢过几次',
+      '该做的事就摆在这一页上',
+    ],
+    img: 'detail',
+    scroll: 96,
+  },
+  {
+    start: 21.2, dur: 6.2,
+    kicker: '04  下战书',
+    title: '24 小时，异步约战',
+    lines: [
+      '不是比谁跑得快，是比谁先动手',
+      '到期按「有没有真的切走对方的地」结算',
+    ],
+    img: 'detail',
+    spot: { y: 592, h: 70 },
+  },
+  {
+    start: 27.4, dur: 6.8,
+    kicker: '05  跑完结算',
+    title: '这一屏，决定你还跑不跑',
+    lines: [
+      '这一趟圈了多少、从谁手里拿的',
+      '段位、排名，还差多少能追上',
+      '下一步该去哪，写清楚',
+    ],
+    img: 'settle',
+    scroll: 70,
+  },
+  {
+    start: 34.2, dur: 5.0, cover: true,
+    img: 'map',
+    tag: '现在开始跑',
+    title: '跑一趟，<br>圈一块地',
+    sub: '闭环才算圈地 · 好友之间互抢 · 不跑会消退',
+  },
+]
+const TOTAL = SCENES[SCENES.length - 1].start + SCENES[SCENES.length - 1].dur
+
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v))
+const ease = (t) => 1 - Math.pow(1 - clamp(t), 3)
+const easeOut = (t) => 1 - Math.pow(1 - clamp(t), 2.2)
+
+const screen = document.getElementById('screen')
+const copies = document.getElementById('copies')
+const spot = document.createElement('div')
+spot.className = 'spot'
+screen.appendChild(spot)
+
+// 建立图片层与文字层
+SCENES.forEach((s, i) => {
+  if (!s.blank) {
+    const img = document.createElement('img')
+    img.src = SHOTS[s.img]
+    img.style.zIndex = String(i + 1)
+    img.style.opacity = '0'
+    screen.appendChild(img)
+    s.imgEl = img
+  }
+  const box = document.createElement('div')
+  box.className = s.cover ? 'cover' : 'copy'
+  box.style.zIndex = String(i + 1)
+  box.style.opacity = '0'
+  if (s.cover) {
+    box.innerHTML = `<div class="tag">${s.tag}</div><h1>${s.title}</h1>` +
+      `<p>${s.sub}</p><div class="rule"></div>`
+  } else {
+    box.innerHTML = `<div class="kicker">${s.kicker}</div><h1>${s.title}</h1>` +
+      `<ul>${s.lines.map((l) => `<li><i></i><span>${l}</span></li>`).join('')}</ul>`
+  }
+  copies.appendChild(box)
+  s.copyEl = box
+})
+
+function seek(t) {
+  spot.style.opacity = '0'
+  SCENES.forEach((s, i) => {
+    const lt = t - s.start
+    const fadeIn = ease(lt / 0.42)
+    const fadeOut = ease((s.dur - lt) / 0.34)
+    const vis = clamp(Math.min(fadeIn, fadeOut))
+
+    // 图片层
+    if (s.imgEl) {
+      s.imgEl.style.opacity = String(vis)
+      let ty = 0
+      let sc = 1
+      if (s.scroll) {
+        // 前 2.6 秒先让人看清整页，再缓慢下滚露出底部操作
+        const p = clamp((lt - 2.6) / (s.dur - 3.2))
+        ty = -s.scroll * easeOut(p)
+      }
+      if (s.spot) {
+        spot.style.opacity = String(vis)
+        spot.style.left = '20px'
+        spot.style.top = s.spot.y + 'px'
+        spot.style.width = '363px'
+        spot.style.height = s.spot.h + 'px'
+        spot.style.transform = `translateY(${0}px) scale(${(1 + Math.sin(lt * 2.4) * 0.007).toFixed(4)})`
+      }
+      // 进入时从右侧轻微滑入
+      const enterX = (1 - fadeIn) * 26
+      s.imgEl.style.transform =
+        `translate(${enterX.toFixed(2)}px, ${ty.toFixed(2)}px) scale(${sc.toFixed(3)})`
+      s.imgEl.style.transformOrigin = '50% 0%'
+    }
+
+    // 文字层
+    const cp = s.copyEl
+    cp.style.opacity = String(vis)
+    const y = (1 - fadeIn) * 34 - (1 - fadeOut) * 14
+    cp.style.transform = `translateY(${y.toFixed(2)}px)`
+  })
+
+  // 手机在封面滑入
+  const phone = document.getElementById('phone')
+  const coverIn = ease(t / 1.1)
+  const endFade = SCENES[SCENES.length - 1]
+  const endP = clamp((t - endFade.start) / 0.9)
+  phone.style.opacity = String(1 - endP * 0.28)
+  phone.style.transform =
+    `translateY(${((1 - coverIn) * 90 - endP * 18).toFixed(2)}px) scale(${(0.965 + coverIn * 0.035 - endP * 0.015).toFixed(4)})`
+
+  // 背景光斑缓慢漂移
+  const g = document.getElementById('glow')
+  g.style.transform = `translate(${Math.sin(t / 7) * 60}px, ${Math.cos(t / 9) * 40}px)`
+
+  // 进度点（比数字页码更不容易和章节号混淆）
+  let idx = 0
+  SCENES.forEach((s, i) => { if (t >= s.start) idx = i })
+  const dots = document.getElementById('dots')
+  if (!dots.childElementCount) {
+    SCENES.forEach(() => dots.appendChild(document.createElement('i')))
+  }
+  Array.from(dots.children).forEach((d, i) => {
+    d.className = i === idx ? 'on' : ''
+  })
+  document.getElementById('pbar').style.width = ((t / TOTAL) * 100).toFixed(2) + '%'
+}
+
+window.seek = seek
+window.TOTAL = TOTAL
+seek(0)
+window.ready = Promise.all(
+  Object.values(SHOTS).map((src) => new Promise((r) => {
+    const im = new Image(); im.src = src; im.onload = r; im.onerror = r
+  }))
+).then(() => true)
+</script>
+</body>
+</html>

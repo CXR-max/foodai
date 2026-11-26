@@ -97,7 +97,12 @@ export interface CreateWorkoutIn {
 
 /** 保存一次 GPS 运动（后端会重算距离/配速/消耗） */
 export const createWorkout = (data: CreateWorkoutIn) =>
-  post<WorkoutDetail & { points_awarded: number; message: string }>('/workouts', data)
+  post<WorkoutDetail & {
+    points_awarded: number
+    message: string
+    /** 领地结算摘要；未开启领地跑时为 null */
+    territory?: import('./territory').TerritoryRun | null
+  }>('/workouts', data)
 
 /** 手动补录（跑步机 / 跳绳 / 忘带手机） */
 export const createManualWorkout = (data: {

@@ -15,6 +15,9 @@ const router = createRouter({
     { path: '/register', name: 'register', component: () => import('@/views/RegisterView.vue') },
     // 运动：跑步中 / 运动详情是沉浸式独立页（不吃底部 tabBar），运动首页放在布局内
     { path: '/workout/run', name: 'workout-run', component: () => import('@/views/RunTrackView.vue'), meta: { title: '运动中' } },
+    { path: '/territory', name: 'territory', component: () => import('@/views/TerritoryView.vue'), meta: { title: '领地跑' } },
+    { path: '/territory/owner/:id(\\d+)', name: 'territory-owner', component: () => import('@/views/TerritoryDetailView.vue'), meta: { title: '领地详情' } },
+    { path: '/territory/settle/:workoutId(\\d+)', name: 'territory-settle', component: () => import('@/views/TerritorySettleView.vue'), meta: { title: '领地结算' } },
     { path: '/workout/:id(\\d+)', name: 'workout-detail', component: () => import('@/views/WorkoutDetailView.vue'), meta: { title: '运动报告' } },
     {
       path: '/',

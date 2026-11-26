@@ -8,12 +8,13 @@ import * as workoutApi from '@/api/workout'
 import { useRunTracker } from '@/platform/location'
 import type { RunDraft, TrackPoint } from '@/platform/location'
 import TrackMap from '@/components/TrackMap.vue'
-import { fmtDistance, fmtDuration, fmtPace, fmtSpeed, isRide, paceToSpeed } from '@/utils/workout'
+import { fmtDistance, fmtDuration, fmtPace, fmtSpeed, haversineM, isRide, paceToSpeed } from '@/utils/workout'
 import { refreshTodayCheckin } from '@/stores/todayCheckin'
 
 const route = useRoute()
 const router = useRouter()
 const sport = (route.query.sport as string) || '跑步'
+const revengeName = String(route.query.revenge_name || '')
 const demoMode = route.query.demo === '1'
 
 const tracker = useRunTracker()
@@ -42,6 +43,39 @@ const active = computed(() => running.value || paused.value)
 const locating = computed(() => state.value === 'locating')
 const counting = computed(() => state.value === 'countdown')
 const stopped = computed(() => state.value === 'stopped')
+
+function loopAreaM2(pts: TrackPoint[]): number {
+  if (pts.length < 3) return 0
+  const R = 6371000
+  const lat0 = (pts[0].lat * Math.PI) / 180
+  const cos0 = Math.cos(lat0)
+  const xy = pts.map((p) => [
+    (R * (p.lng * Math.PI)) / 180 * cos0,
+    (R * (p.lat * Math.PI)) / 180,
+  ])
+  let sum = 0
+  for (let i = 0; i < xy.length; i++) {
+    const [x1, y1] = xy[i]
+    const [x2, y2] = xy[(i + 1) % xy.length]
+    sum += x1 * y2 - x2 * y1
+  }
+  return Math.abs(sum) / 2
+}
+
+const loopPreview = computed(() => {
+  const arr = points.value
+  if (arr.length < 10 || distanceM.value < 100) return null
+  const first = arr[0]
+  const last = arr[arr.length - 1]
+  const gap = haversineM(first, last)
+  if (gap > 50) return { closed: false, gap, area: 0 }
+  return { closed: true, gap, area: loopAreaM2(arr) }
+})
+
+function fmtPreviewArea(m2: number): string {
+  if (m2 >= 10000) return `${(m2 / 10000).toFixed(2)} 万㎡`
+  return `${Math.round(m2)} ㎡`
+}
 
 const dist = computed(() => fmtDistance(distanceM.value))
 const curPace = computed(() => currentPaceSecKm.value || avgPaceSecKm.value)
@@ -167,7 +201,9 @@ async function save(r: { points: TrackPoint[]; distanceM: number; durationSec: n
     if (res.points_awarded > 0) ElMessage.success(res.message)
     else ElMessage.info(res.message || '已保存')
     allowLeave = true
-    router.replace(`/workout/${res.id}`)
+    // 领地结算：只有真的记到地了才进整屏结算，否则直接回运动报告
+    if (res.territory?.valid) router.replace(`/territory/settle/${res.id}`)
+    else router.replace(`/workout/${res.id}`)
   } catch {
     saveFailed.value = true
     tracker.saveDraft()
@@ -300,6 +336,19 @@ onBeforeUnmount(() => {
       </div>
       <div class="head-right">{{ points.length }} 点</div>
     </header>
+
+    <div v-if="revengeName" class="revenge-tip">
+      ⚔️ 跑一个闭环，把 <b>{{ revengeName }}</b> 的地切回来
+    </div>
+
+    <div v-if="active && loopPreview" class="loop-tip" :class="{ ready: loopPreview.closed }">
+      <template v-if="loopPreview.closed">
+        ✅ 闭环已形成 · 预计圈下 {{ fmtPreviewArea(loopPreview.area) }}
+      </template>
+      <template v-else>
+        还差 {{ Math.ceil(loopPreview.gap) }}m 回到起点附近就能圈地
+      </template>
+    </div>
 
     <!-- 不安全来源：提前说清楚原因和办法，避免"一直转圈以为坏了" -->
     <div v-if="!isSecure && !isDemo" class="blocker">
@@ -469,6 +518,21 @@ onBeforeUnmount(() => {
 }
 .head-center { display: flex; flex-direction: column; align-items: center; flex: 1; }
 .head-sport { font-size: 16px; font-weight: 600; letter-spacing: 1px; }
+.revenge-tip {
+  margin: 8px 12px 0; padding: 8px 12px; border-radius: 10px;
+  background: rgba(249, 115, 22, 0.12); color: #c2410c;
+  font-size: 11px; line-height: 1.5;
+}
+.revenge-tip b { color: #ea580c; }
+.loop-tip {
+  margin: 8px 12px 0; padding: 8px 12px; border-radius: 10px;
+  background: rgba(148, 163, 184, 0.12); color: #64748b;
+  font-size: 11px; line-height: 1.5;
+}
+.loop-tip.ready {
+  background: rgba(34, 197, 94, 0.14); color: #15803d;
+  font-weight: 600;
+}
 .head-sport em {
   font-style: normal; font-size: 9px; font-weight: 400;
   margin-left: 5px; padding: 1px 4px; border-radius: 4px;
