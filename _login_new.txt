@@ -1,1 +1,0 @@
-{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0MSIsImV4cCI6MTc5NDM4ODk5Nn0.Pz3kqPeWNYT0Oa3ddUEUF1pXnIY2Wk3GZsN-SEJFk6Y","user":{"id":41,"username":"testdev","nickname":"测试","points_total":0}}

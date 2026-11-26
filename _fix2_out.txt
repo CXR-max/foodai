@@ -1,6 +1,0 @@
-﻿第一次连接：ALTER + commit + close
-第二次连接查到列: ['id', 'user_id', 'height_cm', 'weight_kg', 'age', 'gender', 'activity_level', 'goal', 'target_weight_kg', 'daily_calorie_target', 'taste_preferences', 'dietary_restrictions', 'exercise_preferences', 'updated_at']
-body_fat_pct 在列中: False
-
-check_ins 列: ['id', 'user_id', 'check_date', 'check_type', 'task_key', 'status', 'points_awarded', 'food_record_id', 'plan_day_id', 'exercise_type', 'duration_min', 'calories_burned', 'note', 'created_at']
-完成！

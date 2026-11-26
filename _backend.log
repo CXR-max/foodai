@@ -1,2 +1,0 @@
-INFO:     127.0.0.1:50216 - "POST /api/auth/login HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50217 - "GET /api/stats/overview HTTP/1.1" 500 Internal Server Error

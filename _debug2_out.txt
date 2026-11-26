@@ -1,8 +1,0 @@
-﻿数据库路径: C:\Users\43120\Desktop\foodai\backend\test_write.db
-目录存在: True
-CREATE TABLE 执行成功
-sqlite_master 表: []
-INSERT 失败: no such table: test
-
-文件存在: True
-文件大小: 0
